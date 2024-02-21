@@ -52,14 +52,14 @@ jobs:
         
     - name: End services
       run: |
-          ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.client.service"
-          ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.server.service"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.client.service"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.server.service"
     
     - name: Run EF Core Migrations
       run: |
-        ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "cd /home/${{ secrets.SERVER_USERNAME }}/ReplayBrowser/Server && dotnet ef database update"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "cd /home/${{ secrets.SERVER_USERNAME }}/ReplayBrowser/Server && dotnet ef database update"
     
     - name: Start services
       run: |
-        ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.client.service"
-        ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.server.service"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.client.service"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.server.service"
