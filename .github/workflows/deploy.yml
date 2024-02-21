@@ -57,7 +57,7 @@ jobs:
     
     - name: Run EF Core Migrations
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "cd /home/${{ secrets.SERVER_USERNAME }}/ReplayBrowser/Server && dotnet ef database update"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "cd /home/${{ secrets.SERVER_USERNAME }}/ReplayBrowser/deploy/Server && dotnet tool install --global dotnet-ef && dotnet ef database update"
     
     - name: Start services
       run: |
