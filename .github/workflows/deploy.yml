@@ -24,10 +24,10 @@ jobs:
         dotnet-version: 8.0.x
         
     - name: Build Client
-      run: dotnet build ./ReplayBrowser/Client/Client.csproj
+      run: dotnet build ./Client/Client.csproj
       
     - name: Build Server
-      run: dotnet build ./ReplayBrowser/Server/Server.csproj
+      run: dotnet build ./Server/Server.csproj
       
     - name: Install SSH Key
       uses: webfactory/ssh-agent@v0.9.0
@@ -37,8 +37,8 @@ jobs:
     - name: Prepare files for deployment
       run: |
         mkdir deploy
-        echo '${{ secrets.SERVER_APPSETTINGS }}' > ./deploy/ReplayBrowser/Server/appsettings.Secret.json
-        echo '${{ secrets.CLIENT_APPSETTINGS }}' > ./deploy/ReplayBrowser/Client/appsettings.json
+        echo '${{ secrets.SERVER_APPSETTINGS }}' > ./deploy/Server/appsettings.Secret.json
+        echo '${{ secrets.CLIENT_APPSETTINGS }}' > ./deploy/Client/appsettings.json
         rsync -av --exclude='bin' --exclude='obj' --exclude='.git' --exclude='deploy' ./ ./deploy
         
     - name: Upload files to server
