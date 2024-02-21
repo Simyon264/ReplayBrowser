@@ -1,0 +1,40 @@
+﻿@using System.Text.RegularExpressions
+@using Shared
+@inject NavigationManager NavigationManager
+
+<div class="card" style="width: 18rem; margin-top: 1rem">
+    <div class="card-body">
+        <h5 class="card-title">@_nameFormatted</h5>
+        <p class="card-text">Map: @ReplayData.Map</p>
+        <p class="card-text">Gamemode: @ReplayData.Gamemode</p>
+        <button class="btn btn-primary" onclick="window.location.href = '/replay/@ReplayData.Id'">View</button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public required Shared.Models.Replay ReplayData { get; set; }
+
+    private string? _nameFormatted;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        // Get the date and server name of the replay using regex
+        var fileName = Path.GetFileName(ReplayData.Link);
+        if (fileName == null)
+        {
+            return;
+        }
+        var matchName = RegexList.ServerNameRegex.Match(fileName);
+        var matchDate = RegexList.ReplayRegex.Match(fileName);
+        if (matchName.Success && matchDate.Success)
+        {
+            _nameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value}";
+        }
+        else
+        {
+            _nameFormatted = ReplayData.ServerId;
+        }
+    }
+}

@@ -1,0 +1,42 @@
+﻿@page "/"
+@using Replay = Shared.Models.Replay
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@attribute [StreamRendering]
+
+<PageTitle>Replay viewer</PageTitle>
+<h1>Replay browser for Space Station 14</h1>
+<hr/>
+<SearchBar></SearchBar>
+<hr/>
+<h4>Most recent replays</h4>
+
+<div class="replay-list">
+    @if (Replays.Count == 0 && !IsLoading)
+    {
+        <p><em>It looks like there are no replays available yet. Please check again later.</em></p>
+    } else if (IsLoading)
+    {
+        <p><em>Loading replays... Please wait...</em></p>
+    }
+    else
+    {
+        foreach (var replay in Replays)
+        {
+            <Replay ReplayData="replay"></Replay>
+        }
+    }
+</div>
+
+@code {
+    private bool IsLoading { get; set; } = true;
+    private List<Replay> Replays { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Replays = await Http.GetFromJsonAsync<List<Replay>>("replays/most-recent");
+        Console.WriteLine($"Fetched {Replays.Count} replays.");
+        IsLoading = false;
+    }
+}

@@ -1,0 +1,94 @@
+﻿@page "/search"
+@using Replay = Shared.Models.Replay
+@using System.Net
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<PageTitle>Replay viewer</PageTitle>
+<h1>Replay browser for Space Station 14</h1>
+<p>Search for replays by using the search bar below</p>
+<a href="/" class="btn btn-primary">Back to main page</a>
+<hr/>
+<SearchBar></SearchBar>
+<hr/>
+@if (ErrorMessage != null)
+{
+    <p class="alert alert-danger">
+        @ErrorMessage
+        <br/>
+        <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#errorDetails" aria-expanded="false" aria-controls="errorDetails">
+            Show error details
+        </button>
+        <div class="collapse" id="errorDetails">
+            <div class="card card-body" style="white-space: pre-wrap;">
+                @ErrorDetails
+            </div>
+        </div>
+    </p>
+} else switch (Replays.Count)
+{
+    case 0 when IsLoading:
+        <div class="replay-list">
+            <p>Loading...</p>
+        </div>
+        break;
+    case 0:
+            <div class="replay-list">
+                <p>No results... :(</p>
+            </div>
+        break;
+    default:
+    {
+        <p>Found @Replays.Count replays</p>
+        <div class="replay-list">
+            @foreach (var replay in Replays)
+            {
+                <Replay ReplayData="replay"></Replay>
+            }
+        </div>
+
+        break;
+    }
+}
+
+@code {
+    public List<Replay> Replays { get; set; } = new List<Replay>();
+    public bool IsLoading { get; set; } = true;
+    public string? ErrorMessage { get; set; }
+    public string? ErrorDetails { get; set; }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Get mode and query from query string
+        var uri = new Uri(NavigationManager.Uri);
+        var query = uri.Query;
+        
+        var response = await Http.GetAsync("/search" + query);
+
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            ErrorMessage = "Invalid search query";
+            ErrorDetails = await response.Content.ReadAsStringAsync();
+            ErrorDetails = ErrorDetails.Replace("\n", "<br>");
+            return;
+        }
+        
+        if (response.StatusCode != HttpStatusCode.OK)
+        {
+            ErrorMessage = "Failed to load replays";
+            ErrorDetails = await response.Content.ReadAsStringAsync();
+            ErrorDetails = ErrorDetails.Replace("\n", "<br>");
+            return;
+        }
+        
+        var loadedReplays = await response.Content.ReadFromJsonAsync<List<Replay>>();
+        if (loadedReplays == null)
+        {
+            ErrorMessage = "Failed to load replays";
+            return;
+        }
+        
+        Replays = loadedReplays;
+        IsLoading = false;
+    }
+}

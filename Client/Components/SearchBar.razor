@@ -1,0 +1,60 @@
+﻿@using Humanizer
+@{
+    var searchModes = Enum.GetValues(typeof(Shared.SearchMode)).Cast<Shared.SearchMode>().ToList();
+    <div class="search-bar">
+        <div class="d-flex ms-auto">
+            <input type="text" class="form-control" placeholder="Search for a replay..." onsubmit="search()" aria-label="Search">
+            <button class="btn-secondary btn dropdown-toggle" type="button" id="searchModeButton" style="margin-left: 1rem; margin-right: 1rem;" data-bs-toggle="dropdown" aria-expanded="false">
+                @Shared.SearchMode.PlayerOocName.Humanize()
+            </button>
+            <ul class="dropdown-menu">
+                @foreach (var mode in searchModes)
+                {
+                    <li><a class="dropdown-item">@mode.Humanize()</a></li>
+                }
+            </ul>
+            <button class="btn btn-outline-success" type="button" onclick="search()">Search</button>
+        </div>
+    </div>
+}
+
+<script>
+    // This is a script to make the dropdown change the text of the button
+    const dropdowns = document.querySelectorAll('.dropdown-menu a');
+    dropdowns.forEach((dropdown) => {
+        dropdown.addEventListener('click', (e) => {
+            const text = e.target.textContent;
+            document.getElementById('searchModeButton').textContent = text;
+        });
+    });
+        
+    function search() {
+        const searchMode = document.getElementById('searchModeButton').textContent;
+        const searchText = document.querySelector('.search-bar input').value;
+        
+        const builder = new URLSearchParams();
+        builder.append('mode', searchMode);
+        builder.append('query', searchText);
+        window.location.href = '/search?' + builder.toString();
+    }
+    
+    document.querySelector('.search-bar input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            search();
+        }
+    });
+    
+    // Set the content of the search mode button to the value of the search mode
+    document.getElementById('searchModeButton').textContent = new URLSearchParams(window.location.search).get('mode');
+    
+    // Set the value of the search input to the value of the query
+    document.querySelector('.search-bar input').value = new URLSearchParams(window.location.search).get('query');
+</script>
+
+@code
+{
+    protected override bool ShouldRender()
+    {
+        return false;
+    }
+}

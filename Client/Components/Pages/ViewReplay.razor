@@ -1,0 +1,38 @@
+﻿@page "/replay/{id}"
+@attribute [StreamRendering]
+@inject HttpClient Http
+
+<PageTitle>Replay viewer</PageTitle>
+@if (Replay == null && !IsLoading)
+{
+    <p>Replay not found</p>
+}
+else if (IsLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <ReplayViewer Replay="Replay" />
+}
+
+@code {
+    [Parameter] public string Id { get; set; }
+    public Shared.Models.Replay? Replay { get; set; }
+    public bool IsLoading { get; set; } = true;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Http.GetAsync($"replay/{Id}");
+        if (response.IsSuccessStatusCode)
+        {
+            Replay = await response.Content.ReadFromJsonAsync<Shared.Models.Replay>();
+        }
+        else
+        {
+            Replay = null;
+        }
+        
+        IsLoading = false;
+    }
+}

@@ -1,0 +1,56 @@
+name: Deploy
+
+on: 
+  push:
+    branches:
+      - master
+      
+      
+jobs:
+  
+  deploy:
+    runs-on: ubuntu-latest
+    
+    env:
+      Solution_Name: ReplayBrowser.sln
+      
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Build Client
+      run: dotnet build ./ReplayBrowser/Client/Client.csproj
+      
+    - name: Build Server
+      run: dotnet build ./ReplayBrowser/Server/Server.csproj
+      
+    - name: Install SSH Key
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+    - name: Prepare files for deployment
+      run: |
+        mkdir deploy
+        echo '${{ secrets.SERVER_APPSETTINGS }}' > ./deploy/ReplayBrowser/Server/appsettings.Secret.json
+        echo '${{ secrets.CLIENT_APPSETTINGS }}' > ./deploy/ReplayBrowser/Client/appsettings.json
+        rsync -av --exclude='bin' --exclude='obj' --exclude='.git' --exclude='deploy' ./ ./deploy
+        
+    - name: Upload files to server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "./deploy/*"
+        target: /home/${{ secrets.SERVER_USERNAME }}/ReplayBrowser
+        
+    - name: Restart services
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl restart replaybrowser.client.service"
+        ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl restart replaybrowser.server.service"
