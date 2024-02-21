@@ -54,9 +54,9 @@ public static class ReplayParser
             // Consume the queue.
             while (Queue.Count > 0)
             {
-                // Since replays are like 200mb long, we want to parrallelize this. 5 at a time.
+                // Since replays are like 200mb long, we want to parrallelize this.
                 var tasks = new List<Task>();
-                for (var i = 0; i < 5; i++)
+                for (var i = 0; i < 10; i++)
                 {
                     if (Queue.Count == 0)
                     {
@@ -125,7 +125,7 @@ public static class ReplayParser
     }
     
     /// <summary>
-    /// Handles fetching replays from the remote storage. This is done on every 10th minute. So 10, 20, 30, 40, 50. 60,
+    /// Handles fetching replays from the remote storage.
     /// </summary>
     public static async Task FetchReplays(CancellationToken token, string storageUrl)
     {
@@ -142,7 +142,7 @@ public static class ReplayParser
             }
             
             var now = DateTime.Now;
-            var nextRun = now.AddMinutes(30 - now.Minute % 30).AddSeconds(-now.Second);
+            var nextRun = now.AddMinutes(10 - now.Minute % 10).AddSeconds(-now.Second);
             var delay = nextRun - now;
             await Task.Delay(delay, token);
         }
