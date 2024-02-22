@@ -86,7 +86,7 @@ public class ReplayController : ControllerBase
         var replays = await _context.Replays
             .Include(r => r.RoundEndPlayers)
             .OrderByDescending(r => r.Date ?? DateTime.MinValue)
-            .ToListAsync();
+            .ToListAsync().Reverse();
         var found = ReplayParser.SearchReplays(searchMode, query, replays);
         return Ok(found);
     }
