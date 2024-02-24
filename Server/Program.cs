@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.AspNetCore;
 using Server;
 using Server.Api;
 
@@ -50,6 +51,12 @@ try
                 .AllowAnyMethod()
                 .AllowAnyHeader();
         });
+    });
+    
+    // Endpoint logging
+    builder.Services.Configure<RequestLoggingOptions>(options =>
+    {
+        options.MessageTemplate = "Handled {RequestPath}";
     });
     
     builder.Services.AddMvc();
