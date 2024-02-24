@@ -89,7 +89,6 @@ public class ReplayController : ControllerBase
             .OrderByDescending(r => r.Date ?? DateTime.MinValue)
             .ToListAsync();
 
-        replays.Reverse();
         var found = ReplayParser.SearchReplays(searchMode, query, replays);
         return Ok(found);
     }
@@ -104,7 +103,7 @@ public class ReplayController : ControllerBase
     }
     
     /// <summary>
-    /// Returns the 30 most recent replays.
+    /// Returns the most recent replays.
     /// </summary>
     [HttpGet]
     [Route("/replays/most-recent")]
@@ -112,7 +111,7 @@ public class ReplayController : ControllerBase
     {
         var replays = await _context.Replays
             .OrderByDescending(r => r.Date ?? DateTime.MinValue)
-            .Take(30)
+            .Take(32)
             .ToListAsync();
         return Ok(replays);
     }

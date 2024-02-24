@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using Server.Api;
 using Shared;
 using Shared.Models;
@@ -75,7 +76,7 @@ public static class ReplayParser
                         try
                         {
                             var client = new HttpClient();
-                            Console.WriteLine("Downloading " + replay);
+                            Log.Information("Downloading " + replay);
                             var fileStream = await client.GetStreamAsync(replay, token);
                             Replay? parsedReplay = null;
                             try
@@ -107,11 +108,11 @@ public static class ReplayParser
                             
                             await AddReplayToDb(parsedReplay);
                             await AddParsedReplayToDb(replay);
-                            Console.WriteLine("Parsed " + replay);
+                            Log.Information("Parsed " + replay);
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine(e);
+                            Log.Error(e, "Error while parsing " + replay);
                         }
                     }, token));
                     
@@ -127,23 +128,27 @@ public static class ReplayParser
     /// <summary>
     /// Handles fetching replays from the remote storage.
     /// </summary>
-    public static async Task FetchReplays(CancellationToken token, string storageUrl)
+    public static async Task FetchReplays(CancellationToken token, string[] storageUrls)
     {
         while (!token.IsCancellationRequested)
         {
-            Console.WriteLine("Fetching replays...");
-            try
+            foreach (var storageUrl in storageUrls)
             {
-                await RetrieveFilesRecursive(storageUrl, token);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
+                Log.Information("Fetching replays from " + storageUrl);
+                try
+                {
+                    await RetrieveFilesRecursive(storageUrl, token);
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while fetching replays from " + storageUrl);
+                }
             }
             
             var now = DateTime.Now;
             var nextRun = now.AddMinutes(10 - now.Minute % 10).AddSeconds(-now.Second);
             var delay = nextRun - now;
+            Log.Information("Next run in " + delay.TotalMinutes + " minutes.");
             await Task.Delay(delay, token);
         }
     }
@@ -152,7 +157,7 @@ public static class ReplayParser
     {
         try
         {
-            Console.WriteLine("Retrieving files from " + directoryUrl);
+            Log.Information("Retrieving files from " + directoryUrl);
             var client = new HttpClient();
             var htmlContent = await client.GetStringAsync(directoryUrl, token);
             var document = new HtmlDocument();
@@ -161,7 +166,7 @@ public static class ReplayParser
             var links = document.DocumentNode.SelectNodes("//a[@href]");
             if (links == null)
             {
-                Console.WriteLine("No links found on " + directoryUrl);
+                Log.Information("No links found on " + directoryUrl + ".");
                 return;
             }
             
@@ -207,7 +212,7 @@ public static class ReplayParser
                         {
                             continue;
                         }
-                        Console.WriteLine("Adding " + href + " to the queue.");
+                        Log.Information("Adding " + href + " to the queue.");
                         Queue.Add(href);
                     }
                 }
@@ -215,7 +220,7 @@ public static class ReplayParser
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
+            Log.Error(e, "Error while retrieving files from " + directoryUrl);
             // We don't care about the exception, we just want to return the files we have.
         }
     }

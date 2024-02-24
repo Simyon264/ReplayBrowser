@@ -30,3 +30,13 @@ public class ReplayDbContext : DbContext
     /// </summary>
     public DbSet<ParsedReplay> ParsedReplays { get; set; }
 }
+
+/// <summary>
+/// Just a copy of ReplayDbContext, but with a different name. Used to be thread safe.
+/// </summary>
+public class ReplayParserDbContext : ReplayDbContext
+{
+    public ReplayParserDbContext(DbContextOptions<ReplayDbContext> options) : base(options)
+    {
+    }
+}
