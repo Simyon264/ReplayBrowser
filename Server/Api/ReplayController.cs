@@ -110,9 +110,11 @@ public class ReplayController : ControllerBase
     public async Task<ActionResult> GetMostRecentReplay()
     {
         var replays = await _context.Replays
-            .OrderByDescending(r => r.Date ?? DateTime.MinValue)
             .Take(32)
             .ToListAsync();
+        
+        // Order by most recent
+        replays = replays.OrderByDescending(r => r.Date ?? DateTime.MinValue).ToList();
         return Ok(replays);
     }
     
