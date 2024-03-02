@@ -123,6 +123,9 @@
                 {
                     playerText = $"<span style=\"color: gray\">{player.PlayerOocName}</span> was <span style=\"color:red\"><bold>{player.PlayerIcName}</bold></span> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
                 }
+                // Need to show the guid as well
+                playerText += $"<br><span style=\"color: gray;font-size: x-small;\"> {{{player.PlayerGuid}}}</span>";
+                
                 playerList.Add(playerText);
             }
             
