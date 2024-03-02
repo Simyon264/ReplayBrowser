@@ -11,6 +11,7 @@
 <SearchBar></SearchBar>
 <hr/>
 <h4>Most recent replays</h4>
+<p>There are currently @Count replays available.</p>
 
 <div class="replay-list">
     @if (Replays.Count == 0 && !IsLoading)
@@ -32,11 +33,12 @@
 @code {
     private bool IsLoading { get; set; } = true;
     private List<Replay> Replays { get; set; } = [];
+    private int Count { get; set; } = 0;
 
     protected override async Task OnInitializedAsync()
     {
         Replays = await Http.GetFromJsonAsync<List<Replay>>("replays/most-recent");
-        Console.WriteLine($"Fetched {Replays.Count} replays.");
+        Count = await Http.GetFromJsonAsync<List<int>>("replays").ContinueWith(x => x.Result.Count);
         IsLoading = false;
     }
 }
