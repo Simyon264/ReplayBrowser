@@ -11,6 +11,8 @@ public class Replay
     [YamlMember(Alias = "roundId")]
     public int? RoundId { get; set; }
     
+    [YamlMember(Alias = "server_name")]
+    public string? ServerName { get; set; }
     public DateTime? Date { get; set; }
     
     [YamlMember(Alias = "map")]
