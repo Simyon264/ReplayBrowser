@@ -103,18 +103,16 @@ public class ReplayController : ControllerBase
     }
     
     /// <summary>
-    /// Returns the most recent replays.
+    /// Returns the most recent replays. Not sorted by date. Just the most recent replays stored in the database.
     /// </summary>
     [HttpGet]
     [Route("/replays/most-recent")]
     public async Task<ActionResult> GetMostRecentReplay()
     {
         var replays = await _context.Replays
+            .OrderByDescending(r => r.Id)
             .Take(32)
             .ToListAsync();
-        
-        // Order by most recent
-        replays = replays.OrderByDescending(r => r.Date ?? DateTime.MinValue).ToList();
         return Ok(replays);
     }
     
