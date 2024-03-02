@@ -55,6 +55,10 @@ public static class ReplayParser
             // Consume the queue.
             while (Queue.Count > 0)
             {
+                var timeoutToken = new CancellationTokenSource(10000);
+                var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutToken.Token);
+                var startTime = DateTime.Now;
+                
                 // Since replays are like 200mb long, we want to parrallelize this.
                 var tasks = new List<Task>();
                 for (var i = 0; i < 10; i++)
@@ -114,10 +118,19 @@ public static class ReplayParser
                         {
                             Log.Error(e, "Error while parsing " + replay);
                         }
-                    }, token));
-                    
-                    // Wait for all tasks to finish.
-                    await Task.WhenAll(tasks);
+                    }, tokenSource.Token));
+                }
+                
+                // If the download takes too long, cancel it.
+                // 10 minutes should be enough
+                await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(600000, token));
+                await timeoutToken.CancelAsync(); 
+                // Cancel the timeout token, so the background tasks cancel as well.
+                
+                // If we timed out, log a warning.
+                if (DateTime.Now - startTime > TimeSpan.FromMinutes(10))
+                {
+                    Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
                 }
             }
             
@@ -213,7 +226,11 @@ public static class ReplayParser
                             continue;
                         }
                         Log.Information("Adding " + href + " to the queue.");
-                        Queue.Add(href);
+                        // Check if it's already in the queue.
+                        if (!Queue.Contains(href))
+                        {
+                            Queue.Add(href);
+                        }
                     }
                 }
             }
