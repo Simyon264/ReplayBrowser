@@ -9,6 +9,7 @@
     <p>Duration: @Replay.Duration</p>
     <p>Date: @DateFormatted</p>
     <p>Server ID: @Replay.ServerId</p>
+    <p>Server Name: @Replay.ServerName</p>
     <p>Round ID: @Replay.RoundId</p>
     <p>Gamemode: @Replay.Gamemode</p>
     <p>Size: @FormattedSize</p>
@@ -57,6 +58,11 @@
             return;
 
         var text = Replay.RoundEndText ?? "";
+
+        if (Replay.ServerName == null)
+        {
+            Replay.ServerName = "Unknown";
+        }
         
         const string colorTagPattern = @"\[color=(.*?)\](.*?)\[/color\]";
         const string colorTagReplacement = "<span style=\"color:$1\">$2</span>";
@@ -146,7 +152,7 @@
         }
         else
         {
-            NameFormatted = Replay.ServerId;
+            NameFormatted = Replay.ServerName ?? Replay.ServerId;
         }
     }
 }
