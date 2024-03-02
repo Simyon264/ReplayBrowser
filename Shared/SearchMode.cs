@@ -9,4 +9,5 @@ public enum SearchMode
     PlayerIcName,
     PlayerOocName,
     Guid,
+    ServerName,
 }

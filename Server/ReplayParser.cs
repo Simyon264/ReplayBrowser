@@ -304,6 +304,8 @@ public static class ReplayParser
                 return replays.Where(x => (x.RoundEndPlayers ?? []).Any(y => y.PlayerOocName.Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
             case SearchMode.RoundEndText:
                 return replays.Where(x => x.RoundEndText != null && x.RoundEndText.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+            case SearchMode.ServerName:
+                return replays.Where(x => x.ServerName != null && x.ServerName.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
             default:
                 throw new NotImplementedException();
         }
