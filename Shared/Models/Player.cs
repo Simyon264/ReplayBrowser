@@ -18,4 +18,9 @@ public class Player
     public string PlayerOocName { get; set; }
     [YamlMember(Alias = "antag")]
     public bool Antag { get; set; }
+    
+    // Foreign key
+    
+    public int? ReplayId { get; set; }
+    public Replay? Replay { get; set; }
 }
