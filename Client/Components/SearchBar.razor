@@ -50,11 +50,3 @@
     // Set the value of the search input to the value of the query
     document.querySelector('.search-bar input').value = new URLSearchParams(window.location.search).get('query');
 </script>
-
-@code
-{
-    protected override bool ShouldRender()
-    {
-        return false;
-    }
-}
