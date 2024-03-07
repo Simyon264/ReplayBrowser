@@ -16,6 +16,24 @@ public class ReplayDbContext : DbContext
         modelBuilder.Entity<Player>()
             .HasKey(p => p.Id); // Using Id as primary key
         
+        modelBuilder.Entity<Replay>()
+            .HasIndex(r => r.Map);
+        modelBuilder.Entity<Replay>()
+            .HasIndex(r => r.Gamemode);
+        modelBuilder.Entity<Replay>()
+            .HasIndex(r => r.ServerId);
+        modelBuilder.Entity<Replay>()
+            .HasIndex(r => r.RoundEndText);
+        modelBuilder.Entity<Replay>()
+            .HasIndex(r => r.ServerName);
+        modelBuilder.Entity<Player>()
+            .HasIndex(p => p.PlayerGuid);
+        modelBuilder.Entity<Player>()
+            .HasIndex(p => p.PlayerIcName);
+        modelBuilder.Entity<Player>()
+            .HasIndex(p => p.PlayerOocName);
+
+        
         modelBuilder.Entity<Replay>().ToTable("Replays");
         modelBuilder.Entity<Player>().ToTable("Players");
         modelBuilder.Entity<ParsedReplay>().ToTable("ParsedReplays");
