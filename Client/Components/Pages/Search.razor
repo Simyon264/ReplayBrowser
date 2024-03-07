@@ -1,6 +1,7 @@
 ﻿@page "/search"
 @using Replay = Shared.Models.Replay
 @using System.Net
+@using System.Diagnostics
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 
@@ -33,13 +34,14 @@
         </div>
         break;
     case 0:
+            <p>Found 0 replays in @stopWatch.ElapsedMilliseconds ms</p>
             <div class="replay-list">
                 <p>No results... :(</p>
             </div>
         break;
     default:
     {
-        <p>Found @Replays.Count replays</p>
+        <p>Found @Replays.Count replays in @stopWatch.ElapsedMilliseconds ms</p>
         <div class="replay-list">
             @foreach (var replay in Replays)
             {
@@ -56,9 +58,11 @@
     public bool IsLoading { get; set; } = true;
     public string? ErrorMessage { get; set; }
     public string? ErrorDetails { get; set; }
+    public Stopwatch stopWatch { get; set; } = new Stopwatch();
     
     protected override async Task OnInitializedAsync()
     {
+        stopWatch.Start();
         // Get mode and query from query string
         var uri = new Uri(NavigationManager.Uri);
         var query = uri.Query;
@@ -70,6 +74,7 @@
             ErrorMessage = "Invalid search query";
             ErrorDetails = await response.Content.ReadAsStringAsync();
             ErrorDetails = ErrorDetails.Replace("\n", "<br>");
+            stopWatch.Stop();
             return;
         }
         
@@ -78,6 +83,7 @@
             ErrorMessage = "Failed to load replays";
             ErrorDetails = await response.Content.ReadAsStringAsync();
             ErrorDetails = ErrorDetails.Replace("\n", "<br>");
+            stopWatch.Stop();
             return;
         }
         
@@ -85,9 +91,11 @@
         if (loadedReplays == null)
         {
             ErrorMessage = "Failed to load replays";
+            stopWatch.Stop();
             return;
         }
         
+        stopWatch.Stop();
         Replays = loadedReplays;
         IsLoading = false;
     }

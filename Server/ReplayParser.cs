@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Serilog;
 using Server.Api;
 using Shared;
@@ -289,7 +290,9 @@ public static class ReplayParser
     public static List<Replay> SearchReplays(SearchMode mode, string query, ReplayDbContext context)
     {
         var queryable = context.Replays.AsQueryable();
-        
+
+        IIncludableQueryable<Player, Replay?>? players;
+        IQueryable<int?>? replayIds;
         switch (mode)
         {
             case SearchMode.Map:
@@ -299,11 +302,23 @@ public static class ReplayParser
             case SearchMode.ServerId:
                 return queryable.Where(x => x.ServerId.ToLower().Contains(query.ToLower())).ToList();
             case SearchMode.Guid:
-                return queryable.Where(x => (x.RoundEndPlayers ?? new List<Player> { }).Any(y => y.PlayerGuid.ToString().Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
+                players = context.Players
+                    .Where(p => p.PlayerGuid.ToString().ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                return context.Replays.Where(r => replayIds.Contains(r.Id)).ToList();
             case SearchMode.PlayerIcName:
-                return queryable.Where(x => (x.RoundEndPlayers ?? new List<Player> { }).Any(y => y.PlayerIcName.ToLower().Contains(query.ToLower()))).ToList();
+                players = context.Players
+                    .Where(p => p.PlayerIcName.ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                return context.Replays.Where(r => replayIds.Contains(r.Id)).ToList();
             case SearchMode.PlayerOocName:
-                return queryable.Include(replay => replay.RoundEndPlayers).AsEnumerable().Where(x => (x.RoundEndPlayers ?? new List<Player> { }).Any(y => y.PlayerOocName.Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
+                players = Context.Players
+                    .Where(p => p.PlayerOocName.ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                return Context.Replays.Where(r => replayIds.Contains(r.Id)).ToList();
             case SearchMode.RoundEndText:
                 return queryable.Where(x => x.RoundEndText != null && x.RoundEndText.ToLower().Contains(query.ToLower())).ToList();
             case SearchMode.ServerName:
