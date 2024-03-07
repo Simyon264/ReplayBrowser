@@ -84,12 +84,13 @@ public class ReplayController : ControllerBase
             searchMode = modeEnum;
         }
 
-        var replays = await _context.Replays
-            .Include(r => r.RoundEndPlayers)
-            .OrderByDescending(r => r.Date ?? DateTime.MinValue)
-            .ToListAsync();
+        var replays = _context.Replays
+            .Include(r => r.RoundEndPlayers);
 
         var found = ReplayParser.SearchReplays(searchMode, query, replays);
+        // Order found replays by date
+        found = found.OrderByDescending(r => r.Date ?? DateTime.MinValue).ToList();
+        
         return Ok(found);
     }
     
