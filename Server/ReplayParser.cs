@@ -286,26 +286,28 @@ public static class ReplayParser
     /// <exception cref="NotImplementedException">
     /// Thrown when the search mode is not implemented.
     /// </exception>
-    public static List<Replay> SearchReplays(SearchMode mode, string query, IQueryable<Replay> queryable)
+    public static List<Replay> SearchReplays(SearchMode mode, string query, ReplayDbContext context)
     {
+        var queryable = context.Replays.AsQueryable();
+        
         switch (mode)
         {
             case SearchMode.Map:
-                return queryable.Where(x => x.Map.Contains(query)).ToList();
+                return queryable.Where(x => x.Map.ToLower().Contains(query.ToLower())).ToList();
             case SearchMode.Gamemode:
-                return queryable.Where(x => x.Gamemode.Contains(query)).ToList();
+                return queryable.Where(x => x.Gamemode.ToLower().Contains(query.ToLower())).ToList();
             case SearchMode.ServerId:
-                return queryable.Where(x => x.ServerId.Contains(query)).ToList();
+                return queryable.Where(x => x.ServerId.ToLower().Contains(query.ToLower())).ToList();
             case SearchMode.Guid:
                 return queryable.Where(x => (x.RoundEndPlayers ?? new List<Player> { }).Any(y => y.PlayerGuid.ToString().Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
             case SearchMode.PlayerIcName:
-                return queryable.Where(x => (x.RoundEndPlayers ?? new List<Player> { }).Any(y => y.PlayerIcName.Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
+                return queryable.Where(x => (x.RoundEndPlayers ?? new List<Player> { }).Any(y => y.PlayerIcName.ToLower().Contains(query.ToLower()))).ToList();
             case SearchMode.PlayerOocName:
-                return queryable.Where(x => (x.RoundEndPlayers ?? new List<Player> { }).Any(y => y.PlayerOocName.Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
+                return queryable.Include(replay => replay.RoundEndPlayers).AsEnumerable().Where(x => (x.RoundEndPlayers ?? new List<Player> { }).Any(y => y.PlayerOocName.Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
             case SearchMode.RoundEndText:
-                return queryable.Where(x => x.RoundEndText != null && x.RoundEndText.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                return queryable.Where(x => x.RoundEndText != null && x.RoundEndText.ToLower().Contains(query.ToLower())).ToList();
             case SearchMode.ServerName:
-                return queryable.Where(x => x.ServerName != null && x.ServerName.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                return queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(query.ToLower())).ToList();
             default:
                 throw new NotImplementedException();
         }
