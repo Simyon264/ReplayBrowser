@@ -7,7 +7,7 @@
         <h5 class="card-title">@_nameFormatted</h5>
         <p class="card-text">Map: @ReplayData.Map</p>
         <p class="card-text">Gamemode: @ReplayData.Gamemode</p>
-        <button class="btn btn-primary" onclick="window.location.href = '/replay/@ReplayData.Id'">View</button>
+        <a class="btn btn-primary" href="/replay/@ReplayData.Id" target="_blank">View</a>
     </div>
 </div>
 
@@ -34,7 +34,14 @@
         }
         else
         {
-            _nameFormatted = ReplayData.ServerId;
+            if (ReplayData.ServerName != null)
+            {
+                _nameFormatted = ReplayData.ServerName;
+            }
+            else
+            {
+                _nameFormatted = ReplayData.ServerId;
+            }
         }
     }
 }
