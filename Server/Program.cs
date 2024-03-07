@@ -93,11 +93,6 @@ try
     var thread = new Thread(() => ReplayParser.FetchReplays(tokenSource.Token, URLs));
     thread.Start();
     
-    var token = new CancellationTokenSource();
-    tokens.Add(token);
-    var thread2 = new Thread(() => ReplayParser.ConsumeQueue(token.Token));
-    thread2.Start();
-    
     app.Lifetime.ApplicationStopping.Register(() =>
     {
         foreach (var token in tokens)

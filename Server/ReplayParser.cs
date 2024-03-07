@@ -162,6 +162,7 @@ public static class ReplayParser
             var now = DateTime.Now;
             var nextRun = now.AddMinutes(10 - now.Minute % 10).AddSeconds(-now.Second);
             var delay = nextRun - now;
+            ConsumeQueue(token);
             Log.Information("Next run in " + delay.TotalMinutes + " minutes.");
             await Task.Delay(delay, token);
         }
