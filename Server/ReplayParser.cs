@@ -51,92 +51,86 @@ public static class ReplayParser
     
     public static async Task ConsumeQueue(CancellationToken token)
     {
-        while (!token.IsCancellationRequested)
+        // Consume the queue.
+        while (Queue.Count > 0)
         {
-            // Consume the queue.
-            while (Queue.Count > 0)
-            {
-                var timeoutToken = new CancellationTokenSource(10000);
-                var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutToken.Token);
-                var startTime = DateTime.Now;
+            var timeoutToken = new CancellationTokenSource(10000);
+            var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutToken.Token);
+            var startTime = DateTime.Now;
                 
-                // Since replays are like 200mb long, we want to parrallelize this.
-                var tasks = new List<Task>();
-                for (var i = 0; i < 10; i++)
+            // Since replays are like 200mb long, we want to parrallelize this.
+            var tasks = new List<Task>();
+            for (var i = 0; i < 10; i++)
+            {
+                if (Queue.Count == 0)
                 {
-                    if (Queue.Count == 0)
+                    break;
+                }
+                var replay = Queue[0];
+                Queue.RemoveAt(0);
+                // If it's already in the database, skip it.
+                if (await IsReplayParsed(replay))
+                {
+                    continue;
+                }    
+                tasks.Add(Task.Run(async () =>
+                {
+                    try
                     {
-                        break;
-                    }
-                    var replay = Queue[0];
-                    Queue.RemoveAt(0);
-                    // If it's already in the database, skip it.
-                    if (await IsReplayParsed(replay))
-                    {
-                        continue;
-                    }
-                    
-                    tasks.Add(Task.Run(async () =>
-                    {
+                        var client = new HttpClient();
+                        Log.Information("Downloading " + replay);
+                        var fileStream = await client.GetStreamAsync(replay, token);
+                        Replay? parsedReplay = null;
                         try
                         {
-                            var client = new HttpClient();
-                            Log.Information("Downloading " + replay);
-                            var fileStream = await client.GetStreamAsync(replay, token);
-                            Replay? parsedReplay = null;
-                            try
-                            {
-                                parsedReplay = ParseReplay(fileStream);
-                            }
-                            catch (Exception e)
-                            {
-                                // Ignore
-                                await AddParsedReplayToDb(replay);
-                                return;
-                            }
-                            parsedReplay.Link = replay;
-                            // See if the link matches the date regex, if it does set the date
-                            var replayFileName = Path.GetFileName(replay);
-                            var match = RegexList.ReplayRegex.Match(replayFileName);
-                            if (match.Success)
-                            {
-                                var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
-                                // Need to mark it as UTC, since the server is in UTC.
-                                parsedReplay.Date = date.ToUniversalTime();
-                            }
-                            
-                            // One more check to see if it's already in the database.
-                            if (await IsReplayParsed(replay))
-                            {
-                                return;
-                            }
-                            
-                            await AddReplayToDb(parsedReplay);
-                            await AddParsedReplayToDb(replay);
-                            Log.Information("Parsed " + replay);
+                            parsedReplay = ParseReplay(fileStream);
                         }
                         catch (Exception e)
                         {
-                            Log.Error(e, "Error while parsing " + replay);
+                            // Ignore
+                            await AddParsedReplayToDb(replay);
+                            return;
                         }
-                    }, tokenSource.Token));
-                }
-                
-                // If the download takes too long, cancel it.
-                // 10 minutes should be enough
-                await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(600000, token));
-                await timeoutToken.CancelAsync(); 
-                // Cancel the timeout token, so the background tasks cancel as well.
-                
-                // If we timed out, log a warning.
-                if (DateTime.Now - startTime > TimeSpan.FromMinutes(10))
-                {
-                    Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
-                }
+                        parsedReplay.Link = replay;
+                        // See if the link matches the date regex, if it does set the date
+                        var replayFileName = Path.GetFileName(replay);
+                        var match = RegexList.ReplayRegex.Match(replayFileName);
+                        if (match.Success)
+                        {
+                            var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
+                            // Need to mark it as UTC, since the server is in UTC.
+                            parsedReplay.Date = date.ToUniversalTime();
+                        }
+                            
+                        // One more check to see if it's already in the database.
+                        if (await IsReplayParsed(replay))
+                        {
+                            return;
+                        }
+                            
+                        await AddReplayToDb(parsedReplay);
+                        await AddParsedReplayToDb(replay);
+                        Log.Information("Parsed " + replay);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e, "Error while parsing " + replay);
+                    }
+                }, tokenSource.Token));
             }
-            
-            await Task.Delay(5000, token);
-        }   
+                
+            // If the download takes too long, cancel it.
+            // 10 minutes should be enough
+            await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(600000, token));
+            await timeoutToken.CancelAsync(); 
+            // Cancel the timeout token, so the background tasks cancel as well.
+                
+            // If we timed out, log a warning.
+            if (DateTime.Now - startTime > TimeSpan.FromMinutes(10))
+            {
+                Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
+            }
+        }
     }
     
     /// <summary>
