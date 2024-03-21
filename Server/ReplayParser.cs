@@ -51,14 +51,12 @@ public static class ReplayParser
     
     public static async Task ConsumeQueue(CancellationToken token)
     {
-        while (!token.IsCancellationRequested)
+        // Consume the queue.
+        while (Queue.Count > 0)
         {
-            // Consume the queue.
-            while (Queue.Count > 0)
-            {
-                var timeoutToken = new CancellationTokenSource(10000);
-                var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutToken.Token);
-                var startTime = DateTime.Now;
+            var timeoutToken = new CancellationTokenSource(10000);
+            var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutToken.Token);
+            var startTime = DateTime.Now;
                 
                 // Since replays are like 200mb long, we want to parrallelize this.
                 var tasks = new List<Task>();
@@ -105,38 +103,35 @@ public static class ReplayParser
                                 parsedReplay.Date = date.ToUniversalTime();
                             }
                             
-                            // One more check to see if it's already in the database.
-                            if (await IsReplayParsed(replay))
-                            {
-                                return;
-                            }
-                            
-                            await AddReplayToDb(parsedReplay);
-                            await AddParsedReplayToDb(replay);
-                            Log.Information("Parsed " + replay);
-                        }
-                        catch (Exception e)
+                        // One more check to see if it's already in the database.
+                        if (await IsReplayParsed(replay))
                         {
-                            Log.Error(e, "Error while parsing " + replay);
+                            return;
                         }
-                    }, tokenSource.Token));
-                }
-                
-                // If the download takes too long, cancel it.
-                // 10 minutes should be enough
-                await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(600000, token));
-                await timeoutToken.CancelAsync(); 
-                // Cancel the timeout token, so the background tasks cancel as well.
-                
-                // If we timed out, log a warning.
-                if (DateTime.Now - startTime > TimeSpan.FromMinutes(10))
-                {
-                    Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
-                }
+                            
+                        await AddReplayToDb(parsedReplay);
+                        await AddParsedReplayToDb(replay);
+                        Log.Information("Parsed " + replay);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e, "Error while parsing " + replay);
+                    }
+                }, tokenSource.Token));
             }
-            
-            await Task.Delay(5000, token);
-        }   
+                
+            // If the download takes too long, cancel it.
+            // 10 minutes should be enough
+            await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(600000, token));
+            await timeoutToken.CancelAsync(); 
+            // Cancel the timeout token, so the background tasks cancel as well.
+                
+            // If we timed out, log a warning.
+            if (DateTime.Now - startTime > TimeSpan.FromMinutes(10))
+            {
+                Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
+            }
+        }
     }
     
     /// <summary>
