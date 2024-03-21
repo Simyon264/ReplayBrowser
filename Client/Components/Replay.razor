@@ -7,7 +7,23 @@
         <h5 class="card-title">@_nameFormatted</h5>
         <p class="card-text">Map: @ReplayData.Map</p>
         <p class="card-text">Gamemode: @ReplayData.Gamemode</p>
-        <a class="btn btn-primary" href="/replay/@ReplayData.Id" target="_blank">View</a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#r-@ReplayData.Id">
+            View replay
+        </button>
+        <a class="btn btn-secondary" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
+    </div>
+</div>
+<div class="modal fade modal-lg" id="@ModalId" tabindex="-1" aria-labelledby="@ModalId" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <ReplayViewer Replay="ReplayData" RequestModal="@ModalId"/>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a class="btn btn-primary" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -16,6 +32,7 @@
     public required Shared.Models.Replay ReplayData { get; set; }
 
     private string? _nameFormatted;
+    private string ModalId => $"r-{ReplayData.Id}";
 
     protected override void OnInitialized()
     {

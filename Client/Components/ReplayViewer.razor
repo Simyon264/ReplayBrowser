@@ -14,24 +14,79 @@
     <p>Gamemode: @Replay.Gamemode</p>
     <p>Size: @FormattedSize</p>
     
-    <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasEndText" aria-controls="offcanvasEndText">View Round End Text</button>
-    <div class="offcanvas offcanvas-end" id="offcanvasEndText" style="width: 55%">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title">Round End Text</h5>
-            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body">
-            <p>@ReplayEndTextFormatted</p>
-        </div>        
-    </div>
-    <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasPlayers" aria-controls="offcanvasPlayers">View Players</button>
-    <div class="offcanvas offcanvas-end" id="offcanvasPlayers" style="width: 55%">
-            <div class="offcanvas-header">
-                <h5 class="offcanvas-title">Players</h5>
-                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalEndText-@Replay.Id">
+        View Round End Text
+    </button>
+    <div class="modal fade modal-lg" id="modalEndText-@Replay.Id" tabindex="-1" aria-labelledby="modalEndText-@Replay.Id" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Round End Text</h5>
+                     @if(RequestModal != null)
+                     {
+                         <button class="btn-close" data-bs-target="#@RequestModal" data-bs-toggle="modal"></button>
+                     } else
+                     {
+                         <button class="btn-close" data-bs-dismiss="modal"></button>
+                     }
+                </div>
+                <div class="modal-body">
+                    <p>@ReplayEndTextFormatted</p>
+                </div>
+                @if(RequestModal != null)
+                {
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-bs-target="#@RequestModal" data-bs-toggle="modal">
+                            Return
+                        </button>
+                    </div>
+                } else
+                {
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-bs-dismiss="modal">
+                            Close
+                        </button>
+                    </div>
+                }
             </div>
-        <div class="offcanvas-body">
-            <p>@ReplayPlayersFormatted</p>
+        </div>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPlayers-@Replay.Id">
+        View Players
+    </button>
+    <div class="modal fade modal-lg" id="modalPlayers-@Replay.Id" tabindex="-1" aria-labelledby="modalPlayers-@Replay.Id" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Players</h5>
+                     @if(RequestModal != null)
+                     {
+                         <button class="btn-close" data-bs-target="#@RequestModal" data-bs-toggle="modal"></button>
+                     } else
+                     {
+                         <button class="btn-close" data-bs-dismiss="modal"></button>
+                     }
+                </div>
+                <div class="modal-body">
+                    <p>@ReplayPlayersFormatted</p>
+                </div>
+                @if(RequestModal != null)
+                {
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-bs-target="#@RequestModal" data-bs-toggle="modal">
+                            Return
+                        </button>
+                    </div>
+                } else
+                {
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-bs-dismiss="modal">
+                            Close
+                        </button>
+                    </div>
+                }
+            </div>
         </div>
     </div>
     
@@ -41,9 +96,24 @@
     <p>Oops! This component is missing a replay. Please report this to the developers.</p>
 }
 
+<script>
+    // This is very cursed, but it works
+    // I move the modal to the root of the document so it can be opened from anywhere
+    // this is because ReplayViewer may be rendered in a modal itself
+    // and modals can't be nested
+    var modals = document.querySelectorAll('.modal');
+    var modalRoot = document.getElementById('modal-root');
+    modals.forEach((modal) => {
+        modalRoot.appendChild(modal);
+    });
+</script>
+
 @code {
     [Parameter]
     public Shared.Models.Replay? Replay { get; set; }
+    
+    [Parameter]
+    public string? RequestModal { get; set; }
 
     public MarkupString ReplayEndTextFormatted { get; set; } = new MarkupString(""); 
     public MarkupString ReplayPlayersFormatted { get; set; } = new MarkupString("");
