@@ -10,4 +10,5 @@ public enum SearchMode
     PlayerOocName,
     Guid,
     ServerName,
+    RoundId
 }
