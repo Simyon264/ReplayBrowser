@@ -80,7 +80,7 @@ public static class ReplayParser
                     {
                         try
                         {
-                            var client = new HttpClient();
+                            var client = CreateHttpClient();
                             Log.Information("Downloading " + replay);
                             var fileStream = await client.GetStreamAsync(replay, token);
                             Replay? parsedReplay = null;
@@ -173,7 +173,7 @@ public static class ReplayParser
         try
         {
             Log.Information("Retrieving files from " + directoryUrl);
-            var client = new HttpClient();
+            var client = CreateHttpClient();
             var htmlContent = await client.GetStringAsync(directoryUrl, token);
             var document = new HtmlDocument();
             document.LoadHtml(htmlContent);
@@ -275,6 +275,17 @@ public static class ReplayParser
         
         return replay;
     }
+
+    /// <summary>
+    /// Creates a new HttpClient with the necessary headers, user agent etc.
+    /// </summary>
+    /// <returns></returns>
+    public static HttpClient CreateHttpClient()
+    {
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
+        return client;
+    }
     
     /// <summary>
     /// Searches a list of replays for a specific query.
@@ -297,33 +308,35 @@ public static class ReplayParser
         switch (mode)
         {
             case SearchMode.Map:
-                return queryable.Where(x => x.Map.ToLower().Contains(query.ToLower())).ToList();
+                return queryable.Where(x => x.Map.ToLower().Contains(query.ToLower())).Include(r => r.RoundEndPlayers).ToList();
             case SearchMode.Gamemode:
-                return queryable.Where(x => x.Gamemode.ToLower().Contains(query.ToLower())).ToList();
+                return queryable.Where(x => x.Gamemode.ToLower().Contains(query.ToLower())).Include(r => r.RoundEndPlayers).ToList();
             case SearchMode.ServerId:
-                return queryable.Where(x => x.ServerId.ToLower().Contains(query.ToLower())).ToList();
+                return queryable.Where(x => x.ServerId.ToLower().Contains(query.ToLower())).Include(r => r.RoundEndPlayers).ToList();
             case SearchMode.Guid:
                 players = context.Players
                     .Where(p => p.PlayerGuid.ToString().ToLower().Contains(query.ToLower()))
                     .Include(p => p.Replay);
                 replayIds = players.Select(p => p.ReplayId).Distinct();
-                return context.Replays.Where(r => replayIds.Contains(r.Id)).ToList();
+                return context.Replays.Where(r => replayIds.Contains(r.Id)).Include(r => r.RoundEndPlayers).ToList();
             case SearchMode.PlayerIcName:
                 players = context.Players
                     .Where(p => p.PlayerIcName.ToLower().Contains(query.ToLower()))
                     .Include(p => p.Replay);
                 replayIds = players.Select(p => p.ReplayId).Distinct();
-                return context.Replays.Where(r => replayIds.Contains(r.Id)).ToList();
+                return context.Replays.Where(r => replayIds.Contains(r.Id)).Include(r => r.RoundEndPlayers).ToList();
             case SearchMode.PlayerOocName:
                 players = Context.Players
                     .Where(p => p.PlayerOocName.ToLower().Contains(query.ToLower()))
                     .Include(p => p.Replay);
                 replayIds = players.Select(p => p.ReplayId).Distinct();
-                return Context.Replays.Where(r => replayIds.Contains(r.Id)).ToList();
+                return Context.Replays.Where(r => replayIds.Contains(r.Id)).Include(r => r.RoundEndPlayers).ToList();
             case SearchMode.RoundEndText:
-                return queryable.Where(x => x.RoundEndText != null && x.RoundEndText.ToLower().Contains(query.ToLower())).ToList();
+                return queryable.Where(x => x.RoundEndText != null && x.RoundEndText.ToLower().Contains(query.ToLower())).Include(r => r.RoundEndPlayers).ToList();
             case SearchMode.ServerName:
-                return queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(query.ToLower())).ToList();
+                return queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(query.ToLower())).Include(r => r.RoundEndPlayers).ToList();
+            case SearchMode.RoundId:
+                return queryable.Where(x => x.RoundId != null && x.RoundId.ToString().Contains(query)).Include(r => r.RoundEndPlayers).ToList();
             default:
                 throw new NotImplementedException();
         }
