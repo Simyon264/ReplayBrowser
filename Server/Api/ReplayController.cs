@@ -109,6 +109,7 @@ public class ReplayController : ControllerBase
     {
         var replays = await _context.Replays
             .OrderByDescending(r => r.Id)
+            .Include(r => r.RoundEndPlayers)
             .Take(32)
             .ToListAsync();
         return Ok(replays);
