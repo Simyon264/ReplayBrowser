@@ -86,7 +86,7 @@ public class ReplayController : ControllerBase
 
         var found = ReplayParser.SearchReplays(searchMode, query, _context);
         // Order found replays by date
-        found = found.OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(32 * 3).ToList();
+        found = found.OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(Constants.SearchLimit).ToList();
         
         return Ok(found);
     }

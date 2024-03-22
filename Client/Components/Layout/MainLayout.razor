@@ -14,3 +14,25 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+<script>
+    // This is very cursed, but it works
+    // I move all modals to the modal-root div
+    // also every time a modal is created, it is appended to the modal-root div
+    const modalRoot = document.getElementById('modal-root');
+    const pageRoot = document.querySelector('.page');
+    
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modalRoot.appendChild(modal);
+    });
+    
+    // listen for when a div is created with the class modal and move it to the modal-root div
+    const observer = new MutationObserver(function(mutations) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modalRoot.appendChild(modal);
+        });
+    });
+    observer.observe(pageRoot, { childList: true, subtree: true });
+</script>
