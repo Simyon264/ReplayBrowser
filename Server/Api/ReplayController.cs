@@ -96,17 +96,16 @@ public class ReplayController : ControllerBase
             return BadRequest("The page number cannot be negative.");
         }
 
-        var found = ReplayParser.SearchReplays(searchMode, query, _context);
+        var found = ReplayParser.SearchReplays(searchMode, query, _context, page, Constants.ReplaysPerPage);
+        
         // Order found replays by date
         found = found.OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(Constants.SearchLimit).ToList();
         
         var pageCount = Paginator.GetPageCount(found.Count, Constants.ReplaysPerPage);
-        var offset = Paginator.GetOffset(page, Constants.ReplaysPerPage);
-        var paginated = found.Skip(offset).Take(Constants.ReplaysPerPage).ToList();
         
         return Ok(new SearchResult()
         {
-            Replays = paginated,
+            Replays = found,
             PageCount = pageCount,
             CurrentPage = page,
             TotalReplays = found.Count
