@@ -2,6 +2,7 @@
 @using Replay = Shared.Models.Replay
 @using System.Net
 @using System.Diagnostics
+@using Shared
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 
@@ -41,17 +42,47 @@
         break;
     default:
     {
-        <p>Found @Replays.Count replays in @stopWatch.ElapsedMilliseconds ms</p>
+        <p>Found @TotalReplays replays in @stopWatch.ElapsedMilliseconds ms</p>
+        <p>Page @Page of @TotalPages</p>
         <div class="replay-list">
             @foreach (var replay in Replays)
             {
                 <Replay ReplayData="replay"></Replay>
             }
         </div>
-
+        <br/>
+        <div class="pagination">
+            @if (Page > 1)
+            {
+                <button class="btn btn-primary" onclick="pageDown()">Previous page</button>
+            } else
+            {
+                <button class="btn btn-primary" disabled>Previous page</button>
+            }
+            @if (Page < TotalPages)
+            {
+                <button class="btn btn-primary" onclick="pageUp()">Next page</button>
+            } else
+            {
+                <button class="btn btn-primary" disabled>Next page</button>
+            }
+        </div>
         break;
     }
 }
+
+<script>
+    const currentPage = @Page;
+    const totalPages = @TotalPages;
+    function pageUp() {
+        if (currentPage == totalPages) return;
+        search(currentPage + 1);
+    }
+    function pageDown() {
+        if (currentPage == 1) return;
+        search(currentPage - 1);
+    }
+</script>
 
 @code {
     public List<Replay> Replays { get; set; } = new List<Replay>();
@@ -59,6 +90,9 @@
     public string? ErrorMessage { get; set; }
     public string? ErrorDetails { get; set; }
     public Stopwatch stopWatch { get; set; } = new Stopwatch();
+    public int Page { get; set; } = 1;
+    public int TotalPages { get; set; } = 1;
+    public int TotalReplays { get; set; } = 0;
     
     protected override async Task OnInitializedAsync()
     {
@@ -87,7 +121,7 @@
             return;
         }
         
-        var loadedReplays = await response.Content.ReadFromJsonAsync<List<Replay>>();
+        var loadedReplays = await response.Content.ReadFromJsonAsync<SearchResult>();
         if (loadedReplays == null)
         {
             ErrorMessage = "Failed to load replays";
@@ -96,7 +130,10 @@
         }
         
         stopWatch.Stop();
-        Replays = loadedReplays;
+        Replays = loadedReplays.Replays;
+        Page = loadedReplays.CurrentPage;
+        TotalPages = loadedReplays.PageCount;
+        TotalReplays = loadedReplays.TotalReplays;
         IsLoading = false;
     }
 }

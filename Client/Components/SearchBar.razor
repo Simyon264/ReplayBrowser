@@ -28,19 +28,20 @@
         });
     });
         
-    function search() {
+    function search(page) {
         const searchMode = document.getElementById('searchModeButton').textContent;
         const searchText = document.querySelector('.search-bar input').value;
         
         const builder = new URLSearchParams();
         builder.append('mode', searchMode);
         builder.append('query', searchText);
+        builder.append('page', page);
         window.location.href = '/search?' + builder.toString();
     }
     
     document.querySelector('.search-bar input').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            search();
+            search(1);
         }
     });
     

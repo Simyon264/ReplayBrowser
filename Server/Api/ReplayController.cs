@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Shared;
 using System.Collections.Generic;
+using Server.Helpers;
 
 namespace Server.Api;
 
@@ -45,7 +46,8 @@ public class ReplayController : ControllerBase
     [Route("/search")]
     public async Task<ActionResult> SearchReplays(
         [FromQuery] string mode,
-        [FromQuery] string query
+        [FromQuery] string query,
+        [FromQuery] int page = 0
         )
     {
         var searchMode = SearchMode.Gamemode;
@@ -83,12 +85,32 @@ public class ReplayController : ControllerBase
         {
             searchMode = modeEnum;
         }
+        
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return BadRequest("The search query cannot be empty.");
+        }
+        
+        if (page < 0)
+        {
+            return BadRequest("The page number cannot be negative.");
+        }
 
         var found = ReplayParser.SearchReplays(searchMode, query, _context);
         // Order found replays by date
         found = found.OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(Constants.SearchLimit).ToList();
         
-        return Ok(found);
+        var pageCount = Paginator.GetPageCount(found.Count, Constants.ReplaysPerPage);
+        var offset = Paginator.GetOffset(page, Constants.ReplaysPerPage);
+        var paginated = found.Skip(offset).Take(Constants.ReplaysPerPage).ToList();
+        
+        return Ok(new SearchResult()
+        {
+            Replays = paginated,
+            PageCount = pageCount,
+            CurrentPage = page,
+            TotalReplays = found.Count
+        });
     }
     
     [HttpGet]
