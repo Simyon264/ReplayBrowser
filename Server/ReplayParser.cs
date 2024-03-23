@@ -294,62 +294,65 @@ public static class ReplayParser
     /// <exception cref="NotImplementedException">
     /// Thrown when the search mode is not implemented.
     /// </exception>
-public static List<Replay> SearchReplays(SearchMode mode, string query, ReplayDbContext context, int page, int pageSize)
-{
-    var queryable = context.Replays.AsQueryable();
-
-    IIncludableQueryable<Player, Replay?>? players;
-    IQueryable<int?>? replayIds;
-    switch (mode)
+    public static (List<Replay>, int) SearchReplays(SearchMode mode, string query, ReplayDbContext context, int page, int pageSize)
     {
-        case SearchMode.Map:
-            queryable = queryable.Where(x => x.Map.ToLower().Contains(query.ToLower()));
-            break;
-        case SearchMode.Gamemode:
-            queryable = queryable.Where(x => x.Gamemode.ToLower().Contains(query.ToLower()));
-            break;
-        case SearchMode.ServerId:
-            queryable = queryable.Where(x => x.ServerId.ToLower().Contains(query.ToLower()));
-            break;
-        case SearchMode.Guid:
-            players = context.Players
-                .Where(p => p.PlayerGuid.ToString().ToLower().Contains(query.ToLower()))
-                .Include(p => p.Replay);
-            replayIds = players.Select(p => p.ReplayId).Distinct();
-            queryable = context.Replays.Where(r => replayIds.Contains(r.Id));
-            break;
-        case SearchMode.PlayerIcName:
-            players = context.Players
-                .Where(p => p.PlayerIcName.ToLower().Contains(query.ToLower()))
-                .Include(p => p.Replay);
-            replayIds = players.Select(p => p.ReplayId).Distinct();
-            queryable = context.Replays.Where(r => replayIds.Contains(r.Id));
-            break;
-        case SearchMode.PlayerOocName:
-            players = Context.Players
-                .Where(p => p.PlayerOocName.ToLower().Contains(query.ToLower()))
-                .Include(p => p.Replay);
-            replayIds = players.Select(p => p.ReplayId).Distinct();
-            queryable = Context.Replays.Where(r => replayIds.Contains(r.Id));
-            break;
-        case SearchMode.RoundEndText:
-            queryable = queryable.Where(x => x.RoundEndText != null && x.RoundEndText.ToLower().Contains(query.ToLower()));
-            break;
-        case SearchMode.ServerName:
-            queryable = queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(query.ToLower()));
-            break;
-        case SearchMode.RoundId:
-            queryable = queryable.Where(x => x.RoundId != null && x.RoundId.ToString().Contains(query));
-            break;
-        default:
-            throw new NotImplementedException();
-    }
-
-    // Apply pagination on the database query
-    return queryable
-        .Skip(page * pageSize)
-        .Take(pageSize)
-        .Include(r => r.RoundEndPlayers)
-        .ToList();
+        var queryable = context.Replays.AsQueryable();
+    
+        IIncludableQueryable<Player, Replay?>? players;
+        IQueryable<int?>? replayIds;
+        switch (mode)
+        {
+            case SearchMode.Map:
+                queryable = queryable.Where(x => x.Map.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.Gamemode:
+                queryable = queryable.Where(x => x.Gamemode.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.ServerId:
+                queryable = queryable.Where(x => x.ServerId.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.Guid:
+                players = context.Players
+                    .Where(p => p.PlayerGuid.ToString().ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                queryable = context.Replays.Where(r => replayIds.Contains(r.Id));
+                break;
+            case SearchMode.PlayerIcName:
+                players = context.Players
+                    .Where(p => p.PlayerIcName.ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                queryable = context.Replays.Where(r => replayIds.Contains(r.Id));
+                break;
+            case SearchMode.PlayerOocName:
+                players = Context.Players
+                    .Where(p => p.PlayerOocName.ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                queryable = Context.Replays.Where(r => replayIds.Contains(r.Id));
+                break;
+            case SearchMode.RoundEndText:
+                queryable = queryable.Where(x => x.RoundEndText != null && x.RoundEndText.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.ServerName:
+                queryable = queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.RoundId:
+                queryable = queryable.Where(x => x.RoundId != null && x.RoundId.ToString().Contains(query));
+                break;
+            default:
+                throw new NotImplementedException();
+        }
+    
+        var totalItems = queryable.Count();
+        
+        // Apply pagination on the database query
+        return (queryable
+                .Skip(page * pageSize)
+                .Take(pageSize)
+                .Include(r => r.RoundEndPlayers)
+                .ToList(),
+            totalItems);
     }
 }

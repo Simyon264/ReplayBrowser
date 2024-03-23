@@ -99,16 +99,16 @@ public class ReplayController : ControllerBase
         var found = ReplayParser.SearchReplays(searchMode, query, _context, page, Constants.ReplaysPerPage);
         
         // Order found replays by date
-        found = found.OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(Constants.SearchLimit).ToList();
+        var foundReplays = found.Item1.OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(Constants.SearchLimit).ToList();
         
-        var pageCount = Paginator.GetPageCount(found.Count, Constants.ReplaysPerPage);
+        var pageCount = Paginator.GetPageCount(found.Item2, Constants.ReplaysPerPage);
         
         return Ok(new SearchResult()
         {
-            Replays = found,
+            Replays = foundReplays,
             PageCount = pageCount,
             CurrentPage = page,
-            TotalReplays = found.Count
+            TotalReplays = found.Item2
         });
     }
     
