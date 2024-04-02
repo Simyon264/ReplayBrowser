@@ -22,8 +22,7 @@ public class ReplayDbContext : DbContext
             .HasIndex(r => r.Gamemode);
         modelBuilder.Entity<Replay>()
             .HasIndex(r => r.ServerId);
-        modelBuilder.Entity<Replay>()
-            .HasIndex(r => r.RoundEndText);
+        modelBuilder.Entity<Replay>();
         modelBuilder.Entity<Replay>()
             .HasIndex(r => r.ServerName);
         modelBuilder.Entity<Player>()
