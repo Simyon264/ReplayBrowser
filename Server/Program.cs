@@ -19,6 +19,7 @@ try
     builder.Host.UseSerilog();
     
     builder.WebHost.UseKestrel();
+    builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = long.MaxValue);
     
     // Add services to the container.
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -76,6 +77,7 @@ try
     app.UseHttpsRedirection();
     
     app.UseRouting();
+    app.UseCors();
     app.MapControllerRoute(
         name: "default",
         pattern: "api/{controller=Home}/{action=Index}/{id?}");
