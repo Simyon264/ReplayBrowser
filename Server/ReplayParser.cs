@@ -349,9 +349,10 @@ public static class ReplayParser
         
         // Apply pagination on the database query
         return (queryable
+                .Include(r => r.RoundEndPlayers)
+                .OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(Constants.SearchLimit).ToList()
                 .Skip(page * pageSize)
                 .Take(pageSize)
-                .Include(r => r.RoundEndPlayers)
                 .ToList(),
             totalItems);
     }
