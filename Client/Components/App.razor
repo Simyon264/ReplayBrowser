@@ -28,6 +28,7 @@
     const ws = new WebSocket(websocketUrl);
     ws.onopen = () => {
         console.log("WebSocket connection established.");
+        ws.send("count");
     };
     ws.onclose = () => {
         console.log("WebSocket connection closed.");
