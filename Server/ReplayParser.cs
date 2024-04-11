@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
@@ -296,8 +297,10 @@ public static class ReplayParser
     /// </exception>
     public static (List<Replay>, int) SearchReplays(SearchMode mode, string query, ReplayDbContext context, int page, int pageSize)
     {
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
         var queryable = context.Replays.AsQueryable();
-    
+        
         IIncludableQueryable<Player, Replay?>? players;
         IQueryable<int?>? replayIds;
         switch (mode)
@@ -349,12 +352,16 @@ public static class ReplayParser
         var totalItems = queryable.Count();
         
         // Apply pagination on the database query
-        return (queryable
+        var list = (queryable
                 .Include(r => r.RoundEndPlayers)
                 .OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(Constants.SearchLimit).ToList()
                 .Skip(page * pageSize)
                 .Take(pageSize)
                 .ToList(),
             totalItems);
+        
+        stopWatch.Stop();
+        Log.Information("Search took " + stopWatch.ElapsedMilliseconds + "ms.");
+        return list;
     }
 }
