@@ -39,11 +39,11 @@
     ws.onmessage = (message) => {
         //console.log("WebSocket message: ", message.data);
         // The only message i can currently recieve are the amount of users online. TODO: JSON messages
-        if (message.data == "1") {
-            $("#activeUsers").html("There is currently <em>one user</em> here.");
-        } else {
-            $("#activeUsers").html("There are currently <em>" + message.data + " users</em> here.");
-        }
+        //if (message.data == "1") {
+        //    $("#activeUsers").html("There is currently <em>one user</em> here.");
+        //} else {
+        //    $("#activeUsers").html("There are currently <em>" + message.data + " users</em> here.");
+        //}
     };
     window.ws = ws;
     
