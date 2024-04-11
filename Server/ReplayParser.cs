@@ -333,7 +333,8 @@ public static class ReplayParser
                 queryable = Context.Replays.Where(r => replayIds.Contains(r.Id));
                 break;
             case SearchMode.RoundEndText:
-                queryable = queryable.Where(x => x.RoundEndText != null && x.RoundEndText.ToLower().Contains(query.ToLower()));
+                // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall (its lying, this works)
+                queryable = queryable.Where(x => x.RoundEndTextSearchVector.Matches(query));
                 break;
             case SearchMode.ServerName:
                 queryable = queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(query.ToLower()));

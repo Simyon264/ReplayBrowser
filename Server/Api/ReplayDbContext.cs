@@ -31,6 +31,15 @@ public class ReplayDbContext : DbContext
             .HasIndex(p => p.PlayerIcName);
         modelBuilder.Entity<Player>()
             .HasIndex(p => p.PlayerOocName);
+        
+        modelBuilder.Entity<Replay>().
+            HasGeneratedTsVectorColumn(
+                p => p.RoundEndTextSearchVector,
+                "english",
+                r => new { r.RoundEndText }
+                )
+            .HasIndex(r => r.RoundEndTextSearchVector)
+            .HasMethod("GIN");
 
         
         modelBuilder.Entity<Replay>().ToTable("Replays");

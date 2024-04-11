@@ -1,4 +1,6 @@
-﻿using YamlDotNet.Serialization;
+﻿using System.Text.Json.Serialization;
+using NpgsqlTypes;
+using YamlDotNet.Serialization;
 
 namespace Shared.Models;
 
@@ -37,4 +39,7 @@ public class Replay
     public int UncompressedSize { get; set; }
     [YamlMember(Alias = "endTime")]
     public string EndTime { get; set; }
+    
+    [JsonIgnore]
+    public NpgsqlTsVector RoundEndTextSearchVector { get; set; }
 }
