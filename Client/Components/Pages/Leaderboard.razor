@@ -1,0 +1,90 @@
+﻿@page "/leaderboard"
+@using Shared
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@attribute [StreamRendering]
+
+<h4>Leaderboards</h4>
+@if(LeaderboardData == null)
+{
+    <p><em>Loading leaderboard data... Please wait...</em></p>
+}
+else
+{
+    // 0, 1, 2, 3, 4, 5 = Last24Hours, Last7Days, Last30Days, Last90Days, Last365Days, AllTime
+    <div class="btn-group" role="group" aria-label="Time range selection">
+        <button type="button" class="btn btn-secondary" onclick="changeTimeRange(0)">Last 24 hours</button>
+        <button type="button" class="btn btn-secondary" onclick="changeTimeRange(1)">Last 7 days</button>
+        <button type="button" class="btn btn-secondary" onclick="changeTimeRange(2)">Last 30 days</button>
+        <button type="button" class="btn btn-secondary" onclick="changeTimeRange(3)">Last 90 days</button>
+        <button type="button" class="btn btn-secondary" onclick="changeTimeRange(4)">Last 365 days</button>
+        <button type="button" class="btn btn-secondary" onclick="changeTimeRange(5)">All time</button>
+    </div>
+    // Need 2 tables for MostSeenPlayers and MostAntagPlayers
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Player name</th>
+            <th>Times seen</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var player in LeaderboardData.MostSeenPlayers)
+        {
+            <tr>
+                <td>@player.Value.Player.Username</td>
+                <td>@player.Value.Count</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Player name</th>
+            <th>Times antag</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var player in LeaderboardData.MostAntagPlayers)
+        {
+            <tr>
+                <td>@player.Value.Player.Username</td>
+                <td>@player.Value.Count</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+<script>
+    function changeTimeRange(timeRange) {
+        // This is a hacky way to change the time range, but it works
+        window.location.href = "/leaderboard?timeRange=" + timeRange;
+    }
+</script>
+
+@code{
+    private bool IsLoading { get; set; } = true;
+    private LeaderboardData? LeaderboardData { get; set; } = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get the time range from the query string
+        var uri = new Uri(NavigationManager.Uri);
+        var query = uri.Query;
+        var timeRange = 5; // Default to AllTime
+        if (!string.IsNullOrEmpty(query))
+        {
+            var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
+            if (queryDictionary.AllKeys.Contains("timeRange"))
+            {
+                timeRange = int.Parse(queryDictionary["timeRange"]);
+            }
+        }
+        
+        LeaderboardData = await Http.GetFromJsonAsync<LeaderboardData>("api/Data/leaderboard?rangeOption=" + timeRange);
+        IsLoading = false;
+    }
+}

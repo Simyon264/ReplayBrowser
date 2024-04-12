@@ -63,6 +63,8 @@ try
     {
         options.MessageTemplate = "Handled {RequestPath}";
     });
+
+    builder.Services.AddMemoryCache();
     
     builder.Services.AddMvc();
     var app = builder.Build();
