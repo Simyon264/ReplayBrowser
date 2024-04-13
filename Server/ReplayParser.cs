@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using Server.Api;
 using Shared;
@@ -295,11 +296,21 @@ public static class ReplayParser
     /// <exception cref="NotImplementedException">
     /// Thrown when the search mode is not implemented.
     /// </exception>
-    public static (List<Replay>, int) SearchReplays(SearchMode mode, string query, ReplayDbContext context, int page, int pageSize)
+    public static (List<Replay>, int) SearchReplays(SearchMode mode, string query, ReplayDbContext context, int page, int pageSize, IMemoryCache cache)
     {
+        var cacheKey = $"{mode}-{query}-{pageSize}";
+        if (cache.TryGetValue(cacheKey, out List<(List<Replay>, int)> cachedResult))
+        {
+            if (page < cachedResult.Count)
+            {
+                return cachedResult[page];
+            }
+        }
+
         var stopWatch = new Stopwatch();
         stopWatch.Start();
         var queryable = context.Replays.AsQueryable();
+
         
         IIncludableQueryable<Player, Replay?>? players;
         IQueryable<int?>? replayIds;
@@ -350,18 +361,35 @@ public static class ReplayParser
         }
     
         var totalItems = queryable.Count();
-        
-        // Apply pagination on the database query
-        var list = (queryable
-                .Include(r => r.RoundEndPlayers)
-                .OrderByDescending(r => r.Date ?? DateTime.MinValue).Take(Constants.SearchLimit).ToList()
-                .Skip(page * pageSize)
+
+        // Get all results and store them in the cache
+        var allResults = queryable
+            .Include(r => r.RoundEndPlayers)
+            .OrderByDescending(r => r.Date ?? DateTime.MinValue)
+            .Take(Constants.SearchLimit)
+            .ToList();
+
+        var paginatedResults = new List<(List<Replay>, int)>();
+        for (int i = 0; i * pageSize < allResults.Count; i++)
+        {
+            var paginatedList = allResults
+                .Skip(i * pageSize)
                 .Take(pageSize)
-                .ToList(),
-            totalItems);
-        
+                .ToList();
+
+            paginatedResults.Add((paginatedList, totalItems));
+        }
+
+        cache.Set(cacheKey, paginatedResults, TimeSpan.FromMinutes(5));
+
         stopWatch.Stop();
         Log.Information("Search took " + stopWatch.ElapsedMilliseconds + "ms.");
-        return list;
+
+        if (page < paginatedResults.Count)
+        {
+            return paginatedResults[page];
+        }
+
+        return (new List<Replay>(), 0);
     }
 }

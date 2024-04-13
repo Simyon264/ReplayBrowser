@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Shared;
 using System.Collections.Generic;
+using Microsoft.Extensions.Caching.Memory;
 using Server.Helpers;
 
 namespace Server.Api;
@@ -12,10 +13,12 @@ namespace Server.Api;
 public class ReplayController : ControllerBase
 {
     private readonly ReplayDbContext _context;
+    private readonly IMemoryCache _cache;
 
-    public ReplayController(ReplayDbContext context)
+    public ReplayController(ReplayDbContext context, IMemoryCache cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     [HttpPost]
@@ -96,7 +99,7 @@ public class ReplayController : ControllerBase
             return BadRequest("The page number cannot be negative.");
         }
 
-        var found = ReplayParser.SearchReplays(searchMode, query, _context, page, Constants.ReplaysPerPage);
+        var found = ReplayParser.SearchReplays(searchMode, query, _context, page, Constants.ReplaysPerPage, _cache);
         
         var pageCount = Paginator.GetPageCount(found.Item2, Constants.ReplaysPerPage);
         
