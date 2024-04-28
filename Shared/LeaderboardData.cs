@@ -10,7 +10,7 @@ public class LeaderboardData
     /// <summary>
     /// Most times as a kill or maroon target.
     /// </summary>
-    public Dictionary<string, PlayerData> MostHuntedPlayer { get; set; }
+    public Dictionary<string, PlayerCount> MostHuntedPlayer { get; set; }
 }
 
 public class PlayerCount

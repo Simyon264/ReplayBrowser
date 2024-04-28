@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,8 @@ namespace Server.Api;
 [Route("api/[controller]")]
 public class DataController : ControllerBase
 {
+    public static readonly Regex HuntedRegex = new Regex(@"(?<=Kill(?:\sor\smaroon)\s)([^,]+)");
+
     private readonly ReplayDbContext _context;
     private readonly IMemoryCache _cache;
     
@@ -75,7 +78,8 @@ public class DataController : ControllerBase
         var leaderboardResult = new LeaderboardData()
         {
             MostSeenPlayers = new Dictionary<string, PlayerCount>(),
-            MostAntagPlayers = new Dictionary<string, PlayerCount>()
+            MostAntagPlayers = new Dictionary<string, PlayerCount>(),
+            MostHuntedPlayer = new Dictionary<string, PlayerCount>(),
         };
         
         // To calculate the most seen player, we just count how many times we see a player in each RoundEndPlayer list.
@@ -133,7 +137,36 @@ public class DataController : ControllerBase
 
             #endregion
 
-            // TODO: Implement most hunted player
+            // The most hunted player is a bit more complex. We need to check the round end text for the following string
+            // "Kill or maroon <name>, <job> | "
+            // We need to extract the name and then look for that player in the player list for that replay.
+            // If we find the player, we increment the count.
+            if (dataReplay.RoundEndText == null || dataReplay.RoundEndPlayers == null)
+                continue;
+            
+            var matches = HuntedRegex.Matches(dataReplay.RoundEndText);
+            foreach (Match match in matches)
+            {
+                var playerName = match.Value.Trim();
+                var player = dataReplay.RoundEndPlayers.FirstOrDefault(p => p.PlayerIcName == playerName);
+                if (player == null)
+                    continue;
+                
+                var playerKey = new PlayerData()
+                {
+                    PlayerGuid = player.PlayerGuid,
+                    Username = ""
+                };
+                var didAdd = leaderboardResult.MostHuntedPlayer.TryAdd(playerKey.PlayerGuid.ToString(), new PlayerCount()
+                {
+                    Count = 1,
+                    Player = playerKey,
+                });
+                if (!didAdd)
+                {
+                    leaderboardResult.MostHuntedPlayer[playerKey.PlayerGuid.ToString()].Count++;
+                }
+            }
         }
         
         // Need to only return the top 10 players
@@ -147,6 +180,11 @@ public class DataController : ControllerBase
             .Take(10)
             .ToDictionary(p => p.Key, p => p.Value);
         
+        leaderboardResult.MostHuntedPlayer = leaderboardResult.MostHuntedPlayer
+            .OrderByDescending(p => p.Value.Count)
+            .Take(10)
+            .ToDictionary(p => p.Key, p => p.Value);
+        
         // Now we need to fetch the usernames for the players
         foreach (var player in leaderboardResult.MostSeenPlayers)
         {
@@ -156,6 +194,13 @@ public class DataController : ControllerBase
         }
 
         foreach (var player in leaderboardResult.MostAntagPlayers)
+        {
+            var playerData = await FetchPlayerDataFromGuid(player.Value.Player.PlayerGuid);
+            player.Value.Player.Username = playerData.Username;
+            await Task.Delay(50); // Rate limit the API
+        }
+        
+        foreach (var player in leaderboardResult.MostHuntedPlayer)
         {
             var playerData = await FetchPlayerDataFromGuid(player.Value.Player.PlayerGuid);
             player.Value.Player.Username = playerData.Username;

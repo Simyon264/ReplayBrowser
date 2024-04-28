@@ -56,6 +56,24 @@ else
         }
         </tbody>
     </table>
+    
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Player name</th>
+            <th>Times hunted by antags</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var player in LeaderboardData.MostHuntedPlayer)
+        {
+            <tr>
+                <td>@player.Value.Player.Username</td>
+                <td>@player.Value.Count</td>
+            </tr>
+        }
+        </tbody>
+    </table>
 }
 
 <script>
