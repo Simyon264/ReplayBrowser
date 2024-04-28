@@ -296,14 +296,15 @@ public static class ReplayParser
     /// <exception cref="NotImplementedException">
     /// Thrown when the search mode is not implemented.
     /// </exception>
-    public static (List<Replay>, int) SearchReplays(SearchMode mode, string query, ReplayDbContext context, int page, int pageSize, IMemoryCache cache)
+    public static (List<Replay>, int, bool) SearchReplays(SearchMode mode, string query, ReplayDbContext context, int page, int pageSize, IMemoryCache cache)
     {
         var cacheKey = $"{mode}-{query}-{pageSize}";
         if (cache.TryGetValue(cacheKey, out List<(List<Replay>, int)> cachedResult))
         {
             if (page < cachedResult.Count)
             {
-                return cachedResult[page];
+                var result = cachedResult[page];
+                return (result.Item1, result.Item2, true);
             }
         }
 
@@ -387,9 +388,9 @@ public static class ReplayParser
 
         if (page < paginatedResults.Count)
         {
-            return paginatedResults[page];
+            return (paginatedResults[page].Item1, paginatedResults[page].Item2, false);
         }
 
-        return (new List<Replay>(), 0);
+        return (new List<Replay>(), 0, false);
     }
 }

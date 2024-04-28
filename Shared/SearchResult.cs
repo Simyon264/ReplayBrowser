@@ -4,8 +4,12 @@ namespace Shared;
 
 public class SearchResult
 {
-    public int PageCount { get; set; }
-    public int CurrentPage { get; set; }
-    public List<Replay> Replays { get; set; }
-    public int TotalReplays { get; set; }
+    /// <summary>
+    /// If the result was fetched from the cache.
+    /// </summary>
+    public bool IsCache { get; set; } = false;
+    public int PageCount { get; set; } = 1;
+    public int CurrentPage { get; set; } = 1;
+    public List<Replay> Replays { get; set; } = new();
+    public int TotalReplays { get; set; } = 0;
 }

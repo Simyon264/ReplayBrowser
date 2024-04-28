@@ -165,7 +165,10 @@ public class DataController : ControllerBase
         // Save leaderboard to cache (its expensive as fuck to calculate)
         var cacheEntryOptions = new MemoryCacheEntryOptions()
             .SetAbsoluteExpiration(TimeSpan.FromHours(3));
-        _cache.Set("leaderboard-" + rangeOption, leaderboardResult, cacheEntryOptions);
+        var cacheLeaderboard = leaderboardResult;
+        cacheLeaderboard.IsCache = true;
+        
+        _cache.Set("leaderboard-" + rangeOption, cacheLeaderboard, cacheEntryOptions);
 
         
         return leaderboardResult;

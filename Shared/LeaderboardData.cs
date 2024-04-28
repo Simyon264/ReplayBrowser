@@ -2,6 +2,8 @@
 
 public class LeaderboardData
 {
+    public bool IsCache { get; set; } = false;
+    
     public Dictionary<string, PlayerCount> MostSeenPlayers { get; set; }
     public Dictionary<string, PlayerCount> MostAntagPlayers { get; set; }
     

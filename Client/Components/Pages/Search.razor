@@ -27,7 +27,7 @@
             </div>
         </div>
     </p>
-} else switch (Replays.Count)
+} else switch (SearchResult.Replays.Count)
 {
     case 0 when IsLoading:
         <div class="replay-list">
@@ -42,25 +42,34 @@
         break;
     default:
     {
-        var pageDisplay = Page + 1;
-        <p>Found @TotalReplays replays in @stopWatch.ElapsedMilliseconds ms</p>
-        <p>Page @pageDisplay of @TotalPages</p>
+        var pageDisplay = SearchResult.CurrentPage + 1;
+
+        if (SearchResult.IsCache)
+        {
+            <p>Found @SearchResult.TotalReplays replays in @stopWatch.ElapsedMilliseconds ms (cached)</p>
+        }
+        else
+        {
+            <p>Found @SearchResult.TotalReplays replays in @stopWatch.ElapsedMilliseconds ms</p>
+        }
+        
+        <p>Page @pageDisplay of @SearchResult.PageCount</p>
         <div class="replay-list">
-            @foreach (var replay in Replays)
+            @foreach (var replay in SearchResult.Replays)
             {
                 <Replay ReplayData="replay"></Replay>
             }
         </div>
         <br/>
         <div class="pagination">
-            @if (Page > 0)
+            @if (SearchResult.CurrentPage > 0)
             {
                 <button class="btn btn-primary" onclick="pageDown()">Previous page</button>
             } else
             {
                 <button class="btn btn-primary" disabled>Previous page</button>
             }
-            @if (Page < TotalPages - 1)
+            @if (SearchResult.CurrentPage < SearchResult.PageCount - 1)
             {
                 <button class="btn btn-primary" onclick="pageUp()">Next page</button>
             } else
@@ -73,8 +82,8 @@
 }
 
 <script>
-    const currentPage = @Page;
-    const totalPages = @TotalPages;
+    const currentPage = @SearchResult.CurrentPage;
+    const totalPages = @SearchResult.PageCount;
     function pageUp() {
         if (currentPage == (totalPages - 1)) return;
         search(currentPage + 1);
@@ -86,14 +95,12 @@
 </script>
 
 @code {
-    public List<Replay> Replays { get; set; } = new List<Replay>();
     public bool IsLoading { get; set; } = true;
     public string? ErrorMessage { get; set; }
     public string? ErrorDetails { get; set; }
     public Stopwatch stopWatch { get; set; } = new Stopwatch();
-    public int Page { get; set; } = 1;
-    public int TotalPages { get; set; } = 1;
-    public int TotalReplays { get; set; } = 0;
+
+    public SearchResult SearchResult { get; set; } = new SearchResult();
     
     protected override async Task OnInitializedAsync()
     {
@@ -130,11 +137,8 @@
             return;
         }
         
+        SearchResult = loadedReplays;
         stopWatch.Stop();
-        Replays = loadedReplays.Replays;
-        Page = loadedReplays.CurrentPage;
-        TotalPages = loadedReplays.PageCount;
-        TotalReplays = loadedReplays.TotalReplays;
         IsLoading = false;
     }
 }
