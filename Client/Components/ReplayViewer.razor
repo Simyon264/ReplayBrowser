@@ -182,10 +182,10 @@
                     job = player.JobPrototypes[0];
                 }
 
-                var playerText = $"<span style=\"color: gray\">{player.PlayerOocName}</span> was <bold>{player.PlayerIcName}</bold> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
+                var playerText = $"<a href=\"/player/{player.PlayerGuid}\"><span style=\"color: gray\">{player.PlayerOocName}</span></a> was <bold>{player.PlayerIcName}</bold> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
                 if (player.AntagPrototypes.Count > 0)
                 {
-                    playerText = $"<span style=\"color: gray\">{player.PlayerOocName}</span> was <span style=\"color:red\"><bold>{player.PlayerIcName}</bold></span> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
+                    playerText = $"<a href=\"/player/{player.PlayerGuid}\"><span style=\"color: red\">{player.PlayerOocName}</span></a> was <span style=\"color:red\"><bold>{player.PlayerIcName}</bold></span> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
                 }
                 // Need to show the guid as well
                 playerText += $"<br><span style=\"color: gray;font-size: x-small;\"> {{{player.PlayerGuid}}}</span>";

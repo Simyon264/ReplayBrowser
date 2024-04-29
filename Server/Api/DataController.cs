@@ -36,6 +36,108 @@ public class DataController : ControllerBase
         _cache = cache;
     }
 
+    [HttpGet]
+    [Route("player-data")]
+    public async Task<ActionResult> GetPlayerData(
+        [FromQuery] string guid
+    )
+    {
+        var playerGuid = Guid.Parse(guid);
+        if (playerGuid == Guid.Empty)
+        {
+            return BadRequest("Invalid GUID");
+        }
+        
+        var replays = await _context.Players
+            .Where(p => p.PlayerGuid == playerGuid)
+            .Include(p => p.Replay)
+            .Include(r => r.Replay.RoundEndPlayers)
+            .Select(p => p.Replay)
+            .ToListAsync();
+
+        var charactersPlayed = new List<CharacterData>();
+        var totalPlaytime = TimeSpan.Zero;
+        var totalRoundsPlayed = 0;
+        var totalAntagRoundsPlayed = 0;
+        var lastSeen = DateTime.MinValue;
+        
+        foreach (var replay in replays)
+        {
+            if (replay == null)
+            {
+                Log.Warning("Replay is null for player with GUID {PlayerGuid}", playerGuid);
+                continue;
+            }
+            
+            if (replay.RoundEndPlayers == null)
+                continue;
+            
+            if (replay.Date > lastSeen) // Update last seen
+            {
+                lastSeen = (DateTime)replay.Date;
+            }
+            
+            var characters = replay.RoundEndPlayers
+                .Where(p => p.PlayerGuid == playerGuid)
+                .Select(p => p.PlayerIcName)
+                .Distinct()
+                .ToList();
+
+            foreach (var character in characters)
+            {
+                // Check if the character is already in the list
+                var characterData = charactersPlayed.FirstOrDefault(c => c.CharacterName == character);
+                if (characterData == null)
+                {
+                    charactersPlayed.Add(new CharacterData()
+                    {
+                        CharacterName = character,
+                        LastPlayed = (DateTime)replay.Date,
+                        RoundsPlayed = 1
+                    });
+                }
+                else
+                {
+                    characterData.RoundsPlayed++;
+                    if (replay.Date > characterData.LastPlayed)
+                    {
+                        characterData.LastPlayed = (DateTime)replay.Date;
+                    }
+                }
+            }
+            
+            // Since duration is a string (example 02:04:51.4258419), we need to parse it.
+            if (TimeSpan.TryParse(replay.Duration, out var duration))
+            {
+                totalPlaytime += duration;
+            }
+            else
+            {
+                Log.Warning("Unable to parse duration {Duration} for replay with ID {ReplayId}", replay.Duration, replay.Id);
+            }
+            
+            totalRoundsPlayed++;
+            totalAntagRoundsPlayed += replay.RoundEndPlayers.Any(p => p.PlayerGuid == playerGuid && p.Antag) ? 1 : 0; // If the player is an antag, increment the count.
+        }
+        
+        CollectedPlayerData collectedPlayerData = new()
+        {
+            PlayerData = new PlayerData()
+            {
+                PlayerGuid = playerGuid,
+                Username = (await FetchPlayerDataFromGuid(playerGuid))?.Username ??
+                           "Unable to fetch username (API error)"
+            },
+            Characters = charactersPlayed,
+            TotalEstimatedPlaytime = totalPlaytime,
+            TotalRoundsPlayed = totalRoundsPlayed,
+            TotalAntagRoundsPlayed = totalAntagRoundsPlayed,
+            LastSeen = lastSeen
+        };
+        
+        return Ok(collectedPlayerData);
+    }
+    
     /// <summary>
     /// Provides a list of usernames which start with the given username.
     /// </summary>
