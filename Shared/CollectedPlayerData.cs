@@ -47,7 +47,7 @@ public class CollectedPlayerData
 
 public class CharacterData
 {
-    public string CharacterName { get; init; }
+    public string CharacterName { get; set; }
     public DateTime LastPlayed { get; set; } = DateTime.MinValue;
     public int RoundsPlayed { get; set; }
 }

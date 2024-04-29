@@ -36,13 +36,13 @@ else
     {
     if (character.CharacterName == "Unknown")
     {
-    continue;
+        character.CharacterName = "Spectator";
     }
 
     // If this character contains a paranthesis, it's likely a ghost role like mouse (253), so we'll skip it.
     if (character.CharacterName.Contains("("))
     {
-    continue;
+        continue;
     }
 
     <tr>
