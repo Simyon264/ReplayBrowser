@@ -33,7 +33,6 @@ else
         @foreach (var player in LeaderboardData.MostSeenPlayers)
         {
             <tr>
-                // Player name with link to their profile
                 <td><a href="/player/@player.Value.Player.PlayerGuid">@player.Value.Player.Username</a></td>
                 <td>@player.Value.Count</td>
             </tr>

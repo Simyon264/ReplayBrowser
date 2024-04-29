@@ -21,7 +21,7 @@ namespace Server.Api;
 [Route("api/[controller]")]
 public class DataController : ControllerBase
 {
-    public static readonly Regex HuntedRegex = new Regex(@"(?<=Kill(?:\sor\smaroon)\s)([^,]+)");
+    public static readonly Regex HuntedRegex = new Regex(@"Kill(?: or maroon? ([^,]+))");
 
     private readonly ReplayDbContext _context;
     private readonly IMemoryCache _cache;
@@ -171,11 +171,18 @@ public class DataController : ControllerBase
             return leaderboardData;
         }
 
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+        
         var rangeTimespan = rangeOption.GetTimeSpan();
         var dataReplays = await _context.Replays
             .Where(r => r.Date > DateTime.UtcNow - rangeTimespan)
             .Include(r => r.RoundEndPlayers)
             .ToListAsync();
+        
+        stopwatch.Stop();
+        Log.Information("Fetching replays took {Time}ms", stopwatch.ElapsedMilliseconds);
+        stopwatch.Restart();
 
         var leaderboardResult = new LeaderboardData()
         {
@@ -249,7 +256,7 @@ public class DataController : ControllerBase
             var matches = HuntedRegex.Matches(dataReplay.RoundEndText);
             foreach (Match match in matches)
             {
-                var playerName = match.Value.Trim();
+                var playerName = match.Groups[1].Value.Trim();
                 var player = dataReplay.RoundEndPlayers.FirstOrDefault(p => p.PlayerIcName == playerName);
                 if (player == null)
                     continue;
@@ -287,6 +294,10 @@ public class DataController : ControllerBase
             .Take(10)
             .ToDictionary(p => p.Key, p => p.Value);
         
+        stopwatch.Stop();
+        Log.Information("Calculating leaderboard took {Time}ms", stopwatch.ElapsedMilliseconds);
+        stopwatch.Restart();
+        
         // Now we need to fetch the usernames for the players
         foreach (var player in leaderboardResult.MostSeenPlayers)
         {
@@ -309,9 +320,12 @@ public class DataController : ControllerBase
             await Task.Delay(50); // Rate limit the API
         }
         
+        stopwatch.Stop();
+        Log.Information("Fetching usernames took {Time}ms", stopwatch.ElapsedMilliseconds);
+        
         // Save leaderboard to cache (its expensive as fuck to calculate)
         var cacheEntryOptions = new MemoryCacheEntryOptions()
-            .SetAbsoluteExpiration(TimeSpan.FromHours(3));
+            .SetAbsoluteExpiration(TimeSpan.FromHours(5));
         var cacheLeaderboard = leaderboardResult;
         cacheLeaderboard.IsCache = true;
         
