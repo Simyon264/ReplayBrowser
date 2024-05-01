@@ -12,6 +12,10 @@
 {
     <p>Loading...</p>
 }
+else if (FailedToLoad)
+{
+    <p>Failed to load player data. Exception: @Exception.Message</p>
+}
 else
 {
     <h1>@playerData.PlayerData.Username</h1>
@@ -84,11 +88,21 @@ else
     [Parameter] public string Guid { get; set; } = string.Empty;
 
     private CollectedPlayerData? playerData;
+    private bool FailedToLoad { get; set; } = false;
+    public Exception? Exception { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        playerData = await Http.GetFromJsonAsync<CollectedPlayerData>($"api/Data/player-data?guid={Guid}");
-        playerData.Characters = playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
-        playerData.JobCount = playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
+        try
+        {
+            playerData = await Http.GetFromJsonAsync<CollectedPlayerData>($"api/Data/player-data?guid={Guid}");
+            playerData.Characters = playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
+            playerData.JobCount = playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
+        }
+        catch (Exception e)
+        {
+            FailedToLoad = true;
+            Exception = e;
+        }
     }
 }
