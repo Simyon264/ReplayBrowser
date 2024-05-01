@@ -147,6 +147,7 @@
         {
             var playerGuid = await Http.GetAsync("/api/Data/has-profile?username=" + loadedReplays.Query);
             ProfileFound = await playerGuid.Content.ReadFromJsonAsync<PlayerData>();
+            if (ProfileFound.PlayerGuid == Guid.Empty) ProfileFound = null;
         }
         
         SearchResult = loadedReplays;
