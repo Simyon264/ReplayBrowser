@@ -60,6 +60,7 @@ public class DataController : ControllerBase
         var totalRoundsPlayed = 0;
         var totalAntagRoundsPlayed = 0;
         var lastSeen = DateTime.MinValue;
+        var jobCount = new List<JobCountData>();
         
         foreach (var replay in replays)
         {
@@ -106,6 +107,37 @@ public class DataController : ControllerBase
                 }
             }
             
+            var jobPrototypes = replay.RoundEndPlayers
+                .Where(p => p.PlayerGuid == playerGuid)
+                .Select(p => p.JobPrototypes)
+                .Distinct()
+                .ToList();
+
+            foreach (var jobPrototypeList in jobPrototypes)
+            {
+                foreach (var jobPrototype in jobPrototypeList)
+                {
+                    var jobData = jobCount.FirstOrDefault(j => j.JobPrototype == jobPrototype);
+                    if (jobData == null)
+                    {
+                        jobCount.Add(new JobCountData()
+                        {
+                            JobPrototype = jobPrototype,
+                            RoundsPlayed = 1,
+                            LastPlayed = (DateTime)replay.Date
+                        });
+                    }
+                    else
+                    {
+                        jobData.RoundsPlayed++;
+                        if (replay.Date > jobData.LastPlayed)
+                        {
+                            jobData.LastPlayed = (DateTime)replay.Date;
+                        }
+                    }
+                }
+            }
+            
             // Since duration is a string (example 02:04:51.4258419), we need to parse it.
             if (TimeSpan.TryParse(replay.Duration, out var duration))
             {
@@ -132,7 +164,8 @@ public class DataController : ControllerBase
             TotalEstimatedPlaytime = totalPlaytime,
             TotalRoundsPlayed = totalRoundsPlayed,
             TotalAntagRoundsPlayed = totalAntagRoundsPlayed,
-            LastSeen = lastSeen
+            LastSeen = lastSeen,
+            JobCount = jobCount
         };
         
         return Ok(collectedPlayerData);

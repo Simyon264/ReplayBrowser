@@ -10,59 +10,85 @@
 
 @if (playerData is null)
 {
-<p>Loading...</p>
+    <p>Loading...</p>
 }
 else
 {
-<h1>@playerData.PlayerData.Username</h1>
+    <h1>@playerData.PlayerData.Username</h1>
 
-<p><b>Total estimated playtime:</b> @playerData.TotalEstimatedPlaytime.Humanize()</p>
-<p><small>Calculated by adding up the total time for each round played by the player.</small></p>
-<p><b>Total rounds played:</b> @playerData.TotalRoundsPlayed</p>
-<p><b>Total antag rounds played:</b> @playerData.TotalAntagRoundsPlayed</p>
-<p><b>Last seen:</b> @playerData.LastSeen.Humanize()</p>
+    <p><b>Total estimated playtime:</b> @playerData.TotalEstimatedPlaytime.Humanize()</p>
+    <p><small>Calculated by adding up the total time for each round played by the player.</small></p>
+    <p><b>Total rounds played:</b> @playerData.TotalRoundsPlayed</p>
+    <p><b>Total antag rounds played:</b> @playerData.TotalAntagRoundsPlayed</p>
+    <p><b>Last seen:</b> @playerData.LastSeen.Humanize()</p>
 
-<h2>Characters</h2>
-<table class="table">
-    <thead>
-    <tr>
-        <th>Character Name</th>
-        <th>Times played</th>
-        <th>Last played</th>
-    </tr>
-    </thead>
-    <tbody>
-    @foreach (var character in playerData.Characters)
-    {
-    if (character.CharacterName == "Unknown")
-    {
-        character.CharacterName = "Spectator";
-    }
+    <h2>Characters</h2>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Character Name</th>
+            <th>Times played</th>
+            <th>Last played</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var character in playerData.Characters)
+        {
+            if (character.CharacterName == "Unknown")
+            {
+                character.CharacterName = "Spectator";
+            }
 
-    // If this character contains a paranthesis, it's likely a ghost role like mouse (253), so we'll skip it.
-    if (character.CharacterName.Contains("("))
-    {
-        continue;
-    }
+            // If this character contains a paranthesis, it's likely a ghost role like mouse (253), so we'll skip it.
+            if (character.CharacterName.Contains("("))
+            {
+                continue;
+            }
 
-    <tr>
-        <td>@character.CharacterName</td>
-        <td>@character.RoundsPlayed</td>
-        <td>@character.LastPlayed.Humanize()</td>
-    </tr>
-    }
+            <tr>
+                <td>@character.CharacterName</td>
+                <td>@character.RoundsPlayed</td>
+                <td>@character.LastPlayed.Humanize()</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <h2>Jobs</h2>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Job name</th>
+            <th>Times played</th>
+            <th>Last played</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var jobCountData in playerData.JobCount)
+        {
+            if (jobCountData.JobPrototype == "Unknown")
+            {
+                continue;
+            }
+            
+            <tr>
+                <td>@jobCountData.JobPrototype</td>
+                <td>@jobCountData.RoundsPlayed</td>
+                <td>@jobCountData.LastPlayed.Humanize()</td>
+            </tr>
+        }
     </tbody>
-</table>
+    </table>
 }
 
 @code{
-[Parameter] public string Guid { get; set; } = string.Empty;
+    [Parameter] public string Guid { get; set; } = string.Empty;
 
-private CollectedPlayerData? playerData;
+    private CollectedPlayerData? playerData;
 
-protected override async Task OnInitializedAsync()
-{
-playerData = await Http.GetFromJsonAsync<CollectedPlayerData>($"api/Data/player-data?guid={Guid}");
-playerData.Characters = playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
-}
+    protected override async Task OnInitializedAsync()
+    {
+        playerData = await Http.GetFromJsonAsync<CollectedPlayerData>($"api/Data/player-data?guid={Guid}");
+        playerData.Characters = playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
+        playerData.JobCount = playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
+    }
 }

@@ -27,6 +27,8 @@ public class CollectedPlayerData
     /// </summary>
     public int TotalAntagRoundsPlayed { get; init; }
     
+    public List<JobCountData> JobCount { get; set; } = new();
+    
     public DateTime LastSeen { get; set; } = DateTime.MinValue;
     
     public override bool Equals(object? obj)
@@ -50,4 +52,11 @@ public class CharacterData
     public string CharacterName { get; set; }
     public DateTime LastPlayed { get; set; } = DateTime.MinValue;
     public int RoundsPlayed { get; set; }
+}
+
+public class JobCountData
+{
+    public string JobPrototype { get; set; }
+    public int RoundsPlayed { get; set; }
+    public DateTime LastPlayed { get; set; } = DateTime.MinValue;
 }
