@@ -12,4 +12,6 @@ public class SearchResult
     public int CurrentPage { get; set; } = 1;
     public List<Replay> Replays { get; set; } = new();
     public int TotalReplays { get; set; } = 0;
+    public SearchMode SearchMode { get; set; }
+    public string Query { get; set; } = "";
 }

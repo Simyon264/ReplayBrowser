@@ -52,6 +52,11 @@
         {
             <p>Found @SearchResult.TotalReplays replays in @stopWatch.ElapsedMilliseconds ms</p>
         }
+
+        if (ProfileFound != null)
+        {
+            <p>Profile found for @ProfileFound.Username, click <a href="/player/@ProfileFound.PlayerGuid">here</a> to view</p>
+        }
         
         <p>Page @pageDisplay of @SearchResult.PageCount</p>
         <div class="replay-list">
@@ -99,6 +104,7 @@
     public string? ErrorMessage { get; set; }
     public string? ErrorDetails { get; set; }
     public Stopwatch stopWatch { get; set; } = new Stopwatch();
+    public PlayerData? ProfileFound { get; set; }
 
     public SearchResult SearchResult { get; set; } = new SearchResult();
     
@@ -135,6 +141,12 @@
             ErrorMessage = "Failed to load replays";
             stopWatch.Stop();
             return;
+        }
+
+        if (loadedReplays.SearchMode is SearchMode.PlayerOocName)
+        {
+            var playerGuid = await Http.GetAsync("/api/Data/has-profile?username=" + loadedReplays.Query);
+            ProfileFound = await playerGuid.Content.ReadFromJsonAsync<PlayerData>();
         }
         
         SearchResult = loadedReplays;

@@ -109,7 +109,9 @@ public class ReplayController : ControllerBase
             PageCount = pageCount,
             CurrentPage = page,
             TotalReplays = found.Item2,
-            IsCache = found.Item3
+            IsCache = found.Item3,
+            SearchMode = searchMode,
+            Query = query
         });
     }
     

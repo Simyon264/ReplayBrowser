@@ -192,6 +192,31 @@ public class DataController : ControllerBase
         return Ok(completions);
     }
 
+    /// <summary>
+    /// Tries to find a player with the given username. If found, returns the player's GUID.
+    /// </summary>
+    [HttpGet]
+    [Route("has-profile")]
+    public async Task<PlayerData> HasProfile(
+        [FromQuery] string username
+    )
+    {
+        var player = await _context.Players
+            .FirstOrDefaultAsync(p => p.PlayerOocName.ToLower() == username.ToLower());
+        if (player == null)
+            return new PlayerData()
+            {
+                PlayerGuid = Guid.Empty,
+                Username = "NOT FOUND"
+            };
+        
+        return new PlayerData()
+        {
+            PlayerGuid = player.PlayerGuid,
+            Username = player.PlayerOocName
+        };
+    }
+    
     [HttpGet]
     [Route("leaderboard")]
     public async Task<LeaderboardData> GetLeaderboard(
