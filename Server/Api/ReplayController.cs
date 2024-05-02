@@ -3,8 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Shared;
 using System.Collections.Generic;
+using System.Diagnostics;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Caching.Memory;
+using Serilog;
 using Server.Helpers;
+using Shared.Models;
 
 namespace Server.Api;
 
@@ -99,7 +103,7 @@ public class ReplayController : ControllerBase
             return BadRequest("The page number cannot be negative.");
         }
 
-        var found = ReplayParser.SearchReplays(searchMode, query, _context, page, Constants.ReplaysPerPage, _cache);
+        var found = SearchReplays(searchMode, query, page, Constants.ReplaysPerPage);
         
         var pageCount = Paginator.GetPageCount(found.Item2, Constants.ReplaysPerPage);
         
@@ -152,5 +156,115 @@ public class ReplayController : ControllerBase
         }
 
         return Ok(replay);
+    }
+    
+        /// <summary>
+    /// Searches a list of replays for a specific query.
+    /// </summary>
+    /// <param name="mode">The search mode.</param>
+    /// <param name="query">The search query.</param>
+    /// <param name="replays">The list of replays to search.</param>
+    /// <returns>
+    /// A list of replays that match the search query.
+    /// </returns>
+    /// <exception cref="NotImplementedException">
+    /// Thrown when the search mode is not implemented.
+    /// </exception>
+    public (List<Replay>, int, bool) SearchReplays(SearchMode mode, string query, int page, int pageSize)
+    {
+        var cacheKey = $"{mode}-{query}-{pageSize}";
+        if (_cache.TryGetValue(cacheKey, out List<(List<Replay>, int)> cachedResult))
+        {
+            if (page < cachedResult.Count)
+            {
+                var result = cachedResult[page];
+                return (result.Item1, result.Item2, true);
+            }
+        }
+
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
+        var queryable = _context.Replays.AsQueryable();
+
+        
+        IIncludableQueryable<Player, Replay?>? players;
+        IQueryable<int?>? replayIds;
+        switch (mode)
+        {
+            case SearchMode.Map:
+                queryable = queryable.Where(x => x.Map.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.Gamemode:
+                queryable = queryable.Where(x => x.Gamemode.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.ServerId:
+                queryable = queryable.Where(x => x.ServerId.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.Guid:
+                players = _context.Players
+                    .Where(p => p.PlayerGuid.ToString().ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                queryable = _context.Replays.Where(r => replayIds.Contains(r.Id));
+                break;
+            case SearchMode.PlayerIcName:
+                players = _context.Players
+                    .Where(p => p.PlayerIcName.ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                queryable = _context.Replays.Where(r => replayIds.Contains(r.Id));
+                break;
+            case SearchMode.PlayerOocName:
+                players = _context.Players
+                    .Where(p => p.PlayerOocName.ToLower().Contains(query.ToLower()))
+                    .Include(p => p.Replay);
+                replayIds = players.Select(p => p.ReplayId).Distinct();
+                queryable = _context.Replays.Where(r => replayIds.Contains(r.Id));
+                break;
+            case SearchMode.RoundEndText:
+                // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall (its lying, this works)
+                queryable = queryable.Where(x => x.RoundEndTextSearchVector.Matches(query));
+                break;
+            case SearchMode.ServerName:
+                queryable = queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(query.ToLower()));
+                break;
+            case SearchMode.RoundId:
+                queryable = queryable.Where(x => x.RoundId != null && x.RoundId.ToString().Contains(query));
+                break;
+            default:
+                throw new NotImplementedException();
+        }
+    
+        var totalItems = queryable.Count();
+
+        // Get all results and store them in the cache
+        var allResults = queryable
+            .Include(r => r.RoundEndPlayers)
+            .OrderByDescending(r => r.Date ?? DateTime.MinValue)
+            .Take(Constants.SearchLimit)
+            .ToList();
+
+        var paginatedResults = new List<(List<Replay>, int)>();
+        for (int i = 0; i * pageSize < allResults.Count; i++)
+        {
+            var paginatedList = allResults
+                .Skip(i * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            paginatedResults.Add((paginatedList, totalItems));
+        }
+
+        _cache.Set(cacheKey, paginatedResults, TimeSpan.FromMinutes(5));
+
+        stopWatch.Stop();
+        Log.Information("Search took " + stopWatch.ElapsedMilliseconds + "ms.");
+
+        if (page < paginatedResults.Count)
+        {
+            return (paginatedResults[page].Item1, paginatedResults[page].Item2, false);
+        }
+
+        return (new List<Replay>(), 0, false);
     }
 }
