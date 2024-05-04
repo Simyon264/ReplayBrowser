@@ -6,6 +6,7 @@ using Serilog;
 using Serilog.AspNetCore;
 using Server;
 using Server.Api;
+using Server.ReplayParser;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -93,7 +94,7 @@ try
     
     // Run FetchReplays in a new thread.
     var tokens = new List<CancellationTokenSource>();
-    var URLs = builder.Configuration.GetSection("ReplayUrls").Get<string[]>();
+    var URLs = builder.Configuration.GetSection("ReplayUrls").Get<StorageUrl[]>();
     if (URLs == null)
     {
         throw new Exception("No replay URLs found in appsettings.json. Please set ReplayUrls to an array of URLs.");

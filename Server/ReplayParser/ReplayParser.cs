@@ -1,18 +1,14 @@
-﻿using System.Diagnostics;
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO.Compression;
-using System.Text.RegularExpressions;
-using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using Server.Api;
+using Server.ReplayLoading;
 using Shared;
 using Shared.Models;
 using YamlDotNet.Serialization;
 
-namespace Server;
+namespace Server.ReplayParser;
 
 public static class ReplayParser
 {
@@ -139,7 +135,7 @@ public static class ReplayParser
     /// <summary>
     /// Handles fetching replays from the remote storage.
     /// </summary>
-    public static async Task FetchReplays(CancellationToken token, string[] storageUrls)
+    public static async Task FetchReplays(CancellationToken token, StorageUrl[] storageUrls)
     {
         while (!token.IsCancellationRequested)
         {
@@ -148,7 +144,8 @@ public static class ReplayParser
                 Log.Information("Fetching replays from " + storageUrl);
                 try
                 {
-                    await RetrieveFilesRecursive(storageUrl, token);
+                    var provider = ReplayProviderFactory.GetProvider(storageUrl.Provider);
+                    await provider.RetrieveFilesRecursive(storageUrl.Url, token);
                 }
                 catch (Exception e)
                 {
@@ -164,80 +161,31 @@ public static class ReplayParser
             await Task.Delay(delay, token);
         }
     }
-
-    private static async Task RetrieveFilesRecursive(string directoryUrl, CancellationToken token)
+    
+    public static async Task AddReplayToQueue(string replay)
     {
-        try
+        // Use regex to check and retrieve the date from the file name.
+        var fileName = Path.GetFileName(replay);
+        var match = RegexList.ReplayRegex.Match(fileName);
+        if (match.Success)
         {
-            Log.Information("Retrieving files from " + directoryUrl);
-            var client = CreateHttpClient();
-            var htmlContent = await client.GetStringAsync(directoryUrl, token);
-            var document = new HtmlDocument();
-            document.LoadHtml(htmlContent);
-            
-            var links = document.DocumentNode.SelectNodes("//a[@href]");
-            if (links == null)
+            var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
+            if (date < CutOffDateTime)
             {
-                Log.Information("No links found on " + directoryUrl + ".");
                 return;
             }
-            
-            foreach (var link in links)
-            {
-                if (token.IsCancellationRequested)
-                {
-                    return;
-                }
-                
-                var href = link.Attributes["href"].Value;
-
-                if (href.StartsWith("..", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-                
-                if (!Uri.TryCreate(href, UriKind.Absolute, out _))
-                {
-                    href = new Uri(new Uri(directoryUrl), href).ToString();
-                }
-
-                if (href.EndsWith("/", StringComparison.Ordinal))
-                {
-                    await RetrieveFilesRecursive(href, token);
-                }
-                
-                if (href.EndsWith(".zip", StringComparison.Ordinal))
-                {
-                    // Use regex to check and retrieve the date from the file name.
-                    var fileName = Path.GetFileName(href);
-                    var match = RegexList.ReplayRegex.Match(fileName);
-                    if (match.Success)
-                    {
-                        var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
-                        if (date < CutOffDateTime)
-                        {
-                            continue;
-                        }
-                        
-                        // If it's already in the database, skip it.
-                        if (await IsReplayParsed(href))
-                        {
-                            continue;
-                        }
-                        Log.Information("Adding " + href + " to the queue.");
-                        // Check if it's already in the queue.
-                        if (!Queue.Contains(href))
-                        {
-                            Queue.Add(href);
-                        }
-                    }
-                }
-            }
         }
-        catch (Exception e)
+        
+        // If it's already in the database, skip it.
+        if (await IsReplayParsed(replay))
         {
-            Log.Error(e, "Error while retrieving files from " + directoryUrl);
-            // We don't care about the exception, we just want to return the files we have.
+            return;
+        }
+        Log.Information("Adding " + replay + " to the queue.");
+        // Check if it's already in the queue.
+        if (!Queue.Contains(replay))
+        {
+            Queue.Add(replay);
         }
     }
     
@@ -282,5 +230,16 @@ public static class ReplayParser
         var client = new HttpClient();
         client.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
         return client;
+    }
+}
+
+public class StorageUrl
+{
+    public string Url { get; set; }
+    public string Provider { get; set; }
+
+    public override string ToString()
+    {
+        return Url;
     }
 }

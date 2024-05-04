@@ -34,7 +34,7 @@ public class ReplayController : ControllerBase
         }
         
         var stream = file.OpenReadStream();
-        var replay = ReplayParser.ParseReplay(stream);
+        var replay = ReplayParser.ReplayParser.ParseReplay(stream);
         stream.Close();
         
         _context.Replays.Add(replay);
