@@ -141,11 +141,6 @@ try
                     0, 100, 200, 300, 400, 500
                 }
             });
-    }).WithTracing(providerBuilder =>
-    {
-        providerBuilder.AddHttpClientInstrumentation();
-        providerBuilder.AddAspNetCoreInstrumentation();
-        providerBuilder.AddEntityFrameworkCoreInstrumentation();
     });
     
     var app = builder.Build();
