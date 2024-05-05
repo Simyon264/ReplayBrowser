@@ -3,6 +3,7 @@ using System.IO.Compression;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Server.Api;
+using Server.Metrics;
 using Server.ReplayLoading;
 using Shared;
 using Shared.Models;
@@ -13,7 +14,8 @@ namespace Server.ReplayParser;
 public static class ReplayParser
 {
     public static ReplayDbContext Context { get; set; }
-    
+    public static ReplayMetrics Metrics { get; set; }
+
     public static List<string> Queue = new();
     /// <summary>
     /// Since the Replay Meta file was added just yesterday, we want to cut off all replays that were uploaded before that.
@@ -58,7 +60,7 @@ public static class ReplayParser
                 
                 // Since replays are like 200mb long, we want to parrallelize this.
                 var tasks = new List<Task>();
-                for (var i = 0; i < 10; i++)
+                for (var i = 0; i < 1; i++)
                 {
                     if (Queue.Count == 0)
                     {
@@ -110,10 +112,12 @@ public static class ReplayParser
                         await AddReplayToDb(parsedReplay);
                         await AddParsedReplayToDb(replay);
                         Log.Information("Parsed " + replay);
+                        Metrics.ReplayParsed(replay);
                     }
                     catch (Exception e)
                     {
                         Log.Error(e, "Error while parsing " + replay);
+                        Metrics.ReplayError(replay);
                     }
                 }, tokenSource.Token));
             }

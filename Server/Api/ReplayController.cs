@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using Server.Helpers;
+using Server.Metrics;
 using Shared.Models;
 
 namespace Server.Api;
@@ -18,11 +19,13 @@ public class ReplayController : ControllerBase
 {
     private readonly ReplayDbContext _context;
     private readonly IMemoryCache _cache;
+    private readonly ReplayMetrics _metrics;
 
-    public ReplayController(ReplayDbContext context, IMemoryCache cache)
+    public ReplayController(ReplayDbContext context, IMemoryCache cache, ReplayMetrics metrics)
     {
         _context = context;
         _cache = cache;
+        _metrics = metrics;
     }
 
     [HttpPost]

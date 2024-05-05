@@ -2,10 +2,13 @@ using System.Net;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.AspNetCore;
 using Server;
 using Server.Api;
+using Server.Metrics;
 using Server.ReplayParser;
 
 Log.Logger = new LoggerConfiguration()
@@ -47,7 +50,10 @@ try
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
     });
     
+    builder.Services.AddSingleton<ReplayMetrics>();
+    
     ReplayParser.Context = builder.Services.BuildServiceProvider().GetService<ReplayParserDbContext>(); // GOD THIS IS STUPID
+    ReplayParser.Metrics = builder.Services.BuildServiceProvider().GetService<ReplayMetrics>();
     
     builder.Services.AddCors(options =>
     {
@@ -68,6 +74,75 @@ try
     builder.Services.AddMemoryCache();
     
     builder.Services.AddMvc();
+
+    builder.Services.AddOpenTelemetry().WithMetrics(providerBuilder =>
+    {
+        providerBuilder.AddPrometheusExporter();
+
+
+        providerBuilder.AddMeter("Microsoft.AspNetCore.Hosting",
+            "Microsoft.AspNetCore.Server.Kestrel");
+
+        providerBuilder.AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddProcessInstrumentation();
+
+        providerBuilder.AddMeter(
+            "Microsoft.Extensions.Diagnostics.ResourceMonitoring",
+            "Microsoft.AspNetCore.Routing",
+            "Microsoft.AspNetCore.Diagnostics",
+            "System.Net.Http",
+            "ReplayBrowser");
+
+        providerBuilder.AddView("http.server.request.duration",
+            new ExplicitBucketHistogramConfiguration
+            {
+                Boundaries = new double[]
+                {
+                    0, 0.005, 0.01, 0.025, 0.05,
+                    0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10
+                }
+            });
+
+        providerBuilder.AddView("http.server.request.size",
+            new ExplicitBucketHistogramConfiguration
+            {
+                Boundaries = new double[]
+                {
+                    0, 100, 1024, 1024 * 10, 1024 * 100, 1024 * 1024, 1024 * 1024 * 10, 1024 * 1024 * 100
+                }
+            });
+
+        providerBuilder.AddView("http.server.response.size",
+            new ExplicitBucketHistogramConfiguration
+            {
+                Boundaries = new double[]
+                {
+                    0, 100, 1024, 1024 * 10, 1024 * 100, 1024 * 1024, 1024 * 1024 * 10, 1024 * 1024 * 100
+                }
+            });
+
+        providerBuilder.AddView("http.server.response.duration",
+            new ExplicitBucketHistogramConfiguration
+            {
+                Boundaries = new double[]
+                {
+                    0, 0.005, 0.01, 0.025, 0.05,
+                    0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10
+                }
+            });
+
+        providerBuilder.AddView("http.server.response.status",
+            new ExplicitBucketHistogramConfiguration
+            {
+                Boundaries = new double[]
+                {
+                    0, 100, 200, 300, 400, 500
+                }
+            });
+    });
+    
     var app = builder.Build();
 
     var webSocketOptions = new WebSocketOptions()
@@ -112,6 +187,7 @@ try
             token.Cancel();
         }
     });
+    app.MapPrometheusScrapingEndpoint();
     
     app.Run();
 }
