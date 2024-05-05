@@ -60,7 +60,7 @@ public static class ReplayParser
                 
                 // Since replays are like 200mb long, we want to parrallelize this.
                 var tasks = new List<Task>();
-                for (var i = 0; i < 1; i++)
+                for (var i = 0; i < 10; i++)
                 {
                     if (Queue.Count == 0)
                     {
