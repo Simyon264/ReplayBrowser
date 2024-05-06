@@ -173,7 +173,7 @@ public class ReplayController : ControllerBase
     /// <exception cref="NotImplementedException">
     /// Thrown when the search mode is not implemented.
     /// </exception>
-    public (List<Replay>, int, bool) SearchReplays(SearchMode mode, string query, int page, int pageSize)
+    private (List<Replay>, int, bool) SearchReplays(SearchMode mode, string query, int page, int pageSize)
     {
         var cacheKey = $"{mode}-{query}-{pageSize}";
         if (_cache.TryGetValue(cacheKey, out List<(List<Replay>, int)> cachedResult))

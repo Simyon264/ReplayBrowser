@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @attribute [StreamRendering]
+@inject IConfiguration Configuration
 
 <PageTitle>Leaderboard</PageTitle>
 <h4>Leaderboards</h4>
@@ -12,8 +13,10 @@
 }
 else
 {
+    var queryDictionary = System.Web.HttpUtility.ParseQueryString(new Uri(NavigationManager.Uri).Query);
+    var username = queryDictionary["username"] ?? "";
     // 0, 1, 2, 3, 4, 5 = Last24Hours, Last7Days, Last30Days, Last90Days, Last365Days, AllTime
-    <div class="btn-group" role="group" aria-label="Time range selection">
+    <div class="btn-group" role="group" aria-label="Time range selection" style="margin-bottom: 10px">
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(0)">Last 24 hours</button>
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(1)">Last 7 days</button>
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(2)">Last 30 days</button>
@@ -21,67 +24,90 @@ else
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(4)">Last 365 days</button>
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(5)">All time</button>
     </div>
-    // Need 2 tables for MostSeenPlayers and MostAntagPlayers
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Player name</th>
-            <th>Times seen</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var player in LeaderboardData.MostSeenPlayers)
-        {
-            <tr>
-                <td><a href="/player/@player.Value.Player.PlayerGuid">@player.Value.Player.Username</a></td>
-                <td>@player.Value.Count</td>
-            </tr>
-        }
-        </tbody>
-    </table>
-
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Player name</th>
-            <th>Times antag</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var player in LeaderboardData.MostAntagPlayers)
-        {
-            <tr>
-                <td><a href="/player/@player.Value.Player.PlayerGuid">@player.Value.Player.Username</a></td>
-                <td>@player.Value.Count</td>
-            </tr>
-        }
-        </tbody>
-    </table>
     
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Player name</th>
-            <th>Times hunted by antags</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var player in LeaderboardData.MostHuntedPlayer)
+    // Need a simple search bar to filter for own name
+    <div class="search-bar">
+        <div class="d-flex ms-auto">
+            <input 
+                type="text" 
+                class="form-control" 
+                placeholder="Enter username..." 
+                onsubmit="search()" 
+                aria-label="Search"
+                data-filter="@Configuration["ApiUrl"]api/Data/username-completion?username=#QUERY#"
+                id="search"
+                value="@username"
+            >
+            <button class="btn btn-outline-success" type="button" onclick="search()">Filter</button>
+        </div>
+    </div>
+    
+    <hr/>
+
+    @foreach (var leaderboard in LeaderboardData.Leaderboards)
+    {
+        <h4>@leaderboard.Name</h4>
+        if (leaderboard.ExtraInfo != null)
         {
-            <tr>
-                <td><a href="/player/@player.Value.Player.PlayerGuid">@player.Value.Player.Username</a></td>
-                <td>@player.Value.Count</td>
-            </tr>
+            <p>@leaderboard.ExtraInfo</p>
         }
-        </tbody>
-    </table>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Position</th>
+                <th>Player name</th>
+                <th>@leaderboard.TrackedData</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var player in leaderboard.Data)
+            {
+                if (!IsCurrentPlayer(player.Value.Player.Username))
+                {
+                    <tr>
+                        <td>@player.Value.Position</td>
+                        <td><a href="/player/@player.Value.Player.PlayerGuid">@player.Value.Player.Username</a></td>
+                        <td>@player.Value.Count</td>
+                    </tr>
+                }
+                else
+                {
+                    <tr style="--bs-table-bg: #622c2c;">
+                        <td>@player.Value.Position</td>
+                        <td><a href="/player/@player.Value.Player.PlayerGuid">@player.Value.Player.Username</a></td>
+                        <td>@player.Value.Count</td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    }
 }
 
 <script>
     function changeTimeRange(timeRange) {
-        // This is a hacky way to change the time range, but it works
-        window.location.href = "/leaderboard?timeRange=" + timeRange;
+        var uri = new URL(window.location.href);
+        uri.searchParams.set("timeRange", timeRange);
+        uri.searchParams.set("username", document.getElementById("search").value);
+        window.location.href = uri.toString();
     }
+    
+    function search() {
+        var search = document.getElementById("search").value;
+        var uri = new URL(window.location.href);
+        uri.searchParams.set("timeRange", uri.searchParams.get("timeRange") || 5);
+        uri.searchParams.set("username",search);
+        window.location.href = uri.toString();
+    }
+    
+    // on dom ready, fill the search bar with the query string
+    document.addEventListener("DOMContentLoaded", function() {
+        var uri = new URL(window.location.href);
+        var search = uri.searchParams.get("search");
+        if (search) {
+            document.getElementById("search").value = search;
+        }
+    });
 </script>
 
 @code{
@@ -94,16 +120,33 @@ else
         var uri = new Uri(NavigationManager.Uri);
         var query = uri.Query;
         var timeRange = 5; // Default to AllTime
+        var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
         if (!string.IsNullOrEmpty(query))
         {
-            var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
             if (queryDictionary.AllKeys.Contains("timeRange"))
             {
                 timeRange = int.Parse(queryDictionary["timeRange"]);
             }
         }
-        
-        LeaderboardData = await Http.GetFromJsonAsync<LeaderboardData>("api/Data/leaderboard?rangeOption=" + timeRange);
+
+        if (queryDictionary.AllKeys.Contains("username"))
+        {
+            LeaderboardData = await Http.GetFromJsonAsync<LeaderboardData>("api/Data/leaderboard?rangeOption=" + timeRange + "&username=" + queryDictionary["username"]);
+        }
+        else
+        {
+            LeaderboardData = await Http.GetFromJsonAsync<LeaderboardData>("api/Data/leaderboard?rangeOption=" + timeRange);
+        }
         IsLoading = false;
+    }
+    
+    public bool IsCurrentPlayer(string username)
+    {
+        var queryDictionary = System.Web.HttpUtility.ParseQueryString(new Uri(NavigationManager.Uri).Query);
+        if (queryDictionary.AllKeys.Contains("username"))
+        {
+            return queryDictionary["username"] == username;
+        }
+        return false;
     }
 }

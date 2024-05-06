@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using Shared;
+using Shared.Models;
 
 namespace Server.Api;
 
@@ -20,8 +21,81 @@ namespace Server.Api;
 [Route("api/[controller]")]
 public class DataController : ControllerBase
 {
-    public static readonly Regex HuntedRegex = new Regex(@"Kill(?: or maroon? ([^,]+))");
+    private static readonly Regex HuntedRegex = new Regex(@"Kill(?: or maroon? ([^,]+))");
 
+    private static readonly Dictionary<string, string[]> JobLeaderboards = new Dictionary<string, string[]>()
+    {
+        {"Command", new []
+        {
+            "Captain",
+            "HeadOfPersonnel",
+            "ChiefMedicalOfficer",
+            "ResearchDirector",
+            "HeadOfSecurity",
+            "ChiefEngineer",
+            "Quartermaster"
+        }},
+        {"Science", new []
+        {
+            "ResearchDirector",
+            "Borg",
+            "Scientist",
+            "ResearchAssistant"
+        }},
+        {"Security", new []
+        {
+            "HeadOfSecurity",
+            "Warden",
+            "Detective",
+            "SecurityOfficer",
+            "SecurityCadet"
+        }},
+        {"Medical", new []
+        {
+            "ChiefMedicalOfficer",
+            "MedicalDoctor",
+            "Chemist",
+            "Paramedic",
+            "Psychologist",
+            "MedicalIntern"
+        }},
+        {"Engineering", new []
+        {
+            "ChiefEngineer",
+            "StationEngineer",
+            "AtmosphericTechnician",
+            "TechnicalAssistant",
+        }},
+        {"Service", new []
+        {
+            "HeadOfPersonnel",
+            "Janitor",
+            "Chef",
+            "Botanist",
+            "Bartender",
+            "Chaplain",
+            "Lawyer",
+            "Musician",
+            "Reporter",
+            "Zookeeper",
+        }},
+        {"Clown & Mime", new []
+        {
+            "Clown",
+            "Mime"
+        }},
+        {"Cargo", new []
+        {
+            "Quartermaster",
+            "CargoTechnician",
+            "SalvageSpecialist",
+        }},
+        {"The tide", new []
+        {
+            "Passenger",
+        }}
+    };
+    
     private readonly ReplayDbContext _context;
     private readonly IMemoryCache _cache;
     
@@ -222,17 +296,39 @@ public class DataController : ControllerBase
         };
     }
     
+    /// <summary>
+    /// Returns the leaderboard for the most seen players, most antag players, most hunted players, job stats, and more.
+    /// </summary>
+    /// <param name="rangeOption"> The range of time to get the leaderboard for. </param>
+    /// <param name="username"> An optional username to add their position as well. </param>
     [HttpGet]
     [Route("leaderboard")]
     public async Task<LeaderboardData> GetLeaderboard(
-        [FromQuery] RangeOption rangeOption = RangeOption.AllTime
+        [FromQuery] RangeOption rangeOption = RangeOption.AllTime,
+        [FromQuery] string? username = null
     )
     {
         // First, try to get the leaderboard from the cache
-        if (_cache.TryGetValue("leaderboard-" + rangeOption, out LeaderboardData leaderboardData))
+        var usernameCacheKey = username
+            ?.ToLower()
+            .Replace(" ", "-")
+            .Replace(".", "-")
+            .Replace("_", "-");
+        if (_cache.TryGetValue("leaderboard-" + rangeOption + "-" + usernameCacheKey, out LeaderboardData leaderboardData))
         {
             return leaderboardData;
         }
+        
+        var isUsernameProvided = !string.IsNullOrWhiteSpace(username);
+        var usernameGuid = Guid.Empty;
+        if (isUsernameProvided)
+        {
+            // Fetch the GUID for the username
+            var player = await _context.Players
+                .FirstOrDefaultAsync(p => p.PlayerOocName.ToLower() == username.ToLower());
+            if (player != null) usernameGuid = player.PlayerGuid;
+        }
+        
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -246,13 +342,40 @@ public class DataController : ControllerBase
         stopwatch.Stop();
         Log.Information("Fetching replays took {Time}ms", stopwatch.ElapsedMilliseconds);
         stopwatch.Restart();
-
-        var leaderboardResult = new LeaderboardData()
+        
+        var leaderboards = new Dictionary<string, Leaderboard>()
         {
-            MostSeenPlayers = new Dictionary<string, PlayerCount>(),
-            MostAntagPlayers = new Dictionary<string, PlayerCount>(),
-            MostHuntedPlayer = new Dictionary<string, PlayerCount>(),
+            {"MostSeenPlayers", new Leaderboard()
+            {
+                Name = "Most Seen Players",
+                TrackedData = "Times seen",
+                Data = new Dictionary<string, PlayerCount>()
+            }},
+            {"MostAntagPlayers", new Leaderboard()
+            {
+                Name = "Most Antag Players",
+                TrackedData = "Times antag",
+                Data = new Dictionary<string, PlayerCount>()
+            }},
+            {"MostHuntedPlayer", new Leaderboard()
+            {
+                Name = "Most Hunted Player",
+                TrackedData = "Times hunted by antags",
+                Data = new Dictionary<string, PlayerCount>()
+            }}
         };
+        
+        // Dynamically generate job leaderboards
+        foreach (var (job, jobList) in JobLeaderboards)
+        {
+            leaderboards[job] = new Leaderboard()
+            {
+                Name = job,
+                TrackedData = "Times played in department",
+                Data = new Dictionary<string, PlayerCount>(),
+                ExtraInfo = "Jobs: " + string.Join(", ", jobList) + "."
+            };
+        }
         
         // To calculate the most seen player, we just count how many times we see a player in each RoundEndPlayer list.
         // Importantly, we need to filter out in RoundEndPlayers for distinct players since players can appear multiple times there.
@@ -260,55 +383,28 @@ public class DataController : ControllerBase
         {
             var distinctBy = dataReplay.RoundEndPlayers.DistinctBy(x => x.PlayerGuid);
 
-            #region Most seen
-
             foreach (var player in distinctBy)
             {
-                var playerKey = new PlayerData()
-                {
-                    PlayerGuid = player.PlayerGuid,
-                    Username = "" // Will be filled in later (god im so sorry PJB)
-                };
-
-                var didAdd = leaderboardResult.MostSeenPlayers.TryAdd(playerKey.PlayerGuid.ToString(), new PlayerCount()
-                {
-                    Count = 1,
-                    Player = playerKey,
-                });
-                if (!didAdd)
-                {
-                    // If the player already exists in the dictionary, we just increment the count.
-                    leaderboardResult.MostSeenPlayers[playerKey.PlayerGuid.ToString()].Count++;
-                }
+                CountUp(player, "MostSeenPlayers", ref leaderboards);
             }
-
-            #endregion
-            
-            #region Most seen as antag
 
             foreach (var dataReplayRoundEndPlayer in dataReplay.RoundEndPlayers)
             {
-                if (!dataReplayRoundEndPlayer.Antag)
-                    continue;
+                if (dataReplayRoundEndPlayer.Antag)
+                {
+                    CountUp(dataReplayRoundEndPlayer, "MostAntagPlayers", ref leaderboards);
+                }
                 
-                var playerKey = new PlayerData()
+                // Calculate job leaderboards
+                foreach (var (job, jobList) in JobLeaderboards)
                 {
-                    PlayerGuid = dataReplayRoundEndPlayer.PlayerGuid,
-                    Username = ""
-                };
-                var didAdd = leaderboardResult.MostAntagPlayers.TryAdd(playerKey.PlayerGuid.ToString(), new PlayerCount()
-                {
-                    Player = playerKey,
-                    Count = 1,
-                });
-                if (!didAdd)
-                {
-                    leaderboardResult.MostAntagPlayers[playerKey.PlayerGuid.ToString()].Count++;
+                    if (jobList.Contains(dataReplayRoundEndPlayer.JobPrototypes.FirstOrDefault()))
+                    {
+                        CountUp(dataReplayRoundEndPlayer, job, ref leaderboards);
+                    }
                 }
             }
-
-            #endregion
-
+            
             // The most hunted player is a bit more complex. We need to check the round end text for the following string
             // "Kill or maroon <name>, <job> | "
             // We need to extract the name and then look for that player in the player list for that replay.
@@ -324,78 +420,107 @@ public class DataController : ControllerBase
                 if (player == null)
                     continue;
                 
-                var playerKey = new PlayerData()
-                {
-                    PlayerGuid = player.PlayerGuid,
-                    Username = ""
-                };
-                var didAdd = leaderboardResult.MostHuntedPlayer.TryAdd(playerKey.PlayerGuid.ToString(), new PlayerCount()
-                {
-                    Count = 1,
-                    Player = playerKey,
-                });
-                if (!didAdd)
-                {
-                    leaderboardResult.MostHuntedPlayer[playerKey.PlayerGuid.ToString()].Count++;
-                }
+                CountUp(player, "MostHuntedPlayer", ref leaderboards);
             }
         }
         
-        // Need to only return the top 10 players
-        leaderboardResult.MostSeenPlayers = leaderboardResult.MostSeenPlayers
-            .OrderByDescending(p => p.Value.Count)
-            .Take(10)
-            .ToDictionary(p => p.Key, p => p.Value);
-        
-        leaderboardResult.MostAntagPlayers = leaderboardResult.MostAntagPlayers
-            .OrderByDescending(p => p.Value.Count)
-            .Take(10)
-            .ToDictionary(p => p.Key, p => p.Value);
-        
-        leaderboardResult.MostHuntedPlayer = leaderboardResult.MostHuntedPlayer
-            .OrderByDescending(p => p.Value.Count)
-            .Take(10)
-            .ToDictionary(p => p.Key, p => p.Value);
+        // Need to calculate the position of every player in the leaderboard.
+        foreach (var leaderboard in leaderboards)
+        {
+            var leaderboardResult = await GenerateLeaderboard(leaderboard.Key, leaderboard.Key, leaderboard.Value, usernameGuid);
+            leaderboards[leaderboard.Key].Data = leaderboardResult.Data;
+        }
         
         stopwatch.Stop();
         Log.Information("Calculating leaderboard took {Time}ms", stopwatch.ElapsedMilliseconds);
-        stopwatch.Restart();
-        
-        // Now we need to fetch the usernames for the players
-        foreach (var player in leaderboardResult.MostSeenPlayers)
-        {
-            var playerData = await FetchPlayerDataFromGuid(player.Value.Player.PlayerGuid);
-            player.Value.Player.Username = playerData.Username;
-            await Task.Delay(50); // Rate limit the API
-        }
 
-        foreach (var player in leaderboardResult.MostAntagPlayers)
-        {
-            var playerData = await FetchPlayerDataFromGuid(player.Value.Player.PlayerGuid);
-            player.Value.Player.Username = playerData.Username;
-            await Task.Delay(50); // Rate limit the API
-        }
-        
-        foreach (var player in leaderboardResult.MostHuntedPlayer)
-        {
-            var playerData = await FetchPlayerDataFromGuid(player.Value.Player.PlayerGuid);
-            player.Value.Player.Username = playerData.Username;
-            await Task.Delay(50); // Rate limit the API
-        }
-        
-        stopwatch.Stop();
-        Log.Information("Fetching usernames took {Time}ms", stopwatch.ElapsedMilliseconds);
-        
         // Save leaderboard to cache (its expensive as fuck to calculate)
         var cacheEntryOptions = new MemoryCacheEntryOptions()
             .SetAbsoluteExpiration(TimeSpan.FromHours(5));
-        var cacheLeaderboard = leaderboardResult;
-        cacheLeaderboard.IsCache = true;
+        var cacheLeaderboard = new LeaderboardData()
+        {
+            Leaderboards = leaderboards.Values.ToList(),
+            IsCache = true
+        };
         
-        _cache.Set("leaderboard-" + rangeOption, cacheLeaderboard, cacheEntryOptions);
+        _cache.Set("leaderboard-" + rangeOption + "-" + usernameCacheKey, cacheLeaderboard, cacheEntryOptions);
 
         
-        return leaderboardResult;
+        return new LeaderboardData()
+        {
+            Leaderboards = leaderboards.Values.ToList(),
+            IsCache = false
+        };
+    }
+
+    private void CountUp(Player player, string index, ref Dictionary<string, Leaderboard> data)
+    {
+        var leaderboard = data[index];
+        
+        var playerKey = new PlayerData()
+        {
+            PlayerGuid = player.PlayerGuid,
+            Username = ""
+        };
+        var didAdd = leaderboard.Data.TryAdd(playerKey.PlayerGuid.ToString(), new PlayerCount()
+        {
+            Count = 1,
+            Player = playerKey,
+        });
+        if (!didAdd)
+        {
+            leaderboard.Data[playerKey.PlayerGuid.ToString()].Count++;
+        }
+    }
+    
+    private async Task<Leaderboard> GenerateLeaderboard(
+        string name, 
+        string columnName,
+        Leaderboard data,
+        Guid targetPlayer
+        )
+    {
+        var returnValue = new Leaderboard()
+        {
+            Name = name,
+            TrackedData = columnName,
+            Data = new Dictionary<string, PlayerCount>()
+        };
+        
+        var players = data.Data.Values.ToList();
+        players.Sort((a, b) => b.Count.CompareTo(a.Count));
+        for (var i = 0; i < players.Count; i++)
+        {
+            players[i].Position = i + 1;
+        }
+        
+        returnValue.Data = players.Take(10).ToDictionary(x => x.Player.PlayerGuid.ToString(), x => x);
+        
+        if (targetPlayer != Guid.Empty)
+        {
+            if (!returnValue.Data.ContainsKey(targetPlayer.ToString()))
+            {
+                returnValue.Data.Add(targetPlayer.ToString(), new PlayerCount()
+                {
+                    Count = players.FirstOrDefault(x => x.Player.PlayerGuid == targetPlayer)?.Count ?? -1,
+                    Player = new PlayerData()
+                    {
+                        PlayerGuid = targetPlayer,
+                        Username = string.Empty
+                    },
+                    Position = players.FirstOrDefault(x => x.Player.PlayerGuid == targetPlayer)?.Position ?? -1
+                });
+            }
+        }
+        
+        foreach (var player in returnValue.Data)
+        {
+            var playerData = await FetchPlayerDataFromGuid(player.Value.Player.PlayerGuid);
+            player.Value.Player.Username = playerData.Username;
+            await Task.Delay(50); // Rate limit the API
+        }
+        
+        return returnValue;
     }
 
     private async Task<PlayerData?> FetchPlayerDataFromGuid(Guid guid)
