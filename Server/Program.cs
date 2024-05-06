@@ -144,13 +144,6 @@ try
     });
     
     var app = builder.Build();
-
-    var webSocketOptions = new WebSocketOptions()
-    {
-        KeepAliveInterval = TimeSpan.FromSeconds(10),
-    };
-    
-    app.UseWebSockets(webSocketOptions);
     
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
