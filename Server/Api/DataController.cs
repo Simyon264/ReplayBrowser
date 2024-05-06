@@ -52,8 +52,8 @@ public class DataController : ControllerBase
 
         var charactersPlayed = new List<CharacterData>();
         var totalPlaytime = TimeSpan.Zero;
-        var totalRoundsPlayed = 0;
-        var totalAntagRoundsPlayed = 0;
+        var totalRoundsPlayed = new List<int>();
+        var totalAntagRoundsPlayed = new List<int>();
         var lastSeen = DateTime.MinValue;
         var jobCount = new List<JobCountData>();
         
@@ -142,9 +142,19 @@ public class DataController : ControllerBase
             {
                 Log.Warning("Unable to parse duration {Duration} for replay with ID {ReplayId}", replay.Duration, replay.Id);
             }
+
+            if (!totalRoundsPlayed.Contains(replay.Id))
+            {
+                totalRoundsPlayed.Add(replay.Id);
+            }
             
-            totalRoundsPlayed++;
-            totalAntagRoundsPlayed += replay.RoundEndPlayers.Any(p => p.PlayerGuid == playerGuid && p.Antag) ? 1 : 0; // If the player is an antag, increment the count.
+            if (replay.RoundEndPlayers.Any(p => p.PlayerGuid == playerGuid && p.Antag))
+            {
+                if (!totalAntagRoundsPlayed.Contains(replay.Id))
+                {
+                    totalAntagRoundsPlayed.Add(replay.Id);
+                }
+            }
         }
         
         CollectedPlayerData collectedPlayerData = new()
@@ -157,8 +167,8 @@ public class DataController : ControllerBase
             },
             Characters = charactersPlayed,
             TotalEstimatedPlaytime = totalPlaytime,
-            TotalRoundsPlayed = totalRoundsPlayed,
-            TotalAntagRoundsPlayed = totalAntagRoundsPlayed,
+            TotalRoundsPlayed = totalRoundsPlayed.Count,
+            TotalAntagRoundsPlayed = totalAntagRoundsPlayed.Count,
             LastSeen = lastSeen,
             JobCount = jobCount
         };
