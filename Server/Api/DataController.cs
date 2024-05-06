@@ -332,12 +332,18 @@ public class DataController : ControllerBase
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        
         var rangeTimespan = rangeOption.GetTimeSpan();
-        var dataReplays = await _context.Replays
-            .Where(r => r.Date > DateTime.UtcNow - rangeTimespan)
-            .Include(r => r.RoundEndPlayers)
-            .ToListAsync();
+
+        var replaysCacheKey = "replays-" + rangeOption;
+        if (!_cache.TryGetValue(replaysCacheKey, out List<Replay> dataReplays))
+        {
+            dataReplays = await _context.Replays
+                .Where(r => r.Date > DateTime.UtcNow - rangeTimespan)
+                .Include(r => r.RoundEndPlayers)
+                .ToListAsync();
+            _cache.Set(replaysCacheKey, dataReplays, new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromHours(1)));
+        }
         
         stopwatch.Stop();
         Log.Information("Fetching replays took {Time}ms", stopwatch.ElapsedMilliseconds);
