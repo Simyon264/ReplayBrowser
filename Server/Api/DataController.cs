@@ -116,13 +116,14 @@ public class DataController : ControllerBase
         {
             return BadRequest("Invalid GUID");
         }
-        
-        var replays = await _context.Players
+
+        var replays = (await _context.Players
             .Where(p => p.PlayerGuid == playerGuid)
             .Include(p => p.Replay)
             .Include(r => r.Replay.RoundEndPlayers)
             .Select(p => p.Replay)
-            .ToListAsync();
+            .ToListAsync()
+            ).DistinctBy(p => p.Id);
 
         var charactersPlayed = new List<CharacterData>();
         var totalPlaytime = TimeSpan.Zero;
