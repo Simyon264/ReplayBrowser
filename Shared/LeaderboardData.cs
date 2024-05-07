@@ -1,4 +1,6 @@
-﻿namespace Shared;
+﻿using System.Text.Json.Serialization;
+
+namespace Shared;
 
 public class LeaderboardData
 {
@@ -9,7 +11,7 @@ public class LeaderboardData
 
 public class PlayerCount
 {
-    public PlayerData Player { get; set; }
+    public PlayerData? Player { get; set; }
     public int Count { get; set; }
     public int Position { get; set; }
 }
@@ -27,5 +29,13 @@ public class Leaderboard
     /// Will be displayed in a small font below the name.
     /// </summary>
     public string? ExtraInfo { get; set; }
+    
+    public string NameColumn { get; set; } = "Player Name";
     public Dictionary<string, PlayerCount> Data { get; set; }
+    
+    /// <summary>
+    /// The number of players to display on the leaderboard.
+    /// </summary>
+    [JsonIgnore]
+    public int Limit { get; set; } = 10;
 }

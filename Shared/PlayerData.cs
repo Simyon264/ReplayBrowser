@@ -5,7 +5,7 @@
 /// </summary>
 public class PlayerData
 {
-    public Guid PlayerGuid { get; set; }
+    public Guid? PlayerGuid { get; set; }
     
     public string Username { get; set; }
     

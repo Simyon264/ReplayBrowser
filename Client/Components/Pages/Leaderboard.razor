@@ -55,13 +55,33 @@ else
             <thead>
             <tr>
                 <th>Position</th>
-                <th>Player name</th>
+                <th>@leaderboard.NameColumn</th>
                 <th>@leaderboard.TrackedData</th>
             </tr>
             </thead>
             <tbody>
             @foreach (var player in leaderboard.Data)
             {
+                if (player.Value.Count == -1)
+                {
+                    continue;
+                }
+
+                if (player.Value.Player?.Username == "Unknown")
+                {
+                    continue;
+                }
+                
+                if (player.Value.Player?.PlayerGuid == null)
+                {
+                    <tr>
+                        <td>@player.Value.Position</td>
+                        <td>@player.Value.Player?.Username</td>
+                        <td>@player.Value.Count</td>
+                    </tr>
+                    continue;
+                }
+                
                 if (!IsCurrentPlayer(player.Value.Player.Username))
                 {
                     <tr>

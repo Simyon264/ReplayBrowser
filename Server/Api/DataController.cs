@@ -368,6 +368,22 @@ public class DataController : ControllerBase
                 Name = "Most Hunted Player",
                 TrackedData = "Times hunted by antags",
                 Data = new Dictionary<string, PlayerCount>()
+            }},
+            {"MostPlayedDepartments", new Leaderboard()
+            {
+                Name = "Most played departments",
+                TrackedData = "Times played",
+                Data = new Dictionary<string, PlayerCount>(),
+                Limit = int.MaxValue,
+                NameColumn = "Department"
+            }},
+            {"MostPlayedJobs", new Leaderboard()
+            {
+                Name = "Most played jobs",
+                TrackedData = "Times played",
+                Data = new Dictionary<string, PlayerCount>(),
+                Limit = int.MaxValue,
+                NameColumn = "Job"
             }}
         };
         
@@ -382,6 +398,9 @@ public class DataController : ControllerBase
                 ExtraInfo = "Jobs: " + string.Join(", ", jobList) + "."
             };
         }
+        
+        var mostPlayedDepartments = new Dictionary<string, int>();
+        var mostPlayedJobs = new Dictionary<string, int>();
         
         // To calculate the most seen player, we just count how many times we see a player in each RoundEndPlayer list.
         // Importantly, we need to filter out in RoundEndPlayers for distinct players since players can appear multiple times there.
@@ -407,6 +426,16 @@ public class DataController : ControllerBase
                     if (jobList.Contains(dataReplayRoundEndPlayer.JobPrototypes.FirstOrDefault()))
                     {
                         CountUp(dataReplayRoundEndPlayer, job, ref leaderboards);
+                        
+                        if (!mostPlayedDepartments.TryAdd(job, 1))
+                        {
+                            mostPlayedDepartments[job]++;
+                        }
+                    }
+
+                    if (!mostPlayedJobs.TryAdd(dataReplayRoundEndPlayer.JobPrototypes.FirstOrDefault() ?? "Unknown", 1))
+                    {
+                        mostPlayedJobs[dataReplayRoundEndPlayer.JobPrototypes.FirstOrDefault() ?? "Unknown"]++;
                     }
                 }
             }
@@ -430,10 +459,40 @@ public class DataController : ControllerBase
             }
         }
         
+        // Add most played departments to the leaderboard
+        foreach (var (department, count) in mostPlayedDepartments)
+        {
+            var didAdd = leaderboards["MostPlayedDepartments"].Data.TryAdd(department, new PlayerCount()
+            {
+                Count = count,
+                Player = new PlayerData() { PlayerGuid = null, Username = department }
+                // no player data for departments
+            });
+            if (!didAdd)
+            {
+                leaderboards["MostPlayedDepartments"].Data[department].Count++;
+            }
+        }
+        
+        // Add most played jobs to the leaderboard
+        foreach (var (job, count) in mostPlayedJobs)
+        {
+            var didAdd = leaderboards["MostPlayedJobs"].Data.TryAdd(job, new PlayerCount()
+            {
+                Count = count,
+                Player = new PlayerData() { PlayerGuid = null, Username = job }
+                // no player data for jobs
+            });
+            if (!didAdd)
+            {
+                leaderboards["MostPlayedJobs"].Data[job].Count++;
+            }
+        }
+        
         // Need to calculate the position of every player in the leaderboard.
         foreach (var leaderboard in leaderboards)
         {
-            var leaderboardResult = await GenerateLeaderboard(leaderboard.Key, leaderboard.Key, leaderboard.Value, usernameGuid);
+            var leaderboardResult = await GenerateLeaderboard(leaderboard.Key, leaderboard.Key, leaderboard.Value, usernameGuid, leaderboard.Value.Limit);
             leaderboards[leaderboard.Key].Data = leaderboardResult.Data;
         }
         
@@ -483,7 +542,8 @@ public class DataController : ControllerBase
         string name, 
         string columnName,
         Leaderboard data,
-        Guid targetPlayer
+        Guid targetPlayer,
+        int limit = 10
         )
     {
         var returnValue = new Leaderboard()
@@ -500,7 +560,7 @@ public class DataController : ControllerBase
             players[i].Position = i + 1;
         }
         
-        returnValue.Data = players.Take(10).ToDictionary(x => x.Player.PlayerGuid.ToString(), x => x);
+        returnValue.Data = players.Take(limit).ToDictionary(x => x.Player?.PlayerGuid != null ? x.Player.PlayerGuid.ToString()! : GenerateRandomGuid().ToString(), x => x);
         
         if (targetPlayer != Guid.Empty)
         {
@@ -521,12 +581,21 @@ public class DataController : ControllerBase
         
         foreach (var player in returnValue.Data)
         {
-            var playerData = await FetchPlayerDataFromGuid(player.Value.Player.PlayerGuid);
+            if (player.Value.Player?.PlayerGuid == null) 
+                continue;
+            var playerData = await FetchPlayerDataFromGuid((Guid)player.Value.Player.PlayerGuid);
             player.Value.Player.Username = playerData.Username;
             await Task.Delay(50); // Rate limit the API
         }
         
         return returnValue;
+    }
+    
+    private Guid GenerateRandomGuid()
+    {
+        var guidBytes = new byte[16];
+        new Random().NextBytes(guidBytes);
+        return new Guid(guidBytes);
     }
 
     private async Task<PlayerData?> FetchPlayerDataFromGuid(Guid guid)
