@@ -2,12 +2,14 @@ using System.Net;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.AspNetCore;
 using Server;
 using Server.Api;
+using Server.Helpers;
 using Server.Metrics;
 using Server.ReplayParser;
 
@@ -51,6 +53,7 @@ try
     });
     
     builder.Services.AddSingleton<ReplayMetrics>();
+    builder.Services.AddSingleton<Ss14ApiHelper>();
     
     ReplayParser.Context = builder.Services.BuildServiceProvider().GetService<ReplayParserDbContext>(); // GOD THIS IS STUPID
     ReplayParser.Metrics = builder.Services.BuildServiceProvider().GetService<ReplayMetrics>();
@@ -142,6 +145,8 @@ try
                 }
             });
     });
+    
+    builder.Services.AddHostedService<LeaderboardBackgroundService>();
     
     var app = builder.Build();
     
