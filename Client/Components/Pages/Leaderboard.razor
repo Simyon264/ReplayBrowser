@@ -127,8 +127,16 @@ else
         if (search) {
             document.getElementById("search").value = search;
         }
+
+        $('#search').autocomplete()
     });
 </script>
+
+<style>
+    .dropdown-menu {
+        margin-top: 2.5rem;
+    }
+</style>
 
 @code{
     private bool IsLoading { get; set; } = true;
