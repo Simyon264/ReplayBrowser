@@ -120,6 +120,8 @@ public class ReplayController : ControllerBase
             Details = $"Mode: {searchMode}, Query: {query}"
         });
         
+        await _context.SaveChangesAsync();
+        
         switch (searchMode)
         {
             case SearchMode.Guid:

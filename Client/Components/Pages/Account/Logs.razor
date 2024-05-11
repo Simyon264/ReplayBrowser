@@ -1,0 +1,137 @@
+﻿@page "/account/logs"
+@using System.Net
+@using Humanizer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Shared
+@using Shared.Models.Account
+@inject SecureHttpClient SecureHttpClient
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<h3>Logs</h3>
+<div class="search-bar">
+    <div class="d-flex ms-auto">
+        <input
+            type="text"
+            class="form-control"
+            placeholder="Enter username..."
+            onsubmit="search()"
+            aria-label="Search"
+            data-filter="@Configuration["ApiUrl"]api/Data/username-completion?username=#QUERY#"
+            id="search"
+        >
+        <button class="btn btn-outline-success" type="button" onclick="search()">Filter</button>
+    </div>
+</div>
+
+<style>
+    .dropdown-menu {
+        margin-top: 2.5rem;
+    }
+</style>
+
+<script>
+    function search() {
+        var username = document.getElementById("search").value;
+        window.location.href = "/account/logs?username=" + username;
+    }
+</script>
+
+@if(Is1984)
+{
+    <p>Unauthorized</p>
+}
+else if (NeedsToProvideUsername)
+{
+    <p>Please provide a username</p>
+}
+else if (History == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h4>Logs for @Username</h4>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Action</th>
+            <th>Time</th>
+            <th>Details</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var entry in History.History)
+        {
+            <tr>
+                <td>@entry.Action</td>
+                <td>@entry.Time.Humanize() (@entry.Time)</td>
+                <td>@entry.Details</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    
+    // page navigation
+    @if (History.Page > 0)
+    {
+        <a href="/account/logs?username=@Username&page=@(History.Page - 1)">Previous</a>
+    }
+    @if (History.TotalPages > History.Page + 1)
+    {
+        <a href="/account/logs?username=@Username&page=@(History.Page + 1)">Next</a>
+    }
+    
+    <p>Page @(History.Page + 1) of @History.TotalPages</p>
+}
+
+<script>
+    $(document).ready(function () {
+        $('#search').autocomplete();
+    });
+</script>
+
+@code {
+    private AccountHistoryResponse? History { get; set; } = null;
+    private bool Is1984 { get; set; } = false;
+    private bool NeedsToProvideUsername { get; set; } = false;
+    private string Username { get; set; } = string.Empty;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var http = SecureHttpClient.GetClient(await AuthenticationStateProvider.GetAuthenticationStateAsync());
+        var uri = new Uri(NavigationManager.Uri);
+        var query = uri.Query;
+        var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
+        
+        var username = queryDictionary["username"];
+        var page = queryDictionary["page"];
+
+        if (string.IsNullOrEmpty(username))
+        {
+            NeedsToProvideUsername = true;
+            return;
+        }
+        
+        Username = username;
+
+        if (string.IsNullOrEmpty(page) || !int.TryParse(page, out var pageNumber))
+        {
+            pageNumber = 0;
+        }
+
+        var response = await http.GetAsync($"api/Account/get-account-history?name={username}&page={pageNumber}");
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Is1984 = true;
+        }
+        else
+        {
+            History = await response.Content.ReadFromJsonAsync<AccountHistoryResponse>();
+        }
+    }
+}

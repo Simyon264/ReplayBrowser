@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Server.Helpers;
+using Shared;
 using Shared.Models.Account;
 using Action = Shared.Models.Account.Action;
 
@@ -135,6 +136,44 @@ public class AccountController : Controller
         account.IsAdmin = true;
         await _context.SaveChangesAsync();
         return Ok();
+    }
+    
+    [HttpGet("get-account-history")]
+    public async Task<IActionResult> GetAccountHistory(
+        [FromHeader] Guid accountGuid,
+        [FromQuery] int page,
+        [FromQuery] string name
+    )
+    {
+        var requestAccount = await _context.Accounts.FirstOrDefaultAsync(a => a.Guid == accountGuid);
+        if (requestAccount == null)
+        {
+            return Unauthorized();
+        }
+        
+        if (!requestAccount.IsAdmin)
+        {
+            return Unauthorized();
+        }
+        
+        var query = _context.Accounts.Include(a => a.History).AsQueryable();
+        if (!string.IsNullOrEmpty(name))
+        {
+            query = query.Where(a => a.Username.Contains(name));
+        }
+        
+        var history = await query
+            .OrderByDescending(a => a.History.Select(h => h.Time).FirstOrDefault())
+            .Skip(page * 10)
+            .Take(10)
+            .Select(a => new AccountHistoryResponse()
+            {
+                History = a.History,
+                Page = page,
+                TotalPages = (int) Math.Ceiling((double) a.History.Count / 10)
+            })
+            .ToListAsync();
+        return Ok(history.First());
     }
     
     private bool IsLocal(ConnectionInfo connection)

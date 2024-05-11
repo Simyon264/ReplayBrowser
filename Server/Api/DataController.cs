@@ -293,6 +293,8 @@ public class DataController : ControllerBase
             Details = $"Range: {rangeOption}, Username: {username}"
         });
         
+        await _context.SaveChangesAsync();
+        
         var lb = await LeaderboardBackgroundService.Instance.GetLeaderboard(rangeOption, username, accountGuid);
         if (lb.Leaderboards.Count == 0)
         {
