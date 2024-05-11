@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using OpenTelemetry.Metrics;
@@ -83,7 +84,14 @@ try
     builder.Services.AddMemoryCache();
     
     builder.Services.AddMvc();
-
+    
+    // Proxy stuff
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownProxies.Add(IPAddress.Parse(builder.Configuration["ProxyIP"]));
+    });
+    
     builder.Services.AddOpenTelemetry().WithMetrics(providerBuilder =>
     {
         providerBuilder.AddPrometheusExporter();
@@ -179,6 +187,9 @@ try
     }
     
     app.UseHttpsRedirection();
+    
+    // Proxy stuff
+    app.UseForwardedHeaders();
     
     app.UseRouting();
     app.UseCors();

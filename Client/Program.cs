@@ -1,6 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using Client;
 using Client.Components;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
@@ -15,6 +17,12 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<SecureHttpClient>();
 
 builder.Configuration.AddJsonFile("appsettings.Secret.json", optional: true, reloadOnChange: true);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownProxies.Add(IPAddress.Parse(builder.Configuration["ProxyIP"]));
+});
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
