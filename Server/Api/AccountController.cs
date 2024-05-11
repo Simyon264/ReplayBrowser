@@ -162,18 +162,26 @@ public class AccountController : Controller
             query = query.Where(a => a.Username.Contains(name));
         }
         
-        var history = await query
-            .OrderByDescending(a => a.History.Select(h => h.Time).FirstOrDefault())
+        var results = await query.FirstOrDefaultAsync(a => a.Guid == accountGuid);
+        
+        if (results == null)
+        {
+            return NotFound();
+        }
+        
+        results.History = results.History.OrderByDescending(h => h.Time).ToList();
+        
+        var history = results.History
             .Skip(page * 10)
             .Take(10)
-            .Select(a => new AccountHistoryResponse()
-            {
-                History = a.History,
-                Page = page,
-                TotalPages = (int) Math.Ceiling((double) a.History.Count / 10)
-            })
-            .ToListAsync();
-        return Ok(history.First());
+            .ToList();
+        
+        return Ok(new AccountHistoryResponse()
+        {
+            History = history, 
+            Page = page, 
+            TotalPages = (int)Math.Ceiling((double)(results.History.Count / 10))
+        });
     }
     
     private bool IsLocal(ConnectionInfo connection)
