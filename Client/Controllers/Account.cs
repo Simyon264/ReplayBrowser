@@ -7,12 +7,19 @@ namespace Client.Controllers;
 [Route("/account/")]
 public class Account : Controller
 {
+    private readonly IConfiguration _configuration;
+    
+    public Account(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+    
     [Route("login")]
     public IActionResult Login()
     {
         return Challenge(new AuthenticationProperties
         {
-            RedirectUri = "/"
+            RedirectUri = _configuration["RedirectUri"]
         });
     }
     
@@ -20,6 +27,6 @@ public class Account : Controller
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync("Cookies");
-        return Redirect("/");
+        return Redirect(_configuration["RedirectUri"]);
     }
 }
