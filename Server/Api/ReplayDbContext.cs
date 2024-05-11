@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Shared.Models;
+using Shared.Models.Account;
 
 namespace Server.Api;
 
@@ -41,10 +42,17 @@ public class ReplayDbContext : DbContext
             .HasIndex(r => r.RoundEndTextSearchVector)
             .HasMethod("GIN");
 
+        modelBuilder.Entity<Account>()
+            .HasKey(a => a.Id);
+        modelBuilder.Entity<Account>()
+            .HasIndex(a => a.Guid);
+        modelBuilder.Entity<Account>()
+            .HasIndex(a => a.Username);
         
         modelBuilder.Entity<Replay>().ToTable("Replays");
         modelBuilder.Entity<Player>().ToTable("Players");
         modelBuilder.Entity<ParsedReplay>().ToTable("ParsedReplays");
+        modelBuilder.Entity<Account>().ToTable("Accounts");
     }
     
     public DbSet<Replay> Replays { get; set; }
@@ -55,6 +63,8 @@ public class ReplayDbContext : DbContext
     /// leviathan-2024_02_18-08_33-round_46751.zip
     /// </summary>
     public DbSet<ParsedReplay> ParsedReplays { get; set; }
+    
+    public DbSet<Account> Accounts { get; set; }
 }
 
 /// <summary>

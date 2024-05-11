@@ -11,6 +11,8 @@ using Serilog;
 using Server.Helpers;
 using Shared;
 using Shared.Models;
+using Shared.Models.Account;
+using Action = System.Action;
 
 namespace Server.Api;
 
@@ -35,13 +37,36 @@ public class DataController : ControllerBase
     [HttpGet]
     [Route("player-data")]
     public async Task<ActionResult> GetPlayerData(
-        [FromQuery] string guid
+        [FromQuery] string guid,
+        [FromHeader] Guid? accountGuid
     )
     {
         var playerGuid = Guid.Parse(guid);
         if (playerGuid == Guid.Empty)
         {
             return BadRequest("Invalid GUID");
+        }
+        
+        var accountCaller = await _context.Accounts
+            .Include(a => a.Settings)
+            .FirstOrDefaultAsync(a => a.Guid == accountGuid);
+        
+        var accountRequested = await _context.Accounts
+            .Include(a => a.Settings)
+            .FirstOrDefaultAsync(a => a.Guid == playerGuid);
+        
+        if (accountRequested is { Settings.RedactInformation: true })
+        {
+            if (accountCaller == null || accountCaller.Guid != playerGuid)
+            {
+                switch (accountCaller)
+                {
+                    case null:
+                        return Unauthorized();
+                    case { IsAdmin: false }:
+                        return Unauthorized();
+                }
+            }
         }
 
         var replays = (await _context.Players
@@ -205,7 +230,8 @@ public class DataController : ControllerBase
     [HttpGet]
     [Route("has-profile")]
     public async Task<PlayerData> HasProfile(
-        [FromQuery] string username
+        [FromQuery] string username,
+        [FromHeader] Guid? accountGuid
     )
     {
         var player = await _context.Players
@@ -216,6 +242,25 @@ public class DataController : ControllerBase
                 PlayerGuid = Guid.Empty,
                 Username = "NOT FOUND"
             };
+        
+        var account = await _context.Accounts
+            .Include(a => a.Settings)
+            .FirstOrDefaultAsync(a => a.Username == username);
+        
+        if (account != null && account.Settings.RedactInformation && account.Guid != accountGuid)
+        {
+            var requestor = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.Guid == accountGuid);
+
+            if (requestor == null || !requestor.IsAdmin)
+            {
+                return new PlayerData()
+                {
+                    PlayerGuid = Guid.Empty,
+                    Username = "NOT FOUND"
+                };
+            }
+        }
         
         return new PlayerData()
         {
@@ -231,11 +276,30 @@ public class DataController : ControllerBase
     /// <param name="username"> An optional username to add their position as well. </param>
     [HttpGet]
     [Route("leaderboard")]
-    public async Task<LeaderboardData> GetLeaderboard(
+    public async Task<ActionResult> GetLeaderboard(
+        [FromHeader] Guid? accountGuid,
         [FromQuery] RangeOption rangeOption = RangeOption.AllTime,
         [FromQuery] string? username = null
     )
     {
-        return await LeaderboardBackgroundService.Instance.GetLeaderboard(rangeOption, username);
+        var requester = await _context.Accounts
+            .Include(a => a.History)
+            .FirstOrDefaultAsync(a => a.Guid == accountGuid);
+        
+        requester?.History.Add(new HistoryEntry()
+        {
+            Action = Enum.GetName(typeof(Shared.Models.Account.Action), Shared.Models.Account.Action.LeaderboardViewed) ?? "Unknown",
+            Time = DateTime.UtcNow,
+            Details = $"Range: {rangeOption}, Username: {username}"
+        });
+        
+        var lb = await LeaderboardBackgroundService.Instance.GetLeaderboard(rangeOption, username, accountGuid);
+        if (lb.Leaderboards.Count == 0)
+        {
+            // This can only happen when the requested username has chosen to redact their information, so we hit them with a unauthorized.
+            return Unauthorized();
+        }
+
+        return Ok(lb);
     }
 }

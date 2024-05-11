@@ -23,4 +23,11 @@ public class Player
     
     public int? ReplayId { get; set; }
     public Replay? Replay { get; set; }
+
+    public void RedactInformation()
+    {
+        PlayerGuid = Guid.Empty;
+        PlayerIcName = "Redacted";
+        PlayerOocName = "Redacted";
+    }
 }

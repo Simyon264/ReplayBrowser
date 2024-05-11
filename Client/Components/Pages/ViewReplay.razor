@@ -1,6 +1,8 @@
 ﻿@page "/replay/{id}"
+@using Microsoft.AspNetCore.Components.Authorization
 @attribute [StreamRendering]
-@inject HttpClient Http
+@inject SecureHttpClient SecureHttpClient
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Replay viewer</PageTitle>
 @if (Replay == null && !IsLoading)
@@ -23,7 +25,8 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        var response = await Http.GetAsync($"replay/{Id}");
+        var httpClient = SecureHttpClient.GetClient(await AuthenticationStateProvider.GetAuthenticationStateAsync());
+        var response = await httpClient.GetAsync($"replay/{Id}");
         if (response.IsSuccessStatusCode)
         {
             Replay = await response.Content.ReadFromJsonAsync<Shared.Models.Replay>();

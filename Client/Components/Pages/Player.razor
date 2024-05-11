@@ -1,9 +1,10 @@
 ﻿@page "/player/{guid}"
-@using System.ComponentModel
+@using System.Net
 @using Humanizer
+@using Microsoft.AspNetCore.Components.Authorization
 @using Shared
-@inject HttpClient Http
-@inject NavigationManager NavigationManager
+@inject SecureHttpClient SecureHttpClient
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [StreamRendering]
 
 <PageTitle>Player info</PageTitle>
@@ -11,6 +12,10 @@
 @if (playerData is null)
 {
     <p>Loading...</p>
+}
+else if (IsPrivate)
+{
+    <p>This player's data is private. Either log as this player or ask them to make their data public.</p>
 }
 else if (FailedToLoad)
 {
@@ -89,18 +94,31 @@ else
 
     private CollectedPlayerData? playerData;
     private bool FailedToLoad { get; set; } = false;
-    public Exception? Exception { get; set; }
+    private Exception? Exception { get; set; }
+    private bool IsPrivate { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
+        HttpResponseMessage response = null;
+        var httpClient = SecureHttpClient.GetClient(await AuthenticationStateProvider.GetAuthenticationStateAsync());
         try
         {
-            playerData = await Http.GetFromJsonAsync<CollectedPlayerData>($"api/Data/player-data?guid={Guid}");
+            response = await httpClient.GetAsync($"api/Data/player-data?guid={Guid}");
+            response.EnsureSuccessStatusCode();
+            playerData = await response.Content.ReadFromJsonAsync<CollectedPlayerData>();
             playerData.Characters = playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
             playerData.JobCount = playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
         }
         catch (Exception e)
         {
+            if (response?.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                FailedToLoad = true;
+                IsPrivate = true;
+                playerData = new();
+                return;
+            }
+            
             FailedToLoad = true;
             Exception = e;
             playerData = new();

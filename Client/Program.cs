@@ -1,4 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
+using Client;
 using Client.Components;
+using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +11,39 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.Configuration["ApiUrl"]) });
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<SecureHttpClient>();
+
+builder.Configuration.AddJsonFile("appsettings.Secret.json", optional: true, reloadOnChange: true);
+
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "Cookies";
+    options.DefaultChallengeScheme = "oidc";
+}).AddCookie("Cookies", options =>
+{
+    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+}).AddOpenIdConnect("oidc", options =>
+{
+    options.SignInScheme = "Cookies";
+    
+    options.Authority = "https://central.spacestation14.io/web/";
+    options.ClientId = builder.Configuration["ClientId"];
+    options.ClientSecret = builder.Configuration["ClientSecret"];
+    
+    options.ResponseType = OpenIdConnectResponseType.Code;
+    options.RequireHttpsMetadata = false;
+    
+    options.Scope.Add("openid");
+    options.Scope.Add("profile");
+    
+    options.GetClaimsFromUserInfoEndpoint = true;
+});
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddHttpLogging(o => { });
 
 var app = builder.Build();
 
@@ -25,5 +62,12 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+IdentityModelEventSource.ShowPII = true;
 
 app.Run();

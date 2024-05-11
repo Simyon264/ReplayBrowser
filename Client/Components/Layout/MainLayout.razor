@@ -1,10 +1,51 @@
-﻿@inherits LayoutComponentBase
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject SecureHttpClient SecureHttpClient
+
+@code
+{
+    private System.Security.Claims.ClaimsPrincipal User;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        User = authState.User;
+        if (User.Identity.IsAuthenticated)
+        {
+            var client = SecureHttpClient.GetClient(authState);
+            var response = await client.PutAsync("api/Account/ensure-account-exists", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception("Failed to ensure account exists");
+            }
+        }
+    }
+}
+
 <div id="modal-root">
     
 </div>
 
 <div class="page">
     <main class="container my-5">
+        @if (User.Identity.IsAuthenticated)
+        {
+            <p>Hello <strong>@User.Claims.Single(c => c.Type == "name").Value!</strong></p>
+            
+            <a href="/account/logout" class="btn btn-primary">Logout</a>
+            <a href="/account/manage" class="btn btn-primary" style="margin-left: 10px">Manage</a>
+        }
+        else
+        {
+            <a href="/account/login" class="btn btn-primary">Login</a>
+        }
+
+        <br/>
+        <a href="/leaderboard" class="btn btn-primary" style="margin-top: 10px">Leaderboard</a>
+        <a href="/" class="btn btn-primary" style="margin-left: 10px; margin-top: 10px">Main page</a>
+        
+        <hr/>
         @Body
     </main>
 </div>

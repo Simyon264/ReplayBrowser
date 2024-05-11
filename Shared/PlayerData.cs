@@ -24,4 +24,10 @@ public class PlayerData
     {
         return PlayerGuid.GetHashCode();
     }
+
+    public void RedactInformation()
+    {
+        PlayerGuid = Guid.Empty;
+        Username = "Redacted";
+    }
 }

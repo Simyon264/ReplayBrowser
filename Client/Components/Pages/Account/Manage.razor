@@ -1,0 +1,103 @@
+﻿@page "/account/manage"
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Shared.Models.Account
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject SecureHttpClient SecureHttpClient
+@inject NavigationManager NavigationManager
+
+<h3>Manage Account</h3>
+
+@if(ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert">
+        Failed to save changes:
+        @ErrorMessage
+    </div>
+}
+else if (account != null)
+{
+    @if(ChangeSaved)
+    {
+        <div class="alert alert-success" role="alert">
+            Changes saved
+        </div>
+    }
+    
+    <p>Username: @account.Username</p>
+    <p>Guid: @account.Guid</p>
+    
+    <h4>Settings</h4>
+    
+    // Toggle for redacting account
+    <em>Redacting an account will mean, that only you will be able to see and search for you in replays.</em>
+    <p>Redact Account: <input type="checkbox" id="redact" @bind="account.Settings.RedactInformation" /></p>
+    
+    <button class="btn btn-primary" id="save">Save</button>
+}
+else
+{
+    <p>Account not found (how did you get here?)</p>
+}
+
+<script>
+    $(document).ready(function() {
+        $("#save").click(function() {
+            var redact = $("#redact").is(":checked");
+            var uri = new URL(window.location.href);
+            uri.searchParams.set("redact", redact);
+            window.location.href = uri;
+        });
+    });
+</script>
+
+@code {
+    private Account account;
+    private bool ChangeSaved = false;
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var httpClient = SecureHttpClient.GetClient(authState);
+        account = await httpClient.GetFromJsonAsync<Account>("api/Account/get-account");
+        
+        var uri = new Uri(NavigationManager.Uri);
+        var query = uri.Query;
+        var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
+        
+        // Basically, clicking on "save" will redirect to the same page with the current account settings put into the query string
+        // these will then be compared to the current account settings and if they are different, the account will be updated
+        if (queryDictionary.Count > 0)
+        {
+            var redact = queryDictionary["redact"];
+            var changes = 0;
+            if (redact != null)
+            {
+                var valueRedact = bool.Parse(redact);
+                if (account.Settings.RedactInformation != valueRedact)
+                {
+                    account.Settings.RedactInformation = valueRedact;
+                    changes++;
+                }
+            }
+
+            if (changes > 0)
+            {
+                var serializedAccount = JsonSerializer.Serialize(account.Settings);
+                var responseMessage = await httpClient.PostAsync("api/Account/set-account-settings", new StringContent(serializedAccount));
+                try
+                {
+                    responseMessage.EnsureSuccessStatusCode();
+                    ChangeSaved = true;
+                }
+                catch (HttpRequestException e)
+                {
+                    ErrorMessage = e.Message + "\n " + await responseMessage.Content.ReadAsStringAsync();
+                }
+            }
+        }
+    }
+}

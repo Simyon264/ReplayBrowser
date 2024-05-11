@@ -2,14 +2,15 @@
 @using Replay = Shared.Models.Replay
 @using System.Net
 @using System.Diagnostics
+@using Microsoft.AspNetCore.Components.Authorization
 @using Shared
-@inject HttpClient Http
+@inject SecureHttpClient SecureHttpClient
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Replay viewer</PageTitle>
 <h1>Replay browser for Space Station 14</h1>
 <p>Search for replays by using the search bar below</p>
-<a href="/" class="btn btn-primary">Back to main page</a>
 <hr/>
 <SearchBar></SearchBar>
 <hr/>
@@ -114,8 +115,9 @@
         // Get mode and query from query string
         var uri = new Uri(NavigationManager.Uri);
         var query = uri.Query;
+        var httpClient = SecureHttpClient.GetClient(await AuthenticationStateProvider.GetAuthenticationStateAsync());
         
-        var response = await Http.GetAsync("/search" + query);
+        var response = await httpClient.GetAsync("/search" + query);
 
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
@@ -145,7 +147,7 @@
 
         if (loadedReplays.SearchMode is SearchMode.PlayerOocName)
         {
-            var playerGuid = await Http.GetAsync("/api/Data/has-profile?username=" + loadedReplays.Query);
+            var playerGuid = await httpClient.GetAsync("/api/Data/has-profile?username=" + loadedReplays.Query);
             ProfileFound = await playerGuid.Content.ReadFromJsonAsync<PlayerData>();
             if (ProfileFound.PlayerGuid == Guid.Empty) ProfileFound = null;
         }

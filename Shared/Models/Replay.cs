@@ -42,4 +42,24 @@ public class Replay
     
     [JsonIgnore]
     public NpgsqlTsVector RoundEndTextSearchVector { get; set; }
+
+    public void RedactInformation(Guid? accountGuid)
+    {
+        if (accountGuid == null)
+        {
+            return;
+        }
+        
+        if (RoundEndPlayers != null)
+        {
+            foreach (var player in RoundEndPlayers)
+            {
+                if (player.PlayerGuid == accountGuid)
+                {
+                    player.PlayerOocName = "Redacted by user request";
+                    player.PlayerGuid = Guid.Empty;
+                }
+            }
+        }
+    }
 }

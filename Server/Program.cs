@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -9,6 +10,7 @@ using Serilog;
 using Serilog.AspNetCore;
 using Server;
 using Server.Api;
+using Server.Auth;
 using Server.Helpers;
 using Server.Metrics;
 using Server.ReplayParser;
@@ -51,6 +53,10 @@ try
     {
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
     });
+    
+    // Run migrations on startup.
+    var replayContext = builder.Services.BuildServiceProvider().GetService<ReplayDbContext>();
+    replayContext.Database.Migrate();
     
     builder.Services.AddSingleton<ReplayMetrics>();
     builder.Services.AddSingleton<Ss14ApiHelper>();
@@ -147,6 +153,21 @@ try
     });
     
     builder.Services.AddHostedService<LeaderboardBackgroundService>();
+
+    var authToken = builder.Configuration["Token"];
+    if (string.IsNullOrWhiteSpace(authToken))
+    {
+        throw new Exception("No token found in appsettings.json. Please set Token to a valid and secure token.");
+    }
+    
+    builder.Services.AddAuthorizationBuilder()
+            .AddPolicy("TokenBased", policy =>
+        {
+            policy.Requirements.Add(new TokenRequirement(authToken));
+        });
+    
+    builder.Services.AddSingleton<IAuthorizationHandler, TokenHandler>();
+    builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
     
     var app = builder.Build();
     
@@ -161,6 +182,8 @@ try
     
     app.UseRouting();
     app.UseCors();
+    app.UseAuthentication();
+    app.UseAuthorization();
     app.MapControllerRoute(
         name: "default",
         pattern: "api/{controller=Home}/{action=Index}/{id?}");

@@ -1,8 +1,8 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
 @using Replay = Shared.Models.Replay
-@inject HttpClient Http
-@inject NavigationManager NavigationManager
-@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject SecureHttpClient SecureHttpClient
 @attribute [StreamRendering]
 
 <PageTitle>Replay viewer</PageTitle>
@@ -37,8 +37,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Replays = await Http.GetFromJsonAsync<List<Replay>>("replays/most-recent");
-        Count = await Http.GetFromJsonAsync<List<int>>("replays").ContinueWith(x => x.Result.Count);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var httpClient = SecureHttpClient.GetClient(authState);
+        
+        Replays = await httpClient.GetFromJsonAsync<List<Replay>>("replays/most-recent");
+        Count = await httpClient.GetFromJsonAsync<List<int>>("replays").ContinueWith(x => x.Result.Count);
         IsLoading = false;
     }
 }

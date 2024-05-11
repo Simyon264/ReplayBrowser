@@ -10,6 +10,8 @@ using Serilog;
 using Server.Helpers;
 using Server.Metrics;
 using Shared.Models;
+using Shared.Models.Account;
+using Action = Shared.Models.Account.Action;
 
 namespace Server.Api;
 
@@ -57,6 +59,7 @@ public class ReplayController : ControllerBase
     public async Task<ActionResult> SearchReplays(
         [FromQuery] string mode,
         [FromQuery] string query,
+        [FromHeader] Guid? accountGuid,
         [FromQuery] int page = 0
         )
     {
@@ -106,13 +109,59 @@ public class ReplayController : ControllerBase
             return BadRequest("The page number cannot be negative.");
         }
 
+        var requester = await _context.Accounts
+            .Include(a => a.History)
+            .FirstOrDefaultAsync(a => a.Guid == accountGuid);
+        
+        requester?.History.Add(new HistoryEntry()
+        {
+            Action = Enum.GetName(typeof(Action), Action.SearchPerformed) ?? "Unknown",
+            Time = DateTime.UtcNow,
+            Details = $"Mode: {searchMode}, Query: {query}"
+        });
+        
+        switch (searchMode)
+        {
+            case SearchMode.Guid:
+                var foundGuidAccount = _context.Accounts
+                    .Include(a => a.Settings)
+                    .FirstOrDefault(a => a.Guid.ToString().ToLower().Contains(query.ToLower()));
+
+                if (foundGuidAccount != null && foundGuidAccount.Settings.RedactInformation)
+                {
+                    // if the requestor is not the found account and the requestor is not an admin, deny access
+                    if (requester == null || !requester.IsAdmin)
+                    {
+                        return Unauthorized("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                    }
+                }
+                break;
+            
+            case SearchMode.PlayerOocName:
+                var foundOocAccount = _context.Accounts
+                    .Include(a => a.Settings)
+                    .FirstOrDefault(a => a.Username.ToLower().Contains(query.ToLower()));
+
+                if (foundOocAccount != null && foundOocAccount.Settings.RedactInformation)
+                {
+                    // if the requestor is not the found account and the requestor is not an admin, deny access
+                    if (requester == null || !requester.IsAdmin)
+                    {
+                        return Unauthorized("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                    }
+                }
+                break;
+        }
+
         var found = SearchReplays(searchMode, query, page, Constants.ReplaysPerPage);
         
         var pageCount = Paginator.GetPageCount(found.Item2, Constants.ReplaysPerPage);
         
+        var replays = FilterReplays(found.Item1, accountGuid);
+        
         return Ok(new SearchResult()
         {
-            Replays = found.Item1,
+            Replays = replays,
             PageCount = pageCount,
             CurrentPage = page,
             TotalReplays = found.Item2,
@@ -136,19 +185,27 @@ public class ReplayController : ControllerBase
     /// </summary>
     [HttpGet]
     [Route("/replays/most-recent")]
-    public async Task<ActionResult> GetMostRecentReplay()
+    public async Task<ActionResult> GetMostRecentReplay(
+        [FromHeader] Guid? accountGuid
+        )
     {
         var replays = await _context.Replays
             .OrderByDescending(r => r.Id)
             .Include(r => r.RoundEndPlayers)
             .Take(32)
             .ToListAsync();
+        
+        replays = FilterReplays(replays, accountGuid);
+        
         return Ok(replays);
     }
     
     [HttpGet]
     [Route("/replay/{id}")]
-    public async Task<ActionResult> GetReplay(int id)
+    public async Task<ActionResult> GetReplay(
+        int id,
+        [FromHeader] Guid? accountGuid
+        )
     {
         var replay = await _context.Replays
             .Include(r => r.RoundEndPlayers)
@@ -158,10 +215,10 @@ public class ReplayController : ControllerBase
             return NotFound();
         }
 
-        return Ok(replay);
+        return Ok(FilterReplay(replay, accountGuid));
     }
     
-        /// <summary>
+    /// <summary>
     /// Searches a list of replays for a specific query.
     /// </summary>
     /// <param name="mode">The search mode.</param>
@@ -269,5 +326,46 @@ public class ReplayController : ControllerBase
         }
 
         return (new List<Replay>(), 0, false);
+    }
+    
+    private List<Replay> FilterReplays(List<Replay> replays, Guid? accountGuid)
+    {
+        var requestor = _context.Accounts
+            .FirstOrDefault(a => a.Guid == accountGuid);
+        
+        for (var i = 0; i < replays.Count; i++)
+        {
+            replays[i] = FilterReplay(replays[i], accountGuid, requestor);
+        }
+        
+        return replays;
+    }
+    
+    private Replay FilterReplay(Replay replay, Guid? accountGuid, Account? requestor = null)
+    {
+        foreach (var replayRoundEndPlayer in replay.RoundEndPlayers)
+        {
+            var accountForPlayer = _context.Accounts
+                .Include(a => a.Settings)
+                .FirstOrDefault(a => a.Guid == replayRoundEndPlayer.PlayerGuid);
+            if (accountForPlayer == null)
+            {
+                continue;
+            }
+
+            if (accountForPlayer.Settings.RedactInformation)
+            {
+                if (replayRoundEndPlayer.PlayerGuid != accountGuid)
+                {
+                    // If the requestor is an admin, we can show the information.
+                    if (requestor == null || !requestor.IsAdmin)
+                    {
+                        replayRoundEndPlayer.RedactInformation();
+                    }
+                }
+            }
+        }
+        
+        return replay;
     }
 }

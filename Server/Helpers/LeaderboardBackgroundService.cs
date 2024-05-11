@@ -116,7 +116,7 @@ public class LeaderboardBackgroundService : IHostedService, IDisposable
         // Loop through every range option.
         foreach (var rangeOption in Enum.GetValues<RangeOption>())
         {
-            GetLeaderboard(rangeOption).Wait();
+            GetLeaderboard(rangeOption, null, null).Wait();
         }
         
         sw.Stop();
@@ -134,9 +134,33 @@ public class LeaderboardBackgroundService : IHostedService, IDisposable
         _timer?.Dispose();
     }
 
-    public async Task<LeaderboardData> GetLeaderboard(RangeOption rangeOption, string? username = null)
+    public async Task<LeaderboardData> GetLeaderboard(RangeOption rangeOption, string? username, Guid? accountGuid)
     {
         var context = _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<ReplayDbContext>();
+        
+        var accountCaller = await context.Accounts
+            .Include(a => a.Settings)
+            .FirstOrDefaultAsync(a => a.Guid == accountGuid);
+
+        if (username != null)
+        {
+            var accountRequested = await context.Accounts
+                .Include(a => a.Settings)
+                .FirstOrDefaultAsync(a => a.Username.ToLower() == username.ToLower());
+
+            if (accountRequested != null && accountRequested.Settings.RedactInformation &&
+                (accountCaller == null || accountCaller.Guid != accountRequested.Guid))
+            {
+                if (accountCaller == null || !accountCaller.IsAdmin)
+                {
+                    return new LeaderboardData()
+                    {
+                        Leaderboards = new List<Leaderboard>(),
+                        IsCache = false
+                    };
+                }
+            }
+        }
         
         // First, try to get the leaderboard from the cache
         var usernameCacheKey = username
@@ -144,7 +168,7 @@ public class LeaderboardBackgroundService : IHostedService, IDisposable
             .Replace(" ", "-")
             .Replace(".", "-")
             .Replace("_", "-");
-        if (_cache.TryGetValue("leaderboard-" + rangeOption + "-" + usernameCacheKey, out LeaderboardData leaderboardData))
+        if (_cache.TryGetValue("leaderboard-" + rangeOption + "-" + usernameCacheKey + "-" + accountGuid, out LeaderboardData leaderboardData))
         {
             return leaderboardData;
         }
@@ -329,6 +353,28 @@ public class LeaderboardBackgroundService : IHostedService, IDisposable
         stopwatch.Stop();
         Log.Information("Calculating leaderboard took {Time}ms", stopwatch.ElapsedMilliseconds);
 
+        stopwatch.Restart();
+        // Redact usernames for redacted players
+        foreach (var leaderboard in leaderboards)
+        {
+            foreach (var player in leaderboard.Value.Data)
+            {
+                if (player.Value.Player?.PlayerGuid == null)
+                    continue;
+                var account = context.Accounts
+                    .Include(a => a.Settings)
+                    .FirstOrDefault(a => a.Guid == player.Value.Player.PlayerGuid);
+                
+                if (account == null)
+                    continue;
+                
+                if (account.Settings.RedactInformation && (accountCaller == null || accountCaller.Guid != account.Guid))
+                {
+                    player.Value.Player.RedactInformation();
+                }
+            }
+        }
+        
         // Save leaderboard to cache (its expensive as fuck to calculate)
         var cacheEntryOptions = new MemoryCacheEntryOptions()
             .SetAbsoluteExpiration(TimeSpan.FromHours(5));

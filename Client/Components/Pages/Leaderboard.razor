@@ -1,13 +1,22 @@
 ﻿@page "/leaderboard"
+@using System.Net
+@using Microsoft.AspNetCore.Components.Authorization
 @using Shared
-@inject HttpClient Http
+@inject SecureHttpClient SecureHttpClient
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [StreamRendering]
 @inject IConfiguration Configuration
 
 <PageTitle>Leaderboard</PageTitle>
 <h4>Leaderboards</h4>
-@if(LeaderboardData == null)
+@if(RequestedPrivate)
+{
+    <div class="alert alert-danger" role="alert">
+        The requested information is private. Please ask the player to make their profile public in order to view this information.
+    </div>
+}
+else if(LeaderboardData == null)
 {
     <p><em>Loading leaderboard data... Please wait...</em></p>
 }
@@ -141,6 +150,7 @@ else
 @code{
     private bool IsLoading { get; set; } = true;
     private LeaderboardData? LeaderboardData { get; set; } = null;
+    private bool RequestedPrivate { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -156,14 +166,32 @@ else
                 timeRange = int.Parse(queryDictionary["timeRange"]);
             }
         }
+        
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var http = SecureHttpClient.GetClient(authState);
 
         if (queryDictionary.AllKeys.Contains("username"))
         {
-            LeaderboardData = await Http.GetFromJsonAsync<LeaderboardData>("api/Data/leaderboard?rangeOption=" + timeRange + "&username=" + queryDictionary["username"]);
+            var response = await http.GetAsync("api/Data/leaderboard?rangeOption=" + timeRange + "&username=" + queryDictionary["username"]);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                RequestedPrivate = true;
+                IsLoading = false;
+                return;
+            }
+            LeaderboardData = await response.Content.ReadFromJsonAsync<LeaderboardData>();
         }
         else
         {
-            LeaderboardData = await Http.GetFromJsonAsync<LeaderboardData>("api/Data/leaderboard?rangeOption=" + timeRange);
+            var response = await http.GetAsync("api/Data/leaderboard?rangeOption=" + timeRange);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                RequestedPrivate = true;
+                IsLoading = false;
+                return;
+            }
+            
+            LeaderboardData = await response.Content.ReadFromJsonAsync<LeaderboardData>();
         }
         IsLoading = false;
     }
