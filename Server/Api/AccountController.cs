@@ -162,7 +162,7 @@ public class AccountController : Controller
             query = query.Where(a => a.Username.Contains(name));
         }
         
-        var results = await query.FirstOrDefaultAsync(a => a.Guid == accountGuid);
+        var results = await query.FirstOrDefaultAsync(a => a.Username == name);
         
         if (results == null)
         {
