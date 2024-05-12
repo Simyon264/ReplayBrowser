@@ -47,6 +47,12 @@
 else if (NeedsToProvideUsername)
 {
     <p>Please provide a username</p>
+} 
+else if (Exception != null)
+{
+    <p>An error occurred: @Exception.Message</p>
+    <br/>
+    <p>@StringResponse</p>
 }
 else if (History == null)
 {
@@ -99,6 +105,8 @@ else
     private bool Is1984 { get; set; } = false;
     private bool NeedsToProvideUsername { get; set; } = false;
     private string Username { get; set; } = string.Empty;
+    private string StringResponse { get; set; } = string.Empty;
+    private Exception? Exception { get; set; } = null;
     
     protected override async Task OnInitializedAsync()
     {
@@ -131,7 +139,16 @@ else
         }
         else
         {
-            History = await response.Content.ReadFromJsonAsync<AccountHistoryResponse>();
+            try
+            {
+                response.EnsureSuccessStatusCode();
+                History = await response.Content.ReadFromJsonAsync<AccountHistoryResponse>();
+            }
+            catch (Exception e)
+            {
+                Exception = e;
+                StringResponse = await response.Content.ReadAsStringAsync();
+            }
         }
     }
 }
