@@ -3,7 +3,7 @@
 /// <summary>
 /// A class that helps with pagination.
 /// </summary>
-public class Paginator
+public static class Paginator
 {
     /// <summary>
     /// Returns the number of pages needed to display all items.
