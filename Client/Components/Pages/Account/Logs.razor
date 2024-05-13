@@ -45,10 +45,6 @@
 {
     <p>Unauthorized</p>
 }
-else if (NeedsToProvideUsername)
-{
-    <p>Please provide a username</p>
-} 
 else if (Exception != null)
 {
     <p>An error occurred: @Exception.Message</p>
@@ -61,7 +57,8 @@ else if (History == null)
 }
 else
 {
-    <h4>Logs for @Username</h4>
+    var usernameToDisplay = Username == string.Empty ? "not logged in users" : Username;
+    <h4>Logs for @usernameToDisplay</h4>
     <table class="table table-striped">
         <thead>
         <tr>
@@ -85,11 +82,21 @@ else
     // page navigation
     @if (History.Page > 0)
     {
-        <a href="/account/logs?username=@Username&page=@(History.Page - 1)">Previous</a>
+        <a href="/account/logs?username=@Username&page=@(History.Page - 1)" class="btn btn-primary">Previous</a>
     }
-    @if (History.TotalPages > History.Page + 1)
+    else
     {
-        <a href="/account/logs?username=@Username&page=@(History.Page + 1)">Next</a>
+        // disable previous button
+        <a class="disabled btn btn-primary">Previous</a>
+    }
+    @if (History.TotalPages + 1> History.Page + 1)
+    {
+        <a href="/account/logs?username=@Username&page=@(History.Page + 1)" class="btn btn-primary">Next</a>
+    } 
+    else
+    {
+        // disable next button
+        <a class="disabled btn btn-primary">Next</a>
     }
     
     <p>Page @(History.Page + 1) of @History.TotalPages</p>
@@ -104,7 +111,6 @@ else
 @code {
     private AccountHistoryResponse? History { get; set; } = null;
     private bool Is1984 { get; set; } = false;
-    private bool NeedsToProvideUsername { get; set; } = false;
     private string Username { get; set; } = string.Empty;
     private string StringResponse { get; set; } = string.Empty;
     private Exception? Exception { get; set; } = null;
@@ -119,18 +125,38 @@ else
         var username = queryDictionary["username"];
         var page = queryDictionary["page"];
 
-        if (string.IsNullOrEmpty(username))
-        {
-            NeedsToProvideUsername = true;
-            return;
-        }
-        
-        Username = username;
-
         if (string.IsNullOrEmpty(page) || !int.TryParse(page, out var pageNumber))
         {
             pageNumber = 0;
         }
+        
+        if (string.IsNullOrEmpty(username))
+        {
+            // default to empty Guid for all logs for unauthorized users
+            
+            Username = string.Empty;
+            var responseGuid = await http.GetAsync($"api/Account/get-account-history-guid?targetGuid={Guid.Empty}&page={pageNumber}");
+            if (responseGuid.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Is1984 = true;
+                return;
+            }
+            
+            try
+            {
+                responseGuid.EnsureSuccessStatusCode();
+                History = await responseGuid.Content.ReadFromJsonAsync<AccountHistoryResponse>();
+            }
+            catch (Exception e)
+            {
+                Exception = e;
+                StringResponse = await responseGuid.Content.ReadAsStringAsync();
+            }
+            
+            return;
+        }
+        
+        Username = username;
 
         var response = await http.GetAsync($"api/Account/get-account-history?name={username}&page={pageNumber}");
 

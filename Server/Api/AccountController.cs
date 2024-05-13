@@ -137,6 +137,49 @@ public class AccountController : Controller
         await _context.SaveChangesAsync();
         return Ok();
     }
+
+    [HttpGet("get-account-history-guid")]
+    public async Task<IActionResult> GetAccountHistoryGuid(
+        [FromHeader] Guid accountGuid,
+        [FromQuery] int page,
+        [FromQuery] Guid targetGuid
+    )
+    {
+        var requestAccount = await _context.Accounts.FirstOrDefaultAsync(a => a.Guid == accountGuid);
+        if (requestAccount == null)
+        {
+            return Unauthorized();
+        }
+        
+        if (!requestAccount.IsAdmin)
+        {
+            return Unauthorized();
+        }
+        
+        var targetAccount = await _context.Accounts.Include(account => account.History).FirstOrDefaultAsync(a => a.Guid == targetGuid);
+        if (targetAccount == null)
+        {
+            return NotFound();
+        }
+        
+        targetAccount.History = targetAccount.History.OrderByDescending(h => h.Time).ToList();
+        
+        AccountHistoryResponse response = new()
+        {
+            History = [],
+            Page = page,
+            TotalPages = 1
+        };
+        
+        if (targetAccount.History.Count > 10)
+        {
+            response.TotalPages = targetAccount.History.Count / 10;
+        }
+        
+        response.History = targetAccount.History.Skip(page * 10).Take(10).ToList();
+        
+        return Ok(response);
+    }
     
     [HttpGet("get-account-history")]
     public async Task<IActionResult> GetAccountHistory(
@@ -171,17 +214,21 @@ public class AccountController : Controller
         
         results.History = results.History.OrderByDescending(h => h.Time).ToList();
         
-        var history = results.History
-            .Skip(page * 10)
-            .Take(10)
-            .ToList();
-        
-        return Ok(new AccountHistoryResponse()
+        AccountHistoryResponse response = new()
         {
-            History = history, 
-            Page = page, 
-            TotalPages = (int)Math.Ceiling((double)(results.History.Count / 10))
-        });
+            History = [],
+            Page = page,
+            TotalPages = 1
+        };
+        
+        if (results.History.Count > 10)
+        {
+            response.TotalPages = results.History.Count / 10;
+        }
+        
+        response.History = results.History.Skip(page * 10).Take(10).ToList();
+        
+        return Ok(response);
     }
     
     private bool IsLocal(ConnectionInfo connection)

@@ -17,4 +17,6 @@ public enum Action
     // Site actions
     SearchPerformed,
     LeaderboardViewed,
+    ProfileViewed,
+    MainPageViewed,
 }

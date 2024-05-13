@@ -202,6 +202,29 @@ public class DataController : ControllerBase
             JobCount = jobCount
         };
         
+        // Add history entry
+        if (accountCaller != null)
+        {
+            accountCaller.History.Add(new HistoryEntry()
+            {
+                Action = Enum.GetName(typeof(Shared.Models.Account.Action), Shared.Models.Account.Action.ProfileViewed) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = $"Player GUID: {playerGuid}"
+            });
+        } else
+        {
+            var systemAccount = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.Guid == Guid.Empty);
+            systemAccount!.History.Add(new HistoryEntry()
+            {
+                Action = Enum.GetName(typeof(Shared.Models.Account.Action), Shared.Models.Account.Action.ProfileViewed) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = $"Player GUID: {playerGuid}"
+            });
+        }
+        
+        await _context.SaveChangesAsync();
+        
         return Ok(collectedPlayerData);
     }
     
@@ -296,6 +319,18 @@ public class DataController : ControllerBase
             Time = DateTime.UtcNow,
             Details = $"Range: {rangeOption}, Username: {username}"
         });
+        
+        if (requester == null)
+        {
+            var systemAccount = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.Guid == Guid.Empty);
+            systemAccount!.History.Add(new HistoryEntry()
+            {
+                Action = Enum.GetName(typeof(Shared.Models.Account.Action), Shared.Models.Account.Action.LeaderboardViewed) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = $"Range: {rangeOption}, Username: {username}"
+            });
+        }
         
         await _context.SaveChangesAsync();
         

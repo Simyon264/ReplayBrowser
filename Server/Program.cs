@@ -15,6 +15,7 @@ using Server.Auth;
 using Server.Helpers;
 using Server.Metrics;
 using Server.ReplayParser;
+using Shared.Models.Account;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -58,6 +59,20 @@ try
     // Run migrations on startup.
     var replayContext = builder.Services.BuildServiceProvider().GetService<ReplayDbContext>();
     replayContext.Database.Migrate();
+        
+    // We need to create a "dummy" system Account to use for unauthenticated requests.
+    // This is because the Account system is used for logging and we need to have an account to log as.
+    // This is a bit of a hack but it works.
+    var systemAccount = new Account()
+    {
+        Guid = Guid.Empty,
+        Username = "[System] Unauthenticated user",
+    };
+    if (replayContext.Accounts.FirstOrDefault(a => a.Guid == Guid.Empty) == null) // Only add if it doesn't already exist.
+    {
+        replayContext.Accounts.Add(systemAccount);
+        replayContext.SaveChanges();
+    }
     
     builder.Services.AddSingleton<ReplayMetrics>();
     builder.Services.AddSingleton<Ss14ApiHelper>();

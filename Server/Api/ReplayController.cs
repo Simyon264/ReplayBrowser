@@ -112,7 +112,6 @@ public class ReplayController : ControllerBase
         }
 
         var requester = await _context.Accounts
-            .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == accountGuid);
         
         requester?.History.Add(new HistoryEntry()
@@ -121,6 +120,18 @@ public class ReplayController : ControllerBase
             Time = DateTime.UtcNow,
             Details = $"Mode: {searchMode}, Query: {query}"
         });
+        
+        if (requester == null)
+        {
+            var systemAccount = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.Guid == Guid.Empty);
+            
+            systemAccount!.History.Add(new HistoryEntry() {
+                Action = Enum.GetName(typeof(Action), Action.SearchPerformed) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = $"Mode: {searchMode}, Query: {query}"
+            });
+        }
         
         await _context.SaveChangesAsync();
         
@@ -201,6 +212,28 @@ public class ReplayController : ControllerBase
             .ToListAsync();
         
         replays = FilterReplays(replays, accountGuid);
+        
+        // Log the request
+        var requester = _context.Accounts
+            .FirstOrDefault(a => a.Guid == accountGuid);
+        
+        requester?.History.Add(new HistoryEntry() {
+            Action = Enum.GetName(typeof(Action), Action.MainPageViewed) ?? "Unknown",
+            Time = DateTime.UtcNow
+        });
+        
+        if (requester == null)
+        {
+            var systemAccount = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.Guid == Guid.Empty);
+            
+            systemAccount!.History.Add(new HistoryEntry() {
+                Action = Enum.GetName(typeof(Action), Action.MainPageViewed) ?? "Unknown",
+                Time = DateTime.UtcNow
+            });
+        }
+        
+        await _context.SaveChangesAsync();
         
         return Ok(replays);
     }
