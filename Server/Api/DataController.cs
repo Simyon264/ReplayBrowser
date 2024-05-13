@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +37,7 @@ public class DataController : ControllerBase
 
     [HttpGet]
     [Route("player-data")]
+    [Authorize(Policy = "TokenBased")]
     public async Task<ActionResult> GetPlayerData(
         [FromQuery] string guid,
         [FromHeader] Guid? accountGuid
@@ -229,6 +231,7 @@ public class DataController : ControllerBase
     /// </summary>
     [HttpGet]
     [Route("has-profile")]
+    [Authorize(Policy = "TokenBased")]
     public async Task<PlayerData> HasProfile(
         [FromQuery] string username,
         [FromHeader] Guid? accountGuid
@@ -276,6 +279,7 @@ public class DataController : ControllerBase
     /// <param name="username"> An optional username to add their position as well. </param>
     [HttpGet]
     [Route("leaderboard")]
+    [Authorize(Policy = "TokenBased")]
     public async Task<ActionResult> GetLeaderboard(
         [FromHeader] Guid? accountGuid,
         [FromQuery] RangeOption rangeOption = RangeOption.AllTime,

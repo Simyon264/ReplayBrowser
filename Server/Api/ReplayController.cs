@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Shared;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
@@ -56,6 +57,7 @@ public class ReplayController : ControllerBase
     /// <param name="query">The search query.</param>
     [HttpGet]
     [Route("/search")]
+    [Authorize(Policy = "TokenBased")]
     public async Task<ActionResult> SearchReplays(
         [FromQuery] string mode,
         [FromQuery] string query,
@@ -187,6 +189,7 @@ public class ReplayController : ControllerBase
     /// </summary>
     [HttpGet]
     [Route("/replays/most-recent")]
+    [Authorize(Policy = "TokenBased")]
     public async Task<ActionResult> GetMostRecentReplay(
         [FromHeader] Guid? accountGuid
         )
@@ -204,6 +207,7 @@ public class ReplayController : ControllerBase
     
     [HttpGet]
     [Route("/replay/{id}")]
+    [Authorize(Policy = "TokenBased")]
     public async Task<ActionResult> GetReplay(
         int id,
         [FromHeader] Guid? accountGuid
