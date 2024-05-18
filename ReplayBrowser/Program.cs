@@ -32,9 +32,9 @@ public class Program
             .ConfigureAppConfiguration((context, builder) =>
             {
                 var env = context.HostingEnvironment;
+                builder.AddJsonFile("appsettings.Secret.json", optional: true, reloadOnChange: true);
                 builder.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
                 builder.AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
-                builder.AddJsonFile("appsettings.Secret.json", optional: true, reloadOnChange: true);
             })
             .UseSerilog((ctx, cfg) =>
             {
