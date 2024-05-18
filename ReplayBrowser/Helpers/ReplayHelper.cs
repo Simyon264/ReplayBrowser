@@ -289,9 +289,17 @@ public class ReplayHelper
                 var foundGuidAccount = _context.Accounts
                     .Include(a => a.Settings)
                     .FirstOrDefault(a => a.Guid.ToString().ToLower().Contains(query.ToLower()));
-
+                
                 if (foundGuidAccount != null && foundGuidAccount.Settings.RedactInformation)
                 {
+                    if (callerAccount != null)
+                    {
+                        if (callerAccount.Guid == foundGuidAccount.Guid)
+                        {
+                            break;
+                        }
+                    }
+                    
                     // if the requestor is not the found account and the requestor is not an admin, deny access
                     if (callerAccount == null || !callerAccount.IsAdmin)
                     {
@@ -305,6 +313,11 @@ public class ReplayHelper
                     .Include(a => a.Settings)
                     .FirstOrDefault(a => a.Username.ToLower().Contains(query.ToLower()));
 
+                if (callerAccount != null && callerAccount.Username.ToLower().Contains(query.ToLower()))
+                {
+                    break;
+                }
+                
                 if (foundOocAccount != null && foundOocAccount.Settings.RedactInformation)
                 {
                     // if the requestor is not the found account and the requestor is not an admin, deny access
