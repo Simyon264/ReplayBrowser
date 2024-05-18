@@ -1,0 +1,65 @@
+﻿@using ReplayBrowser.Data
+@using ReplayBrowser.Data.Models
+
+<div class="card" style="width: 18rem; margin-top: 1rem">
+    <div class="card-body">
+        <h5 class="card-title">@_nameFormatted</h5>
+        <p class="card-text">Map: @ReplayData.Map</p>
+        <p class="card-text">Gamemode: @ReplayData.Gamemode</p>
+    </div>
+    <div class="card-footer">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#r-@ReplayData.Id">
+            View replay
+        </button>
+        <a class="btn btn-secondary" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
+    </div>
+</div>
+<div class="modal fade modal-lg" id="@ModalId" tabindex="-1" aria-labelledby="@ModalId" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <ReplayDetails Replay="ReplayData" RequestModal="@ModalId"/>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a class="btn btn-primary" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public required Replay ReplayData { get; set; }
+    
+    private string? _nameFormatted;
+    private string ModalId => $"r-{ReplayData.Id}";
+    
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        // Get the date and server name of the replay using regex
+        var fileName = Path.GetFileName(ReplayData.Link);
+        if (fileName == null)
+        {
+            return;
+        }
+        var matchName = RegexList.ServerNameRegex.Match(fileName);
+        var matchDate = RegexList.ReplayRegex.Match(fileName);
+        if (matchName.Success && matchDate.Success)
+        {
+            _nameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value}";
+        }
+        else
+        { 
+            if (ReplayData.ServerName != null)
+            {
+                _nameFormatted = ReplayData.ServerName;
+            }
+            else
+            {
+                _nameFormatted = ReplayData.ServerId;
+            }
+        }
+    }
+}

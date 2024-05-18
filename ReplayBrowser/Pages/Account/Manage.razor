@@ -1,0 +1,115 @@
+﻿@page "/account/manage"
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ReplayBrowser.Data.Models.Account
+@using ReplayBrowser.Services
+@using Action = ReplayBrowser.Data.Models.Account.Action
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+@inject AccountService AccountService
+
+<h3>Manage Account</h3>
+
+@if(ErrorMessage != null)
+{
+    <div class="alert alert-danger" role="alert">
+        Failed to save changes:
+        @ErrorMessage
+    </div>
+}
+else if (account != null)
+{
+    @if(ChangeSaved)
+    {
+        <div class="alert alert-success" role="alert">
+            Changes saved
+        </div>
+    }
+    
+    <p>Username: @account.Username</p>
+    <p>Guid: @account.Guid</p>
+    
+    <h4>Settings</h4>
+    
+    // Toggle for redacting account
+    <em>Redacting an account will mean, that only you will be able to see and search for you in replays.</em>
+    <p>Redact Account: <input type="checkbox" id="redact" @bind="account.Settings.RedactInformation" /></p>
+    
+    <button class="btn btn-primary" id="save">Save</button>
+}
+else
+{
+    <p>Account not found (how did you get here?)</p>
+}
+
+<script>
+    $(document).ready(function() {
+        $("#save").click(function() {
+            let redact = $("#redact").is(":checked");
+            let uri = new URL(window.location.href);
+            uri.searchParams.set("redact", redact);
+            window.location.href = uri;
+        });
+        
+        // Remove current query string from URL
+        let uri = new URL(window.location.href);
+        uri.search = "";
+        window.history.replaceState({}, document.title, uri);
+    });
+</script>
+
+@code {
+    private Account account;
+    private bool ChangeSaved = false;
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        account = AccountService.GetAccount(authState);
+        
+        var uri = new Uri(NavigationManager.Uri);
+        var query = uri.Query;
+        var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
+        var oldAccountSettings = account.Settings.Clone();
+        
+        // Basically, clicking on "save" will redirect to the same page with the current account settings put into the query string
+        // these will then be compared to the current account settings and if they are different, the account will be updated
+        if (queryDictionary.Count > 0)
+        {
+            var redact = queryDictionary["redact"];
+            var changes = 0;
+            if (redact != null)
+            {
+                var valueRedact = bool.Parse(redact);
+                if (account.Settings.RedactInformation != valueRedact)
+                {
+                    account.Settings.RedactInformation = valueRedact;
+                    changes++;
+                }
+            }
+
+            if (changes > 0)
+            {
+                try
+                {
+                    await AccountService.AddHistory(account, new HistoryEntry()
+                    {
+                        Action = Enum.GetName(typeof(Action), Action.AccountSettingsChanged) ?? "Unknown",
+                        Time = DateTime.UtcNow,
+                        Details = $"Old settings: {JsonSerializer.Serialize(oldAccountSettings)} New settings: {JsonSerializer.Serialize(account.Settings)}",
+                    });
+                    
+                    await AccountService.UpdateAccount(account);
+                    ChangeSaved = true;
+                }
+                catch (Exception e)
+                {
+                    ErrorMessage = e.Message + "\n " + e.StackTrace;
+                }
+            }
+        }
+    }
+}

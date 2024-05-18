@@ -1,0 +1,148 @@
+﻿@page "/account/logs"
+@using Humanizer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ReplayBrowser.Data
+@using ReplayBrowser.Services
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AccountService AccountService
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<h3>Logs</h3>
+<div class="search-bar">
+    <div class="d-flex ms-auto">
+        <input
+            type="text"
+            class="form-control"
+            placeholder="Enter username..."
+            onsubmit="search()"
+            aria-label="Search"
+            data-filter="/api/Data/username-completion?username=#QUERY#"
+            id="search"
+            value="@Username"
+        >
+        <button class="btn btn-outline-success" type="button" onclick="search()">Filter</button>
+    </div>
+</div>
+
+<style>
+    .dropdown-menu {
+        margin-top: 2.5rem;
+    }
+</style>
+
+<script>
+    function search() {
+        var username = document.getElementById("search").value;
+        window.location.href = "/account/logs?username=" + username;
+    }
+</script>
+
+@if(Is1984)
+{
+    <p>Unauthorized</p>
+}
+else if (Exception != null)
+{
+    <p>An error occurred: @Exception.Message</p>
+    <br/>
+    <p>@StringResponse</p>
+}
+else if (History == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    var usernameToDisplay = Username == string.Empty ? "not logged in users" : Username;
+    <h4>Logs for @usernameToDisplay</h4>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Action</th>
+            <th>Time</th>
+            <th>Details</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var entry in History.History)
+        {
+            <tr>
+                <td>@entry.Action</td>
+                <td>@entry.Time.Humanize() (@entry.Time)</td>
+                <td>@entry.Details</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    
+    // page navigation
+    @if (History.Page > 0)
+    {
+        <a href="/account/logs?username=@Username&page=@(History.Page - 1)" class="btn btn-primary">Previous</a>
+    }
+    else
+    {
+        // disable previous button
+        <a class="disabled btn btn-primary">Previous</a>
+    }
+    @if (History.TotalPages + 1> History.Page + 1)
+    {
+        <a href="/account/logs?username=@Username&page=@(History.Page + 1)" class="btn btn-primary">Next</a>
+    } 
+    else
+    {
+        // disable next button
+        <a class="disabled btn btn-primary">Next</a>
+    }
+    
+    <p>Page @(History.Page + 1) of @History.TotalPages</p>
+}
+
+<script>
+    $(document).ready(function () {
+        $('#search').autocomplete();
+    });
+</script>
+
+@code {
+    private AccountHistoryResponse? History { get; set; } = null;
+    private bool Is1984 { get; set; } = false;
+    private string Username { get; set; } = string.Empty;
+    private string StringResponse { get; set; } = string.Empty;
+    private Exception? Exception { get; set; } = null;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = uri.Query;
+        var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
+        
+        var username = queryDictionary["username"] ?? string.Empty;
+        var page = queryDictionary["page"];
+
+        if (string.IsNullOrEmpty(page) || !int.TryParse(page, out var pageNumber))
+        {
+            pageNumber = 0;
+        }
+        
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var account = AccountService.GetAccount(authState);
+        if (account == null || !account.IsAdmin)
+        {
+            Is1984 = true;
+            return;
+        }
+        
+        try
+        {
+            History = await AccountService.GetAccountHistory(username, pageNumber);
+            Username = username;
+        }
+        catch (Exception e)
+        {
+            Exception = e;
+        }
+    }
+}

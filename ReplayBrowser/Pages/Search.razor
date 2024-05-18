@@ -1,0 +1,203 @@
+﻿@page "/search"
+@using System.Diagnostics
+@using Humanizer
+@using Microsoft.AspNetCore.Components.Authorization
+@using ReplayBrowser.Pages.Shared
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data
+@using ReplayBrowser.Helpers
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ReplayHelper ReplayHelper
+
+<PageTitle>Replay viewer</PageTitle>
+<h1>Replay browser for Space Station 14</h1>
+<p>Search for replays by using the search bar below</p>
+<hr/>
+<SearchBar></SearchBar>
+<hr/>
+@if (ErrorMessage != null)
+{
+    <p class="alert alert-danger">
+        @ErrorMessage
+        <br/>
+        <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#errorDetails" aria-expanded="false" aria-controls="errorDetails">
+            Show error details
+        </button>
+        <div class="collapse" id="errorDetails">
+            <div class="card card-body" style="white-space: pre-wrap;">
+                @ErrorDetails
+            </div>
+        </div>
+    </p>
+} else switch (SearchResult.Replays.Count)
+{
+    case 0 when IsLoading:
+        <div class="replay-list">
+            <p>Loading...</p>
+        </div>
+        break;
+    case 0:
+            <p>Found 0 replays in @stopWatch.ElapsedMilliseconds ms</p>
+            <div class="replay-list">
+                <p>No results... :(</p>
+            </div>
+        break;
+    default:
+    {
+        var pageDisplay = SearchResult.CurrentPage + 1;
+
+        if (SearchResult.IsCache)
+        {
+            <p>Found @SearchResult.TotalReplays replays in @stopWatch.ElapsedMilliseconds ms (cached)</p>
+        }
+        else
+        {
+            <p>Found @SearchResult.TotalReplays replays in @stopWatch.ElapsedMilliseconds ms</p>
+        }
+
+        if (ProfileFound != null)
+        {
+            <p>Profile found for @ProfileFound.Username, click <a href="/player/@ProfileFound.PlayerGuid">here</a> to view</p>
+        }
+        
+        <p>Page @pageDisplay of @SearchResult.PageCount</p>
+        <div class="replay-list">
+            @foreach (var replay in SearchResult.Replays)
+            {
+                <ReplayDisplay ReplayData="replay"></ReplayDisplay>
+            }
+        </div>
+        <br/>
+        <div class="pagination">
+            @if (SearchResult.CurrentPage > 0)
+            {
+                <button class="btn btn-primary" onclick="pageDown()">Previous page</button>
+            } else
+            {
+                <button class="btn btn-primary" disabled>Previous page</button>
+            }
+            @if (SearchResult.CurrentPage < SearchResult.PageCount - 1)
+            {
+                <button class="btn btn-primary" onclick="pageUp()">Next page</button>
+            } else
+            {
+                <button class="btn btn-primary" disabled>Next page</button>
+            }
+        </div>
+        break;
+    }
+}
+
+<style>
+    .replay-list {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin: 0 0 1rem 0;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin: 1rem 0;
+    }
+
+    .pagination .btn {
+        margin: 0 0.5rem;
+    }
+</style>
+
+<script>
+    const currentPage = @SearchResult.CurrentPage;
+    const totalPages = @SearchResult.PageCount;
+    function pageUp() {
+        if (currentPage == (totalPages - 1)) return;
+        search(currentPage + 1);
+    }
+    function pageDown() {
+        if (currentPage == 0) return;
+        search(currentPage - 1);
+    }
+</script>
+
+@code {
+    public bool IsLoading { get; set; } = true;
+    public string? ErrorMessage { get; set; }
+    public string? ErrorDetails { get; set; }
+    public Stopwatch stopWatch { get; set; } = new Stopwatch();
+    public PlayerData? ProfileFound { get; set; }
+
+    public SearchResult SearchResult { get; set; } = new SearchResult();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        stopWatch.Start();
+        // Get mode and query from query string
+        var uri = new Uri(NavigationManager.Uri);
+        var query = uri.Query;
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (query.Length > 1)
+        {
+            var queryDict = System.Web.HttpUtility.ParseQueryString(query.Substring(1));
+            var mode = queryDict.Get("mode");
+            var search = queryDict.Get("query");
+            var page = queryDict.Get("page") ?? "0";
+            var pageInt = int.Parse(page);
+            
+            if (mode == null || search == null)
+            {
+                ErrorMessage = "Invalid search query";
+                stopWatch.Stop();
+                return;
+            }
+            
+            // convert mode to enum
+            // because we are using a human readable string, we can't use Enum.TryParse
+            var searchMode = SearchMode.PlayerOocName;
+            var didFind = false;
+            foreach (SearchMode value in Enum.GetValues(typeof(SearchMode)))
+            {
+                if (value.Humanize().Equals(mode, StringComparison.OrdinalIgnoreCase))
+                {
+                    searchMode = value;
+                    didFind = true;
+                    break;
+                }
+            }
+            
+            if (!didFind)
+            {
+                ErrorMessage = "Invalid search mode";
+                stopWatch.Stop();
+                return;
+            }
+            
+            if (searchMode is SearchMode.PlayerOocName)
+            {
+                ProfileFound = await ReplayHelper.HasProfile(search, authState);
+            }
+
+            try
+            {
+                SearchResult = await ReplayHelper.SearchReplays(searchMode, search, pageInt, authState);
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                ErrorMessage = "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.";
+                ErrorDetails = e.Message;
+                stopWatch.Stop();
+                return;
+            }
+            catch (Exception e)
+            {
+                ErrorMessage = "An error occurred";
+                ErrorDetails = e.Message;
+                stopWatch.Stop();
+                return;
+            }
+            stopWatch.Stop();
+            IsLoading = false;
+        }
+    }
+}

@@ -1,0 +1,36 @@
+﻿@page "/replay/{id}"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data.Models
+@using ReplayBrowser.Helpers
+@using ReplayBrowser.Pages.Shared
+@attribute [StreamRendering]
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ReplayHelper ReplayHelper
+
+<PageTitle>Replay viewer</PageTitle>
+@if (Replay == null && !IsLoading)
+{
+    <p>Replay not found</p>
+}
+else if (IsLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <ReplayDetails Replay="Replay" />
+}
+
+@code {
+    [Parameter] public string Id { get; set; }
+    public Replay? Replay { get; set; }
+    public bool IsLoading { get; set; } = true;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var authstate = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        Replay = await ReplayHelper.GetReplay(Convert.ToInt32(Id), authstate)!;
+        IsLoading = false;
+    }
+}

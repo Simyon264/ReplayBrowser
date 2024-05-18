@@ -1,7 +1,0 @@
-﻿<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run Client + Server" type="CompoundRunConfigurationType">
-    <toRun name="Client: https" type="LaunchSettings" />
-    <toRun name="Server: https" type="LaunchSettings" />
-    <method v="2" />
-  </configuration>
-</component>

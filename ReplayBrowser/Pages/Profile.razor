@@ -1,0 +1,132 @@
+﻿@page "/player/{guid}"
+@using Humanizer
+@using Microsoft.AspNetCore.Components.Authorization
+@using ReplayBrowser.Data
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Helpers
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ReplayHelper ReplayHelper
+@attribute [StreamRendering]
+
+<PageTitle>Player info</PageTitle>
+
+@if (_playerData is null)
+{
+    <p>Loading...</p>
+}
+else if (IsPrivate)
+{
+    <p>This player's data is private. Either log as this player or ask them to make their data public.</p>
+}
+else if (FailedToLoad)
+{
+    <p>Failed to load player data. Exception: @Exception.Message</p>
+}
+else
+{
+    <h1>@_playerData.PlayerData.Username</h1>
+
+    <p><b>Total estimated playtime:</b> @_playerData.TotalEstimatedPlaytime.Humanize()</p>
+    <p><small>Calculated by adding up the total time for each round played by the player.</small></p>
+    <p><b>Total rounds played:</b> @_playerData.TotalRoundsPlayed</p>
+    <p><b>Total antag rounds played:</b> @_playerData.TotalAntagRoundsPlayed</p>
+    <p><b>Last seen:</b> @_playerData.LastSeen.Humanize()</p>
+
+    <h2>Characters</h2>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Character Name</th>
+            <th>Times played</th>
+            <th>Last played</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var character in _playerData.Characters)
+        {
+            if (character.CharacterName == "Unknown")
+            {
+                character.CharacterName = "Spectator";
+            }
+
+            // If this character contains a paranthesis, it's likely a ghost role like mouse (253), so we'll skip it.
+            if (character.CharacterName.Contains("("))
+            {
+                continue;
+            }
+
+            <tr>
+                <td>@character.CharacterName</td>
+                <td>@character.RoundsPlayed</td>
+                <td>@character.LastPlayed.Humanize()</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <h2>Jobs</h2>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Job name</th>
+            <th>Times played</th>
+            <th>Last played</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var jobCountData in _playerData.JobCount)
+        {
+            if (jobCountData.JobPrototype == "Unknown")
+            {
+                continue;
+            }
+            
+            <tr>
+                <td>@jobCountData.JobPrototype</td>
+                <td>@jobCountData.RoundsPlayed</td>
+                <td>@jobCountData.LastPlayed.Humanize()</td>
+            </tr>
+        }
+    </tbody>
+    </table>
+}
+
+@code{
+    [Parameter] public string Guid { get; set; } = string.Empty;
+
+    private CollectedPlayerData? _playerData;
+    private bool FailedToLoad { get; set; } = false;
+    private Exception? Exception { get; set; }
+    private bool IsPrivate { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!System.Guid.TryParse(Guid, out var guidParsed))
+            {
+                FailedToLoad = true;
+                Exception = new("Invalid GUID.");
+                _playerData = new();
+                return;
+            }
+            
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            
+            _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState);
+            _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
+            _playerData.JobCount = _playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            FailedToLoad = true;
+            IsPrivate = true;
+            _playerData = new();
+        }
+        catch (Exception e)
+        {
+            FailedToLoad = true;
+            Exception = e;
+            _playerData = new();
+        }
+    }
+}

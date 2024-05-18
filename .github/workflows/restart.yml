@@ -14,12 +14,10 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
         
-    - name: End services
+    - name: End service
       run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.client.service"
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.server.service"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.service"
     
-    - name: Start services
+    - name: Start service
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.client.service"
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.server.service"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.service"

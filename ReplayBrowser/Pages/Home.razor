@@ -1,0 +1,58 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data.Models
+@using ReplayBrowser.Helpers
+@using ReplayBrowser.Pages.Shared
+@attribute [StreamRendering]
+@inject ReplayHelper ReplayHelper
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Replay browser</PageTitle>
+
+<h1>Replay browser for Space Station 14</h1>
+<hr/>
+<SearchBar></SearchBar>
+<hr/>
+<h4>Most recent replays</h4>
+<p>There are currently @Count replays available.</p>
+
+<div class="replay-list">
+    @if (Replays.Count == 0 && !IsLoading)
+    {
+        <p><em>It looks like there are no replays available yet. Please check again later.</em></p>
+    } else if (IsLoading)
+    {
+        <p><em>Loading replays... Please wait...</em></p>
+    }
+    else
+    {
+        foreach (var replay in Replays)
+        {
+            <ReplayDisplay ReplayData="replay"></ReplayDisplay>
+        }
+    }
+</div>
+
+<style>
+    .replay-list {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin: 0 0 1rem 0;
+    }
+</style>
+
+@code {
+    private bool IsLoading { get; set; } = true;
+    private List<Replay> Replays { get; set; } = [];
+    private int Count { get; set; } = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        Replays = await ReplayHelper.GetMostRecentReplays(authState);
+        Count = await ReplayHelper.GetTotalReplayCount();
+        IsLoading = false;
+    }
+}

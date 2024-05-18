@@ -1,0 +1,92 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using ReplayBrowser.Data
+@using ReplayBrowser.Data.Models.Account
+@using ReplayBrowser.Helpers
+@using Serilog
+@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ReplayDbContext DbContext
+@inject Ss14ApiHelper Ss14ApiHelper
+
+@code
+{
+    private System.Security.Claims.ClaimsPrincipal User;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        User = authState.User;
+        if (User.Identity.IsAuthenticated)
+        {
+            var guid = (Guid)AccountHelper.GetAccountGuid(authState)!;
+            var account = DbContext.Accounts.FirstOrDefault(a => a.Guid == guid);
+            var data = await Ss14ApiHelper.FetchPlayerDataFromGuid(guid);
+
+            if (account == null)
+            {
+                account = new Account()
+                {
+                    Guid = guid,
+                    Username = data.Username
+                };
+
+                DbContext.Accounts.Add(account);
+                await DbContext.SaveChangesAsync();
+            
+                Log.Information("Created new account for {Guid} with username {Username}", guid, data.Username);
+            }
+        
+            if (account.Username != data.Username)
+            {
+                account.Username = data.Username;
+                await DbContext.SaveChangesAsync();
+                Log.Information("Updated username for account {Guid} to {Username}", guid, data.Username);
+            }
+        }
+    }
+}
+
+<div id="modal-root">
+    
+</div>
+
+<div class="page">
+    <main class="container my-5">
+        @if (User.Identity.IsAuthenticated)
+        {
+            <p>Hello <strong>@User.Claims.Single(c => c.Type == "name").Value!</strong></p>
+            
+            <a href="/account/logout" class="btn btn-primary">Logout</a>
+            <a class="btn btn-primary" onclick="window.location.href = '/account/manage';" style="margin-left: 10px">Manage</a>
+        }
+        else
+        {
+            <a href="/account/login" class="btn btn-primary">Login</a>
+        }
+
+        <br/>
+        <a class="btn btn-primary" onclick="window.location.href = '/leaderboard'" style="margin-top: 10px">Leaderboard</a>
+        <a class="btn btn-primary" onclick="window.location.href = '/'" style="margin-left: 10px; margin-top: 10px">Main page</a>
+        
+        <hr/>
+        @Body
+    </main>
+</div>
+
+<script>
+    const modalRoot = document.getElementById('modal-root');
+    const pageRoot = document.querySelector('.page');
+    
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modalRoot.appendChild(modal);
+    });
+    
+    const observer = new MutationObserver(function(mutations) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modalRoot.appendChild(modal);
+        });
+    });
+    observer.observe(pageRoot, { childList: true, subtree: true });
+</script>

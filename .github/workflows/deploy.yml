@@ -38,8 +38,7 @@ jobs:
       run: |
         mkdir deploy
         rsync -av --exclude='bin' --exclude='obj' --exclude='.git' --exclude='deploy' ./ ./deploy
-        echo '${{ secrets.SERVER_APPSETTINGS }}' > ./deploy/Server/appsettings.Secret.json
-        echo '${{ secrets.CLIENT_APPSETTINGS }}' > ./deploy/Client/appsettings.json
+        echo '${{ secrets.APPSETTINGS }}' > ./deploy/ReplayBrowser/appsettings.Secret.json
         
     - name: Upload files to server
       uses: appleboy/scp-action@master
@@ -50,12 +49,10 @@ jobs:
         source: "./deploy/*"
         target: /home/${{ secrets.SERVER_USERNAME }}/ReplayBrowser
         
-    - name: End services
+    - name: End service
       run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.client.service"
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.server.service"
-    
-    - name: Start services
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl stop replaybrowser.service"
+
+    - name: Start service
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.client.service"
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.server.service"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "sudo systemctl start replaybrowser.service"
