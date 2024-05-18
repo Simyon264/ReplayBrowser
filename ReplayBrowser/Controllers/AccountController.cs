@@ -19,7 +19,7 @@ public class AccountController : Controller
     {
         return Challenge(new AuthenticationProperties
         {
-            RedirectUri = "/"
+            RedirectUri = _configuration["RedirectUri"]
         });
     }
     

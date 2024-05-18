@@ -206,6 +206,12 @@ public class Startup
     
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
+        app.Use((context, next) =>
+        {
+            context.Request.Scheme = "https";
+            return next();
+        });
+        
         if (!env.IsDevelopment())
         {
             app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -235,12 +241,6 @@ public class Startup
             endpoints.MapControllerRoute(
                 name: "default",
                 pattern: "api/{controller=Home}/{action=Index}/{id?}");
-        });
-        
-        app.Use((context, next) =>
-        {
-            context.Request.Scheme = "https";
-            return next();
         });
         
         app.UseHttpsRedirection();
