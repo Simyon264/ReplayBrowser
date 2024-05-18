@@ -23,11 +23,8 @@ jobs:
       with:
         dotnet-version: 8.0.x
         
-    - name: Build Client
-      run: dotnet build ./Client/Client.csproj
-      
-    - name: Build Server
-      run: dotnet build ./Server/Server.csproj
+    - name: Build Solution
+      run: dotnet build ./ReplayBrowser/ReplayBrowser.csproj
       
     - name: Install SSH Key
       uses: webfactory/ssh-agent@v0.9.0
