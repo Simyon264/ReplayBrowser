@@ -178,7 +178,7 @@ public class LeaderboardService : IHostedService, IDisposable
             .Replace(" ", "-")
             .Replace(".", "-")
             .Replace("_", "-");
-        var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey + "-" + accountCaller?.Guid;
+        var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey;
         if (_cache.TryGetValue(cacheKey, out LeaderboardData leaderboardData))
         {
             return leaderboardData;
@@ -370,6 +370,31 @@ public class LeaderboardService : IHostedService, IDisposable
         // Delete "Unknown" from the MostPlayedJobs leaderboard
         leaderboards["MostPlayedJobs"].Data.Remove("Unknown");
         
+        // For every job in MostPlayedJobs, construct a top 10 for that job.
+        foreach (var (job, _) in leaderboards["MostPlayedJobs"].Data)
+        {
+            var jobLeaderboard = new Leaderboard()
+            {
+                Name = job,
+                TrackedData = "Times played",
+                Data = new Dictionary<string, PlayerCount>()
+            };
+            leaderboards.Add(job, jobLeaderboard);
+            
+            foreach (var dataReplay in dataReplays)
+            {
+                foreach (var dataReplayRoundEndPlayer in dataReplay.RoundEndPlayers)
+                {
+                    if (dataReplayRoundEndPlayer.JobPrototypes.Contains(job))
+                    {
+                        CountUp(dataReplayRoundEndPlayer, job, ref leaderboards);
+                    }
+                }
+            }
+        }
+        
+        
+        
         // Need to calculate the position of every player in the leaderboard.
         foreach (var leaderboard in leaderboards)
         {
@@ -379,29 +404,6 @@ public class LeaderboardService : IHostedService, IDisposable
         
         stopwatch.Stop();
         Log.Information("Calculating leaderboard took {Time}ms", stopwatch.ElapsedMilliseconds);
-
-        stopwatch.Restart();
-        
-        // Redact usernames for redacted players
-        foreach (var leaderboard in leaderboards)
-        {
-            foreach (var player in leaderboard.Value.Data)
-            {
-                if (player.Value.Player?.PlayerGuid == null)
-                    continue;
-                var guid = (Guid)player.Value.Player.PlayerGuid;
-                var account = _accountService.GetAccountSettings(guid);
-                
-                if (account == null)
-                    continue;
-                
-                if (account.RedactInformation && (accountCaller == null || accountCaller.Guid != guid))
-                {
-                    player.Value.Player.RedactInformation();
-                }
-            }
-        }
-        Log.Information("Redacting usernames took {Time}ms", stopwatch.ElapsedMilliseconds);
         
         // Save leaderboard to cache (its expensive as fuck to calculate)
         var cacheEntryOptions = new MemoryCacheEntryOptions()
