@@ -222,6 +222,12 @@ public class LeaderboardService : IHostedService, IDisposable
                 TrackedData = "Times seen",
                 Data = new Dictionary<string, PlayerCount>()
             }},
+            {"MostSeenNoGhost", new Leaderboard()
+            {
+               Name = "Most Seen Players excluding ghosts",
+               TrackedData = "Times seen",
+               Data = new Dictionary<string, PlayerCount>()
+            }},
             {"MostAntagPlayers", new Leaderboard()
             {
                 Name = "Most Antag Players",
@@ -276,6 +282,13 @@ public class LeaderboardService : IHostedService, IDisposable
             foreach (var player in distinctBy)
             {
                 CountUp(player, "MostSeenPlayers", ref leaderboards);
+                
+                // If the player name is not "Unknown" , we count them in the "MostSeenNoGhost" leaderboard.
+                if (dataReplay.RoundEndPlayers.Any(x => x.PlayerGuid == player.PlayerGuid && x.PlayerIcName != "Unknown")
+                   )
+                {
+                    CountUp(player, "MostSeenNoGhost", ref leaderboards);
+                }
             }
 
             foreach (var dataReplayRoundEndPlayer in dataReplay.RoundEndPlayers)
