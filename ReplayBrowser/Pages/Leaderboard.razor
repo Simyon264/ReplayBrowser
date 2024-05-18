@@ -96,7 +96,7 @@ else
                 {
                     <tr>
                         <td>@player.Value.Position</td>
-                        <td><a href="/player/@player.Value.Player.PlayerGuid">@player.Value.Player.Username</a></td>
+                        <td><a onclick="window.location.href = '/player/@player.Value.Player.PlayerGuid'">@player.Value.Player.Username</a></td>
                         <td>@player.Value.Count</td>
                     </tr>
                 }
@@ -104,7 +104,7 @@ else
                 {
                     <tr style="--bs-table-bg: #622c2c;">
                         <td>@player.Value.Position</td>
-                        <td><a href="/player/@player.Value.Player.PlayerGuid">@player.Value.Player.Username</a></td>
+                        <td><a onclick="window.location.href = '/player/@player.Value.Player.PlayerGuid'">@player.Value.Player.Username</a></td>
                         <td>@player.Value.Count</td>
                     </tr>
                 }
