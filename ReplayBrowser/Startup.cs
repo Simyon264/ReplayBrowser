@@ -93,7 +93,15 @@ public class Startup
         services.Configure<ForwardedHeadersOptions>(options =>
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-            options.KnownProxies.Add(IPAddress.Parse(Configuration["ProxyIP"]));
+            var proxyIP = Configuration["ProxyIP"];
+            if (proxyIP == null)
+            {
+                Log.Fatal("No proxy IP found in appsettings.json. Exiting.");
+                Environment.Exit(1);
+            }
+            
+            Log.Information("Proxy IP: {ProxyIP}", proxyIP);
+            options.KnownProxies.Add(IPAddress.Parse(proxyIP));
         });
         
         services.AddOpenTelemetry().WithMetrics(providerBuilder =>
