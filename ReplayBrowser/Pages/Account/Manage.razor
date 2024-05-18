@@ -15,7 +15,7 @@
 @if(ErrorMessage != null)
 {
     <div class="alert alert-danger" role="alert">
-        Failed to save changes:
+        Error:
         @ErrorMessage
     </div>
 }
@@ -68,7 +68,13 @@ else
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        account = AccountService.GetAccount(authState);
+        account = await AccountService.GetAccount(authState);
+        
+        if (account == null)
+        {
+            ErrorMessage = "Account not found, please go to the home page and then try again. How did you get here?";
+            return;
+        }
         
         var uri = new Uri(NavigationManager.Uri);
         var query = uri.Query;

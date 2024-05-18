@@ -144,10 +144,10 @@ public class LeaderboardService : IHostedService, IDisposable
     {
         var context = _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<ReplayDbContext>();
 
-        var accountCaller = _accountService.GetAccount(authenticationState);
-
+        Account? accountCaller = null;
         if (logAction)
         {
+            accountCaller = await _accountService.GetAccount(authenticationState);
             await _accountService.AddHistory(accountCaller, new HistoryEntry()
             {
                 Action = Enum.GetName(typeof(Action), Action.LeaderboardViewed) ?? "Unknown",
@@ -156,7 +156,7 @@ public class LeaderboardService : IHostedService, IDisposable
             });
         }
         
-        if (username != null)
+        if (username != null && accountCaller != null)
         {
             var accountRequested = await context.Accounts
                 .Include(a => a.Settings)

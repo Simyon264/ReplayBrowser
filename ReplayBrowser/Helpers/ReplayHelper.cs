@@ -37,7 +37,7 @@ public class ReplayHelper
         
         var caller = AccountHelper.GetAccountGuid(state);
         replays = FilterReplays(replays, caller);
-        var account = _accountService.GetAccount(state);
+        var account = await _accountService.GetAccount(state);
         
         await _accountService.AddHistory(account, new HistoryEntry()
         {
@@ -51,7 +51,7 @@ public class ReplayHelper
 
     public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState)
     {
-        var accountCaller = _accountService.GetAccount(authenticationState);
+        var accountCaller = await _accountService.GetAccount(authenticationState);
         
         var accountRequested = _accountService.GetAccountSettings(playerGuid);
         
@@ -244,7 +244,7 @@ public class ReplayHelper
         if (replay == null) 
             return null;
 
-        var caller = _accountService.GetAccount(authstate);
+        var caller = await _accountService.GetAccount(authstate);
         replay = FilterReplay(replay, caller);
         return replay;
     }
@@ -281,7 +281,7 @@ public class ReplayHelper
 
     public async Task<SearchResult> SearchReplays(SearchMode searchMode, string query, int page, AuthenticationState authenticationState)
     {
-        var callerAccount = _accountService.GetAccount(authenticationState);
+        var callerAccount = await _accountService.GetAccount(authenticationState);
         
         switch (searchMode)
         {

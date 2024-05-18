@@ -16,13 +16,15 @@ public class AccountService : IHostedService, IDisposable
 {
     private readonly IMemoryCache _cache;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly Ss14ApiHelper _apiHelper;
     
     private bool _settingsGenerated = false;
     
-    public AccountService(IMemoryCache cache, IServiceScopeFactory scopeFactory)
+    public AccountService(IMemoryCache cache, IServiceScopeFactory scopeFactory, Ss14ApiHelper apiHelper)
     {
         _cache = cache;
         _scopeFactory = scopeFactory;
+        _apiHelper = apiHelper;
     }
     
     public Task StartAsync(CancellationToken cancellationToken)
@@ -77,15 +79,36 @@ public class AccountService : IHostedService, IDisposable
         _cache.Dispose();
     }
 
-    public Account? GetAccount(AuthenticationState authstate)
+    public async Task<Account>? GetAccount(AuthenticationState authstate)
     {
         var guid = AccountHelper.GetAccountGuid(authstate);
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
-        return context.Accounts
+        var account = context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefault(a => a.Guid == guid);
+        
+        if (account == null)
+        {
+            if (guid == null)
+            {
+                return null;
+            }
+            
+            // If the account doesn't exist, we need to create it.
+            account = new Account()
+            {
+                Guid = (Guid)guid,
+                Username = (await _apiHelper.FetchPlayerDataFromGuid((Guid)guid)).Username,
+                Settings = new AccountSettings()
+            };
+            
+            context.Accounts.Add(account);
+            await context.SaveChangesAsync();
+        }
+        
+        return account;
     }
 
     public async Task UpdateAccount(Account? account)

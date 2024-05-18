@@ -128,7 +128,7 @@ else
         }
         
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var account = AccountService.GetAccount(authState);
+        var account = await AccountService.GetAccount(authState);
         if (account == null || !account.IsAdmin)
         {
             Is1984 = true;
