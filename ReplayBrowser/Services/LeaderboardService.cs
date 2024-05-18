@@ -367,6 +367,9 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         }
         
+        // Delete "Unknown" from the MostPlayedJobs leaderboard
+        leaderboards["MostPlayedJobs"].Data.Remove("Unknown");
+        
         // Need to calculate the position of every player in the leaderboard.
         foreach (var leaderboard in leaderboards)
         {
