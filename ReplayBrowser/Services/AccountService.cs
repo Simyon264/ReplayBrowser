@@ -19,6 +19,7 @@ public class AccountService : IHostedService, IDisposable
     private readonly Ss14ApiHelper _apiHelper;
     
     private bool _settingsGenerated = false;
+    private Timer? _timer = null;
     
     public AccountService(IMemoryCache cache, IServiceScopeFactory scopeFactory, Ss14ApiHelper apiHelper)
     {
@@ -30,11 +31,39 @@ public class AccountService : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         GenerateAccountSettings();
+        _timer = new Timer(CheckDuplicateAccounts, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
         return Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// This method checks for duplicate accounts in the database and removes them. Why are there duplicates? I'm not sure. I fucked up *somewhere*
+    /// </summary>
+    private void CheckDuplicateAccounts(object? state)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+        var accounts = context.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .ToList();
+
+        var duplicateAccounts = accounts
+            .GroupBy(a => a.Guid)
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in duplicateAccounts)
+        {
+            var accountToRemove = group.OrderByDescending(a => a.Id).First();
+            Log.Warning($"Duplicate account found: {accountToRemove.Username} ({accountToRemove.Guid})");
+            context.Accounts.Remove(accountToRemove);
+        }
+
+        context.SaveChanges();
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
+        _timer?.Change(Timeout.Infinite, 0);
         return Task.CompletedTask;
     }
 
@@ -77,6 +106,7 @@ public class AccountService : IHostedService, IDisposable
     public void Dispose()
     {
         _cache.Dispose();
+        _timer?.Dispose();
     }
 
     public async Task<Account?> GetAccount(AuthenticationState authstate)
