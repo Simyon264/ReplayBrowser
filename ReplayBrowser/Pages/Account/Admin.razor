@@ -1,0 +1,70 @@
+﻿@page "/account/admin"
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ReplayBrowser.Data.Models.Account
+@using ReplayBrowser.Services
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AccountService AccountService
+@attribute [Authorize]
+
+<h3>Listing all accounts:</h3>
+@if (_isNotAdmin)
+{
+    <p>You are not an admin.</p>
+} else if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Username</th>
+                <th>Guid</th>
+                <th>IsAdmin</th>
+                <th>Settings</th>
+                <th>Logs</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var account in _accounts)
+            {
+                <tr>
+                    <td>@account.Id</td>
+                    <td>@account.Username</td>
+                    <td>@account.Guid</td>
+                    <td>@account.IsAdmin</td>
+                    <td>@JsonSerializer.Serialize(account.Settings)</td>
+                    <td><a href="/account/logs?username=@account.Username">Logs</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code
+{
+    private List<Account> _accounts = [];
+    private bool _isNotAdmin = false;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await AccountService.GetAccount(authState);
+
+        if (user == null || !user.IsAdmin)
+        {
+            _isNotAdmin = true;
+            _isLoading = false;
+            return;
+        }
+
+        _accounts = await AccountService.GetAllAccounts();
+        _accounts = _accounts.OrderBy(x => x.Id).ToList();
+        _isLoading = false;
+    }
+}

@@ -230,4 +230,17 @@ public class AccountService : IHostedService, IDisposable
             await UpdateAccount(callerAccount);
         }
     }
+
+    /// <summary>
+    /// Returns all accounts, their settings and history.
+    /// </summary>
+    public async Task<List<Account>> GetAllAccounts()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+        return await context.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .ToListAsync();        
+    }
 }

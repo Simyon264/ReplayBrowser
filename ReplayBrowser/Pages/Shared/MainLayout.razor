@@ -10,35 +10,36 @@
 
 @code
 {
-    private System.Security.Claims.ClaimsPrincipal User;
+    private System.Security.Claims.ClaimsPrincipal _user;
+    private Account? _account;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        User = authState.User;
-        if (User.Identity.IsAuthenticated)
+        _user = authState.User;
+        if (_user.Identity.IsAuthenticated)
         {
             var guid = (Guid)AccountHelper.GetAccountGuid(authState)!;
-            var account = DbContext.Accounts.FirstOrDefault(a => a.Guid == guid);
+            _account = DbContext.Accounts.FirstOrDefault(a => a.Guid == guid);
             var data = await Ss14ApiHelper.FetchPlayerDataFromGuid(guid);
 
-            if (account == null)
+            if (_account == null)
             {
-                account = new Account()
+                _account = new Account()
                 {
                     Guid = guid,
                     Username = data.Username
                 };
 
-                DbContext.Accounts.Add(account);
+                DbContext.Accounts.Add(_account);
                 await DbContext.SaveChangesAsync();
             
                 Log.Information("Created new account for {Guid} with username {Username}", guid, data.Username);
             }
         
-            if (account.Username != data.Username)
+            if (_account.Username != data.Username)
             {
-                account.Username = data.Username;
+                _account.Username = data.Username;
                 await DbContext.SaveChangesAsync();
                 Log.Information("Updated username for account {Guid} to {Username}", guid, data.Username);
             }
@@ -52,12 +53,16 @@
 
 <div class="page">
     <main class="container my-5">
-        @if (User.Identity.IsAuthenticated)
+        @if (_user.Identity.IsAuthenticated)
         {
-            <p>Hello <strong>@User.Claims.Single(c => c.Type == "name").Value!</strong></p>
+            <p>Hello <strong>@_user.Claims.Single(c => c.Type == "name").Value!</strong></p>
             
             <a href="/account/logout" class="btn btn-primary">Logout</a>
             <a class="btn btn-primary" onclick="window.location.href = '/account/manage';" style="margin-left: 10px">Manage</a>
+            @if(_account?.IsAdmin ?? false)
+            {
+                <a class="btn btn-primary" onclick="window.location.href = '/account/admin';" style="margin-left: 10px">Admin</a>
+            }
         }
         else
         {
