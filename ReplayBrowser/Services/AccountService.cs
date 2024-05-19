@@ -79,7 +79,7 @@ public class AccountService : IHostedService, IDisposable
         _cache.Dispose();
     }
 
-    public async Task<Account>? GetAccount(AuthenticationState authstate)
+    public async Task<Account?> GetAccount(AuthenticationState authstate)
     {
         var guid = AccountHelper.GetAccountGuid(authstate);
         using var scope = _scopeFactory.CreateScope();

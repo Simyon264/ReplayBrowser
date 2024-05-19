@@ -311,16 +311,18 @@ public class ReplayHelper
             case SearchMode.PlayerOocName:
                 var foundOocAccount = _context.Accounts
                     .Include(a => a.Settings)
-                    .FirstOrDefault(a => a.Username.ToLower().Contains(query.ToLower()));
+                    .FirstOrDefault(a => a.Username.ToLower().Equals(query.ToLower()));
 
-                if (callerAccount != null && callerAccount.Username.ToLower().Contains(query.ToLower()))
+                if (callerAccount != null)
                 {
-                    break;
+                    if (callerAccount.Username.ToLower().Equals(query, StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
                 }
                 
                 if (foundOocAccount != null && foundOocAccount.Settings.RedactInformation)
                 {
-                    // if the requestor is not the found account and the requestor is not an admin, deny access
                     if (callerAccount == null || !callerAccount.IsAdmin)
                     {
                         throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");

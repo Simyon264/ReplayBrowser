@@ -52,11 +52,6 @@ else
             uri.searchParams.set("redact", redact);
             window.location.href = uri;
         });
-        
-        // Remove current query string from URL
-        let uri = new URL(window.location.href);
-        uri.search = "";
-        window.history.replaceState({}, document.title, uri);
     });
 </script>
 
