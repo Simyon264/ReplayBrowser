@@ -35,7 +35,14 @@ else if (account != null)
     
     // Toggle for redacting account
     <em>Redacting an account will mean, that only you will be able to see and search for you in replays.</em>
-    <p>Redact Account: <input type="checkbox" id="redact" @bind="account.Settings.RedactInformation" /></p>
+    <p>Redact Account: @if (account.Settings.RedactInformation)
+                       {
+                           <input type="checkbox" id="redact" checked/>
+                       }
+                       else
+                       {
+                           <input type="checkbox" id="redact"/>
+                       }</p>
     
     <button class="btn btn-primary" id="save">Save</button>
 }
