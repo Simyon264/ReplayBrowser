@@ -31,17 +31,47 @@ public class AccountService : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         GenerateAccountSettings();
-        _timer = new Timer(CheckDuplicateAccounts, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        _timer = new Timer(CheckAccounts, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
         return Task.CompletedTask;
     }
     
-    /// <summary>
-    /// This method checks for duplicate accounts in the database and removes them. Why are there duplicates? I'm not sure. I fucked up *somewhere*
-    /// </summary>
-    private void CheckDuplicateAccounts(object? state)
+    private async void CheckAccounts(object? state)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+
+        CheckDuplicate(context);
+        await CheckApiErrorName(context);
+        
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// This method checks for accounts with the name "Unable to fetch username (API error)" tries to fetch the username again.
+    /// </summary>
+    private async Task CheckApiErrorName(ReplayDbContext context)
+    {
+        var accounts = context.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .ToList();
+
+        foreach (var account in accounts)
+        {
+            if (account.Username == "Unable to fetch username (API error)")
+            {
+                Log.Warning($"Account {account.Guid} has an error name. Trying to fetch username again.");
+                var playerData = await _apiHelper.FetchPlayerDataFromGuid(account.Guid);
+                account.Username = playerData?.Username ?? "Unable to fetch username (API error)";
+            }
+        }
+    }
+
+    /// <summary>
+    /// This method checks for duplicate accounts in the database and removes them. Why are there duplicates? I'm not sure. I fucked up *somewhere*
+    /// </summary>
+    private void CheckDuplicate(ReplayDbContext context)
+    {
         var accounts = context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
@@ -57,8 +87,6 @@ public class AccountService : IHostedService, IDisposable
             Log.Warning($"Duplicate account found: {accountToRemove.Username} ({accountToRemove.Guid})");
             context.Accounts.Remove(accountToRemove);
         }
-
-        context.SaveChanges();
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
