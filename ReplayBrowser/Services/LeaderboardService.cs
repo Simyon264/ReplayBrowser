@@ -164,7 +164,7 @@ public class LeaderboardService : IHostedService, IDisposable
 
         // Running just linq queries is too slow, so we need to run raw SQL queries.
         var mostplayed = await context.Database.SqlQueryRaw<SqlResponse>(
-            $"SELECT p.\"PlayerGuid\", p.\"PlayerOocName\", COUNT(DISTINCT p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\", p.\"PlayerOocName\" ORDER BY unique_replays_count DESC;"
+            $"SELECT p.\"PlayerGuid\", COUNT(DISTINCT p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
                                                  ).ToListAsync();
         
         leaderboards["MostSeenPlayers"].Data = mostplayed.ToDictionary(x => x.PlayerGuid.ToString(), x => new PlayerCount()
@@ -173,12 +173,12 @@ public class LeaderboardService : IHostedService, IDisposable
             Player = new PlayerData()
             {
                 PlayerGuid = x.PlayerGuid,
-                Username = x.PlayerOocName
+                Username = string.Empty
             }
         });
         
         var mostplayednoghost = await context.Database.SqlQueryRaw<SqlResponse>(
-            $"SELECT p.\"PlayerGuid\", p.\"PlayerOocName\", COUNT(DISTINCT p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE p.\"PlayerIcName\" != 'Unknown' AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\", p.\"PlayerOocName\" ORDER BY unique_replays_count DESC;"
+            $"SELECT p.\"PlayerGuid\", COUNT(DISTINCT p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE p.\"PlayerIcName\" != 'Unknown' AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
         ).ToListAsync();
         
         leaderboards["MostSeenNoGhost"].Data = mostplayednoghost.ToDictionary(x => x.PlayerGuid.ToString(), x => new PlayerCount()
@@ -187,12 +187,12 @@ public class LeaderboardService : IHostedService, IDisposable
             Player = new PlayerData()
             {
                 PlayerGuid = x.PlayerGuid,
-                Username = x.PlayerOocName
+                Username = string.Empty
             }
         });
         
         var mostantag = await context.Database.SqlQueryRaw<SqlResponse>(
-           $"SELECT p.\"PlayerGuid\", p.\"PlayerOocName\", COUNT(p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE array_length(p.\"AntagPrototypes\", 1) > 0 AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\", p.\"PlayerOocName\" ORDER BY unique_replays_count DESC;"
+           $"SELECT p.\"PlayerGuid\", COUNT(p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE array_length(p.\"AntagPrototypes\", 1) > 0 AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
         ).ToListAsync();
         
         leaderboards["MostAntagPlayers"].Data = mostantag.ToDictionary(x => x.PlayerGuid.ToString(), x => new PlayerCount()
@@ -201,7 +201,7 @@ public class LeaderboardService : IHostedService, IDisposable
             Player = new PlayerData()
             {
                 PlayerGuid = x.PlayerGuid,
-                Username = x.PlayerOocName
+                Username = string.Empty
             }
         });
         
@@ -240,7 +240,7 @@ public class LeaderboardService : IHostedService, IDisposable
         foreach (var jobName in jobs)
         {
             var jobPlayers = await context.Database.SqlQueryRaw<SqlResponse>(
-                $"SELECT p.\"PlayerGuid\", p.\"PlayerOocName\", COUNT(p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE '{jobName}' = ANY(p.\"JobPrototypes\") AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\", p.\"PlayerOocName\" ORDER BY unique_replays_count DESC;"
+                $"SELECT p.\"PlayerGuid\", COUNT(p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE '{jobName}' = ANY(p.\"JobPrototypes\") AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
             ).ToListAsync();
             
             leaderboards[jobName] = new Leaderboard()
@@ -253,13 +253,17 @@ public class LeaderboardService : IHostedService, IDisposable
                     Player = new PlayerData()
                     {
                         PlayerGuid = x.PlayerGuid,
-                        Username = x.PlayerOocName
+                        Username = string.Empty
                     }
                 })
             };
         }
         
         #endregion
+        
+        stopwatch.Stop();
+        Log.Information("SQL queries took {Time}ms", stopwatch.ElapsedMilliseconds);
+        stopwatch.Restart();
         
         // Need to calculate the position of every player in the leaderboard.
         foreach (var leaderboard in leaderboards)
@@ -354,8 +358,6 @@ public class LeaderboardService : IHostedService, IDisposable
     {
         [Column("PlayerGuid")]
         public Guid PlayerGuid { get; set; }
-        [Column("PlayerOocName")]
-        public string PlayerOocName { get; set; }
         [Column("unique_replays_count")]
         public int UniqueReplaysCount { get; set; }
     }
