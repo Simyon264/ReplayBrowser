@@ -152,6 +152,14 @@
                 return;
             }
             
+            // query cannot be empty and must be at least 3 characters
+            if (search.Length < 3)
+            {
+                ErrorMessage = "Query must be at least 3 characters long";
+                stopWatch.Stop();
+                return;
+            }
+            
             // convert mode to enum
             // because we are using a human readable string, we can't use Enum.TryParse
             var searchMode = SearchMode.PlayerOocName;
