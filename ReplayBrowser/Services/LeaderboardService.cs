@@ -16,6 +16,78 @@ namespace ReplayBrowser.Services;
 
 public class LeaderboardService : IHostedService, IDisposable
 {
+    private static readonly Dictionary<string, string[]> JobLeaderboards = new Dictionary<string, string[]>()
+    {
+        {"Command", new []
+        {
+            "Captain",
+            "HeadOfPersonnel",
+            "ChiefMedicalOfficer",
+            "ResearchDirector",
+            "HeadOfSecurity",
+            "ChiefEngineer",
+            "Quartermaster"
+        }},
+        {"Science", new []
+        {
+            "ResearchDirector",
+            "Borg",
+            "Scientist",
+            "ResearchAssistant"
+        }},
+        {"Security", new []
+        {
+            "HeadOfSecurity",
+            "Warden",
+            "Detective",
+            "SecurityOfficer",
+            "SecurityCadet"
+        }},
+        {"Medical", new []
+        {
+            "ChiefMedicalOfficer",
+            "MedicalDoctor",
+            "Chemist",
+            "Paramedic",
+            "Psychologist",
+            "MedicalIntern"
+        }},
+        {"Engineering", new []
+        {
+            "ChiefEngineer",
+            "StationEngineer",
+            "AtmosphericTechnician",
+            "TechnicalAssistant",
+        }},
+        {"Service", new []
+        {
+            "HeadOfPersonnel",
+            "Janitor",
+            "Chef",
+            "Botanist",
+            "Bartender",
+            "Chaplain",
+            "Lawyer",
+            "Musician",
+            "Reporter",
+            "Zookeeper",
+            "Librarian",
+            "ServiceWorker",
+            "Clown",
+            "Mime"
+        }},
+        {"Cargo", new []
+        {
+            "Quartermaster",
+            "CargoTechnician",
+            "SalvageSpecialist",
+        }},
+        {"The tide", new []
+        {
+            "Passenger",
+        }}
+    };
+    
     private Timer? _timer = null;
     private readonly IMemoryCache _cache;
     private readonly Ss14ApiHelper _apiHelper;
@@ -233,6 +305,50 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         });
         
+        // Need to get the top for every department using the job leaderboards
+        foreach (var department in JobLeaderboards)
+        {
+            var departmentPlayers = new List<SqlResponse>();
+            foreach (var job in department.Value)
+            {
+                var jobPlayers = await context.Database.SqlQueryRaw<SqlResponse>(
+                    $"SELECT p.\"PlayerGuid\", COUNT(p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE '{job}' = ANY(p.\"JobPrototypes\") AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
+                ).ToListAsync();
+                departmentPlayers.AddRange(jobPlayers);
+            }
+            
+            departmentPlayers.Sort((a, b) => b.UniqueReplaysCount.CompareTo(a.UniqueReplaysCount));
+            // Count together duplicates
+            var departmentPlayersDict = new Dictionary<Guid, int>();
+            foreach (var player in departmentPlayers)
+            {
+                if (departmentPlayersDict.ContainsKey(player.PlayerGuid))
+                {
+                    departmentPlayersDict[player.PlayerGuid] += player.UniqueReplaysCount;
+                }
+                else
+                {
+                    departmentPlayersDict[player.PlayerGuid] = player.UniqueReplaysCount;
+                }
+            }
+            
+            leaderboards.Add(department.Key, new Leaderboard()
+            {
+                Name = department.Key,
+                TrackedData = "Times played",
+                Data = departmentPlayersDict.ToDictionary(x => x.Key.ToString(), x => new PlayerCount()
+                {
+                    Count = x.Value,
+                    Player = new PlayerData()
+                    {
+                        PlayerGuid = x.Key,
+                        Username = string.Empty
+                    }
+                }),
+                ExtraInfo = $"Jobs: {string.Join(", ", department.Value)}"
+            });
+        }
+        
         // For each role found in the job leaderboards, we add another leaderboard for that role, showing the players who played it the most
         var jobs = mostPlayedJobs.Select(job => job.Job).ToList();
         jobs.Sort();
@@ -335,14 +451,36 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         }
         
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+        await using var context = _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<ReplayDbContext>();
         foreach (var player in returnValue.Data)
         {
             if (player.Value.Player?.PlayerGuid == null) 
                 continue;
-            var playerData = await _apiHelper.FetchPlayerDataFromGuid((Guid)player.Value.Player.PlayerGuid);
-            player.Value.Player.Username = playerData.Username;
-            await Task.Delay(50); // Rate limit the API
+            
+            // get the latest name from the db
+            var playerData = await context.Players
+                .Where(p => p.PlayerGuid == player.Value.Player.PlayerGuid)
+                .OrderByDescending(p => p.Id)
+                .FirstOrDefaultAsync();
+
+            if (playerData == null)
+            {
+                // ??? try to get using api
+                var playerDataApi = await _apiHelper.FetchPlayerDataFromGuid((Guid)player.Value.Player.PlayerGuid);
+                if (playerDataApi != null)
+                {
+                    player.Value.Player.Username = playerDataApi.Username;
+                }
+            }
+            else
+            {
+                player.Value.Player.Username = playerData.PlayerOocName;
+            }
         }
+        stopwatch.Stop();
+        Log.Information("Fetching player data took {Time}ms", stopwatch.ElapsedMilliseconds);
         
         return returnValue;
     }
