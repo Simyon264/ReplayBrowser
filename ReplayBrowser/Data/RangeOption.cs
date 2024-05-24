@@ -38,16 +38,19 @@ public enum RangeOption
 
 public static class RangeOptionExtensions
 {
-    public static TimeSpan GetTimeSpan(this RangeOption rangeOption)
+    /// <summary>
+    /// Converts a <see cref="RangeOption"/> to a string for use in SQL queries.
+    /// </summary>
+    public static string GetTimeSpan(this RangeOption rangeOption)
     {
         return rangeOption switch
         {
-            RangeOption.Last24Hours => TimeSpan.FromHours(24),
-            RangeOption.Last7Days => TimeSpan.FromDays(7),
-            RangeOption.Last30Days => TimeSpan.FromDays(30),
-            RangeOption.Last90Days => TimeSpan.FromDays(90),
-            RangeOption.Last365Days => TimeSpan.FromDays(365),
-            RangeOption.AllTime => TimeSpan.FromDays(365 * 100), // 100 years, should be enough
+            RangeOption.Last24Hours => "1 day",
+            RangeOption.Last7Days => "7 days",
+            RangeOption.Last30Days => "30 days",
+            RangeOption.Last90Days => "90 days",
+            RangeOption.Last365Days => "365 days",
+            RangeOption.AllTime => "100 years", // 100 years, should be enough
             _ => throw new ArgumentOutOfRangeException(nameof(rangeOption), rangeOption, null)
         };
     }
