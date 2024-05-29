@@ -1,4 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
 @using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models.Account
 @using ReplayBrowser.Helpers
@@ -32,7 +33,7 @@
                 };
 
                 DbContext.Accounts.Add(_account);
-                await DbContext.SaveChangesAsync();
+                DbContext.SaveChanges();
             
                 Log.Information("Created new account for {Guid} with username {Username}", guid, data.Username);
             }
@@ -78,6 +79,16 @@
         @Body
     </main>
 </div>
+
+<footer class="footer text-muted text-center">
+    <div class="container">
+        <p>Replay Browser is a project by Simyon (so far no other contributors). Source code available on <a href="https://github.com/Simyon264/ReplayBrowser">GitHub</a>.</p>
+    </div>
+    
+    <div class="container">
+        <p><a href="/contact">Contact</a> | <a href="/privacy">Privacy Policy</a></p>
+    </div>
+</footer>
 
 <script>
     const modalRoot = document.getElementById('modal-root');

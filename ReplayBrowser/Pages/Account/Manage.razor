@@ -2,6 +2,7 @@
 @using System.Text.Json
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Data.Models.Account
 @using ReplayBrowser.Services
 @using Action = ReplayBrowser.Data.Models.Account.Action
@@ -9,6 +10,8 @@
 @inject NavigationManager NavigationManager
 @attribute [Authorize]
 @inject AccountService AccountService
+
+<PageTitle>Manage Account</PageTitle>
 
 <h3>Manage Account</h3>
 
@@ -45,6 +48,21 @@ else if (account != null)
                        }</p>
     
     <button class="btn btn-primary" id="save">Save</button>
+    
+    // Collapse for deleting account
+    <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#deleteAccount" aria-expanded="false" aria-controls="deleteAccount">
+        Delete Account
+    </button>
+    
+    <div class="collapse" id="deleteAccount">
+        <div class="card card-body">
+            <p>Are you sure you want to delete your account? This action is irreversible and will delete all your settings and all other data related to your account.</p>
+            <button class="btn btn-danger" id="deleteAccount">Delete Account</button>
+        </div>
+    </div>
+    
+    // Download data
+    <a class="btn btn-primary" href="/account/download" target="_blank">Download Account Data</a>
 }
 else
 {
@@ -58,6 +76,13 @@ else
             let uri = new URL(window.location.href);
             uri.searchParams.set("redact", redact);
             window.location.href = uri;
+        });
+        
+        $("#deleteAccount").click(function() {
+            if (confirm("Are you sure you want to delete your account? This action is irreversible and will delete all your settings and all other data related to your account."))
+            {
+                window.location.href = "/account/delete";
+            }
         });
     });
 </script>

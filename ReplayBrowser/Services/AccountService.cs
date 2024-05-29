@@ -271,4 +271,16 @@ public class AccountService : IHostedService, IDisposable
             .Include(a => a.History)
             .ToListAsync();        
     }
+
+    /// <summary>
+    /// Deletes an account from the database, including logs and settings.
+    /// </summary>
+    public async Task DeleteAccount(Account account)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+        context.Accounts.Remove(account);
+        await context.SaveChangesAsync();
+        Log.Information($"Deleted account {account.Username} ({account.Guid})");
+    }
 }
