@@ -202,6 +202,8 @@ public class Startup
         });
         
         services.AddHttpLogging(o => { });
+        
+        services.AddSwaggerGen();
     }
     
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -232,8 +234,12 @@ public class Startup
         app.UseAuthorization();
         app.UseAntiforgery();
         
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        
         app.UseEndpoints(endpoints =>
         {
+            endpoints.MapSwagger();
             endpoints.MapControllers();
             endpoints.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode();
