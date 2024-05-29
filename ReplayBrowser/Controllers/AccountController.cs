@@ -5,6 +5,7 @@ namespace ReplayBrowser.Controllers;
 
 [Controller]
 [Route("/account/")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class AccountController : Controller
 {
     private readonly IConfiguration _configuration;

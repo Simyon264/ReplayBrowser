@@ -1,8 +1,10 @@
-﻿using System.Globalization;
+﻿using System.Collections.Concurrent;
+using System.Globalization;
 using System.IO.Compression;
 using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
+using ReplayBrowser.Helpers;
 using ReplayBrowser.Services.ReplayParser.Providers;
 using Serilog;
 using YamlDotNet.Serialization;
@@ -12,6 +14,8 @@ namespace ReplayBrowser.Services.ReplayParser;
 public class ReplayParserService : IHostedService, IDisposable
 {
     public static List<string> Queue = new();
+    public static ConcurrentDictionary<string, double> DownloadProgress = new();
+    public static ParserStatus Status = ParserStatus.Off;
     
     /// <summary>
     /// Since the Replay Meta file was added just yesterday, we want to cut off all replays that were uploaded before that.
@@ -39,6 +43,8 @@ public class ReplayParserService : IHostedService, IDisposable
             throw new Exception("No replay URLs found in appsettings.json. Please set ReplayUrls to an array of URLs.");
         }
         
+        Status = ParserStatus.Idle;
+        
         Task.Run(() => FetchReplays(TokenSource.Token, urLs), TokenSource.Token);
         return Task.CompletedTask;
     }
@@ -46,6 +52,7 @@ public class ReplayParserService : IHostedService, IDisposable
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         await TokenSource.CancelAsync();
+        Status = ParserStatus.Off;
     }
 
     public void Dispose()
@@ -60,6 +67,7 @@ public class ReplayParserService : IHostedService, IDisposable
     {
         while (!token.IsCancellationRequested)
         {
+            Status = ParserStatus.Discovering;
             foreach (var storageUrl in storageUrls)
             {
                 Log.Information("Fetching replays from " + storageUrl);
@@ -91,52 +99,59 @@ public class ReplayParserService : IHostedService, IDisposable
             var timeoutToken = new CancellationTokenSource(10000);
             var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutToken.Token);
             var startTime = DateTime.Now;
-                
-                // Since replays are like 200mb long, we want to parrallelize this.
-                var tasks = new List<Task>();
-                for (var i = 0; i < 10; i++)
+            // Clear the download progress.
+            DownloadProgress.Clear();
+            Status = ParserStatus.Downloading;
+            var tasks = new List<Task>();
+            for (var i = 0; i < 10; i++)
+            {
+                if (Queue.Count == 0)
                 {
-                    if (Queue.Count == 0)
+                    break;
+                }
+                var replay = Queue[0];
+                Queue.RemoveAt(0);
+                // If it's already in the database, skip it.
+                if (await IsReplayParsed(replay))
+                {
+                    continue;
+                }
+                
+                tasks.Add(Task.Run(async () =>
+                {
+                    try
                     {
-                        break;
-                    }
-                    var replay = Queue[0];
-                    Queue.RemoveAt(0);
-                    // If it's already in the database, skip it.
-                    if (await IsReplayParsed(replay))
-                    {
-                        continue;
-                    }
-                    
-                    tasks.Add(Task.Run(async () =>
-                    {
+                        var client = new HttpClient();
+                        var progress = new Progress<double>(x =>
+                        {
+                            DownloadProgress[replay] = x;
+                        });
+                        Log.Information("Downloading " + replay);
+                        var fileStream = await client.GetStreamAsync(replay, progress, token);
+                        Replay? parsedReplay = null;
                         try
                         {
-                            var client = new HttpClient();
-                            Log.Information("Downloading " + replay);
-                            var fileStream = await client.GetStreamAsync(replay, token);
-                            Replay? parsedReplay = null;
-                            try
-                            {
-                                parsedReplay = ParseReplay(fileStream);
-                            }
-                            catch (Exception e)
-                            {
-                                // Ignore
-                                await AddParsedReplayToDb(replay);
-                                return;
-                            }
-                            parsedReplay.Link = replay;
-                            // See if the link matches the date regex, if it does set the date
-                            var replayFileName = Path.GetFileName(replay);
-                            var match = RegexList.ReplayRegex.Match(replayFileName);
-                            if (match.Success)
-                            {
-                                var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
-                                // Need to mark it as UTC, since the server is in UTC.
-                                parsedReplay.Date = date.ToUniversalTime();
-                            }
-                            
+                            parsedReplay = ParseReplay(fileStream);
+                        }
+                        catch (Exception e)
+                        {
+                            // Ignore
+                            await AddParsedReplayToDb(replay);
+                            return;
+                        }
+                        parsedReplay.Link = replay;
+                        // See if the link matches the date regex, if it does set the date
+                        var replayFileName = Path.GetFileName(replay);
+                        var match = RegexList.ReplayRegex.Match(replayFileName);
+                        if (match.Success)
+                        {
+                            var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
+                            // Need to mark it as UTC, since the server is in UTC.
+                            parsedReplay.Date = date.ToUniversalTime();
+                        }
+                        
+                        DownloadProgress.TryRemove(replay, out _);
+                        
                         // One more check to see if it's already in the database.
                         if (await IsReplayParsed(replay))
                         {

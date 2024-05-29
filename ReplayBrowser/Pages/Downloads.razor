@@ -1,0 +1,64 @@
+﻿@page "/downloads"
+
+<h3>Downloads</h3>
+<p>Here you can see the progress of the internal downloads of the website.<br/>The website looks for new replays every 10th minute. So 12:00, 12:10, 12:20, 12:30, etc.</p>
+<p>Status: <b id="status-text">Waiting...</b></p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Filename</th>
+            <th>Progress</th>
+        </tr>
+    </thead>
+    <tbody id="downloads">
+    <p id="download-text-no"><b>No downloads in progress</b></p>
+    </tbody>
+</table>
+
+<script>
+    var Downloads = [];
+    var Status = "";
+    
+    // Every second, fetch active downloads from the server using JQuery
+    setInterval(() => {
+        $.get('/api/Data/download-progress', (data) => {
+            Downloads = data.progress;
+            Status = data.status;
+            updateDownloads();
+        });
+    }, 1000);
+
+    function updateDownloads() {
+        var downloads = document.getElementById('downloads');
+        downloads.innerHTML = '';
+        if (Object.keys(Downloads).length === 0) {
+            document.getElementById('download-text-no').style.display = 'block';
+        } else {
+            document.getElementById('download-text-no').style.display = 'none';
+        }
+
+        document.getElementById('status-text').innerText = Status;
+        
+        for (var key in Downloads) {
+            var row = document.createElement('tr');
+            var filename = document.createElement('td');
+            var progressCell = document.createElement('td');
+
+            filename.innerText = key;
+
+            var progressBar = document.createElement('progress');
+            progressBar.value = Downloads[key];
+            progressBar.max = 1;
+            progressCell.appendChild(progressBar);
+            
+            var percentage = document.createElement('span');
+            percentage.innerText = (Downloads[key] * 100).toFixed(2) + '%';
+            progressCell.appendChild(percentage);
+            
+            row.appendChild(filename);
+            row.appendChild(progressCell);
+            downloads.appendChild(row);
+        }
+    }
+</script>

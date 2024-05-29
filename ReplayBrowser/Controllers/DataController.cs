@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data;
+using ReplayBrowser.Services.ReplayParser;
 
 namespace ReplayBrowser.Controllers;
 
@@ -28,4 +29,24 @@ public class DataController : Controller
 
         return completions;
     }
+    
+    /// <summary>
+    /// Reports the download progress of all replays.
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet("download-progress")]
+    public DownloadProgress GetDownloadProgress()
+    {
+        return new DownloadProgress()
+        {
+            Progress = ReplayParserService.DownloadProgress.ToDictionary(x => x.Key, x => x.Value),
+            Status = ReplayParserService.Status.ToFriendlyString()
+        };
+    }
+}
+
+public class DownloadProgress
+{
+    public string Status { get; set; }
+    public Dictionary<string, double> Progress { get; set; }
 }
