@@ -116,6 +116,7 @@ public class AccountController : Controller
         
         zipStream.Seek(0, SeekOrigin.Begin);
         
-        return File(zipStream, "application/zip", "account.zip");
+        var fileName = $"account-{user.Guid}_{DateTime.Now:yyyy-MM-dd}.zip";
+        return File(zipStream, "application/zip", fileName);
     }
 }
