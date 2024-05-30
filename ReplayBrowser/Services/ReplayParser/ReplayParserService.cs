@@ -128,6 +128,7 @@ public class ReplayParserService : IHostedService, IDisposable
                         {
                             DownloadProgress[replay] = x;
                         });
+                        client.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
                         Log.Information("Downloading " + replay);
                         var fileStream = await client.GetStreamAsync(replay, progress, token);
                         Replay? parsedReplay = null;
