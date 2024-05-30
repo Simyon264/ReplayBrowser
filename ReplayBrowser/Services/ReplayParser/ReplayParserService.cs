@@ -88,13 +88,13 @@ public class ReplayParserService : IHostedService, IDisposable
             await ConsumeQueue(token);
             Log.Information("Next run in " + delay.TotalMinutes + " minutes.");
             Status = ParserStatus.Idle;
-            DownloadProgress.Clear();
             await Task.Delay(delay, token);
         }
     }
     
     private async Task ConsumeQueue(CancellationToken token)
     {
+        DownloadProgress.Clear();
         // Consume the queue.
         while (Queue.Count > 0)
         {
