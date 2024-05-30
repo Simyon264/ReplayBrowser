@@ -57,14 +57,11 @@ public class ReplayHelper
         
         if (accountRequested is { RedactInformation: true })
         {
-            if (accountCaller == null || accountCaller.Guid != playerGuid)
+            if (accountCaller == null || !accountCaller.IsAdmin)
             {
-                switch (accountCaller)
+                if (accountCaller?.Guid != playerGuid)
                 {
-                    case null:
-                        throw new UnauthorizedAccessException("This account is private.");
-                    case { IsAdmin: false }:
-                        throw new UnauthorizedAccessException("This account is private.");
+                    throw new UnauthorizedAccessException("The account you are trying to view is private. Contact the account owner and ask them to make their account public.");
                 }
             }
         }
