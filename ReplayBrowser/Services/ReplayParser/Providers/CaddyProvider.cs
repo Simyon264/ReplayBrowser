@@ -31,6 +31,7 @@ public class CaddyProvider : ReplayProvider
             }
             else if (caddyResponse.IsDir)
             {
+                await Task.Delay(TimeSpan.FromMilliseconds(10), token);
                 await RetrieveFilesRecursive(directoryUrl + caddyResponse.Name, token);
             }
         }
