@@ -40,13 +40,16 @@ public class DataController : Controller
         return new DownloadProgress()
         {
             Progress = ReplayParserService.DownloadProgress.ToDictionary(x => x.Key, x => x.Value),
-            Status = ReplayParserService.Status.ToFriendlyString()
+            Status = ReplayParserService.Status.ToFriendlyString(),
+            Details = ReplayParserService.Details
         };
     }
 }
 
 public class DownloadProgress
 {
-    public string Status { get; set; }
-    public Dictionary<string, double> Progress { get; set; }
+    public required string Status { get; set; }
+    public required Dictionary<string, double> Progress { get; set; }
+    
+    public required string Details { get; set; }
 }

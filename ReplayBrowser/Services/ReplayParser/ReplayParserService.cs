@@ -16,6 +16,7 @@ public class ReplayParserService : IHostedService, IDisposable
     public static List<string> Queue = new();
     public static ConcurrentDictionary<string, double> DownloadProgress = new();
     public static ParserStatus Status = ParserStatus.Off;
+    public static string Details = "";
     
     /// <summary>
     /// Since the Replay Meta file was added just yesterday, we want to cut off all replays that were uploaded before that.
@@ -68,6 +69,7 @@ public class ReplayParserService : IHostedService, IDisposable
         while (!token.IsCancellationRequested)
         {
             Status = ParserStatus.Discovering;
+            Details = $"0/{storageUrls.Length}";
             foreach (var storageUrl in storageUrls)
             {
                 Log.Information("Fetching replays from " + storageUrl);
@@ -80,6 +82,8 @@ public class ReplayParserService : IHostedService, IDisposable
                 {
                     Log.Error(e, "Error while fetching replays from " + storageUrl);
                 }
+                
+                Details = $"{Array.IndexOf(storageUrls, storageUrl) + 1}/{storageUrls.Length}";
             }
             
             var now = DateTime.Now;
@@ -88,13 +92,21 @@ public class ReplayParserService : IHostedService, IDisposable
             await ConsumeQueue(token);
             Log.Information("Next run in " + delay.TotalMinutes + " minutes.");
             Status = ParserStatus.Idle;
+            Details = "";
             await Task.Delay(delay, token);
         }
     }
     
     private async Task ConsumeQueue(CancellationToken token)
     {
-        DownloadProgress.Clear();
+        if (Queue.Count > 0)
+        {
+            DownloadProgress.Clear();
+        }
+        
+        var total = Queue.Count;
+        var completed = 0;
+        
         // Consume the queue.
         while (Queue.Count > 0)
         {
@@ -102,6 +114,8 @@ public class ReplayParserService : IHostedService, IDisposable
             var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutToken.Token);
             var startTime = DateTime.Now;
             // Clear the download progress.
+            Details = $"{completed}/{total}";
+            
             DownloadProgress.Clear();
             Status = ParserStatus.Downloading;
             var tasks = new List<Task>();
@@ -131,6 +145,8 @@ public class ReplayParserService : IHostedService, IDisposable
                         client.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
                         Log.Information("Downloading " + replay);
                         var fileStream = await client.GetStreamAsync(replay, progress, token);
+                        completed++;
+                        Details = $"{completed}/{total}";
                         Replay? parsedReplay = null;
                         try
                         {

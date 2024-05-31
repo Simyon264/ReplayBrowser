@@ -7,7 +7,6 @@ public abstract class ReplayProvider
     public HttpClient GetHttpClient()
     {
         var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         httpClient.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
         return httpClient;
     }

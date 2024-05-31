@@ -5,7 +5,7 @@
 
 <h3>Downloads</h3>
 <p>Here you can see the progress of the internal downloads of the website.<br/>The website looks for new replays every 10th minute. So 12:00, 12:10, 12:20, 12:30, etc.</p>
-<p>Status: <b id="status-text">Waiting...</b></p>
+<p>Status: <b id="status-text">Waiting...</b> <span id="details"></span></p>
 
 <table class="table table-striped">
     <thead>
@@ -20,20 +20,26 @@
 </table>
 
 <script>
-    var Downloads = [];
-    var Status = "";
+    let Downloads = [];
+    let Status = "";
+    let Details = "";
     
-    // Every second, fetch active downloads from the server using JQuery
     setInterval(() => {
+        download();
+    }, 500);
+    
+    function download() {
         $.get('/api/Data/download-progress', (data) => {
             Downloads = data.progress;
             Status = data.status;
+            Details = data.details;
             updateDownloads();
         });
-    }, 1000);
+    }
+    
 
     function updateDownloads() {
-        var downloads = document.getElementById('downloads');
+        let downloads = document.getElementById('downloads');
         downloads.innerHTML = '';
         if (Object.keys(Downloads).length === 0) {
             document.getElementById('download-text-no').style.display = 'block';
@@ -42,20 +48,21 @@
         }
 
         document.getElementById('status-text').innerText = Status;
+        document.getElementById('details').innerText = Details;
         
-        for (var key in Downloads) {
-            var row = document.createElement('tr');
-            var filename = document.createElement('td');
-            var progressCell = document.createElement('td');
+        for (let key in Downloads) {
+            let row = document.createElement('tr');
+            let filename = document.createElement('td');
+            let progressCell = document.createElement('td');
 
             filename.innerText = key;
 
-            var progressBar = document.createElement('progress');
+            let progressBar = document.createElement('progress');
             progressBar.value = Downloads[key];
             progressBar.max = 1;
             progressCell.appendChild(progressBar);
-            
-            var percentage = document.createElement('span');
+
+            let percentage = document.createElement('span');
             percentage.innerText = (Downloads[key] * 100).toFixed(2) + '%';
             progressCell.appendChild(percentage);
             
@@ -64,4 +71,6 @@
             downloads.appendChild(row);
         }
     }
+
+    download();
 </script>
