@@ -50,16 +50,23 @@ public class Startup
         // We need to create a "dummy" system Account to use for unauthenticated requests.
         // This is because the Account system is used for logging and we need to have an account to log as.
         // This is a bit of a hack but it works.
-        var systemAccount = new Account()
+        try
         {
-            Guid = Guid.Empty,
-            Username = "[System] Unauthenticated user",
-        };
+            var systemAccount = new Account()
+            {
+                Guid = Guid.Empty,
+                Username = "[System] Unauthenticated user",
+            };
         
-        if (replayContext.Accounts.FirstOrDefault(a => a.Guid == Guid.Empty) == null) // Only add if it doesn't already exist.
+            if (replayContext.Accounts.FirstOrDefault(a => a.Guid == Guid.Empty) == null) // Only add if it doesn't already exist.
+            {
+                replayContext.Accounts.Add(systemAccount);
+                replayContext.SaveChanges();
+            }
+        }
+        catch (Exception e)
         {
-            replayContext.Accounts.Add(systemAccount);
-            replayContext.SaveChanges();
+            Log.Error(e, "Failed to create system account.");
         }
         
         services.AddSingleton<Ss14ApiHelper>();
