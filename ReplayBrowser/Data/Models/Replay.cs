@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using NpgsqlTypes;
 using YamlDotNet.Serialization;
 
@@ -42,6 +43,13 @@ public class Replay
     
     [JsonIgnore]
     public NpgsqlTsVector RoundEndTextSearchVector { get; set; }
+    
+    /// <summary>
+    /// Determines if a replay is marked as a favorite.
+    /// </summary>
+    [JsonIgnore]
+    [NotMapped]
+    public bool IsFavorite { get; set; }
 
     public void RedactInformation(Guid? accountGuid)
     {

@@ -493,4 +493,20 @@ public class ReplayHelper
 
         return (new List<Replay>(), 0, false);
     }
+
+    public async Task<List<Replay>?> GetFavorites(AuthenticationState authState)
+    {
+        var account = await _accountService.GetAccount(authState);
+        if (account == null)
+        {
+            return null;
+        }
+
+        var replays = await _context.Replays
+            .Include(r => r.RoundEndPlayers)
+            .Where(r => account.FavoriteReplays.Contains(r.Id))
+            .ToListAsync();
+
+        return FilterReplays(replays, account.Guid);
+    }
 }

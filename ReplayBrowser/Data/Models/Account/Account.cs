@@ -10,5 +10,9 @@ public class Account
     public bool IsAdmin { get; set; } = false;
     public AccountSettings Settings { get; set; } = new();
     
+    /// <summary>
+    /// Replays that the user has favorited.
+    /// </summary>
+    public List<int> FavoriteReplays { get; set; } = new();
     public List<HistoryEntry> History { get; set; } = new();
 }

@@ -47,6 +47,7 @@ public class ReplayDbContext : DbContext
         modelBuilder.Entity<Account>()
             .HasIndex(a => a.Guid)
             .IsUnique();
+        
         modelBuilder.Entity<Account>()
             .HasIndex(a => a.Username);
         

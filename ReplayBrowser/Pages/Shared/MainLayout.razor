@@ -61,6 +61,8 @@
             
             <a href="/account/logout" class="btn btn-primary">Logout</a>
             <a class="btn btn-primary" onclick="window.location.href = '/account/manage';" style="margin-left: 10px">Manage</a>
+            <a class="btn btn-primary" onclick="window.location.href = '/favourites';" style="margin-left: 10px">Favourites</a>
+            
             @if(_account?.IsAdmin ?? false)
             {
                 <a class="btn btn-primary" onclick="window.location.href = '/account/admin';" style="margin-left: 10px">Admin</a>
@@ -94,6 +96,8 @@
 </footer>
 
 <script>
+    const isLoggedIn = @(_user.Identity.IsAuthenticated ? "true" : "false");
+    
     const modalRoot = document.getElementById('modal-root');
     const pageRoot = document.querySelector('.page');
     
@@ -109,4 +113,39 @@
         });
     });
     observer.observe(pageRoot, { childList: true, subtree: true });
+
+    function FavouriteReplay(replayId, reloadOnComplete = false) {
+        if (!isLoggedIn) {
+            // not logged, redirect to login
+            window.location.href = '/account/login';
+        }
+        
+        fetch(`/api/replay/favourite/${replayId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                // the response is just a boolean, true if its now favourited, false if its not
+                const isFavourited = response.json();
+                let button = $(`#favorite-button-${replayId}`)
+                // we can just get the first child because the button only has one child
+                // either <i class="fas fa-star"></i> or <i class="far fa-star"></i>
+                let icon = button.children().first();
+                if (isFavourited) {
+                    icon.removeClass('far');
+                    icon.addClass('fas');
+                } else {
+                    icon.removeClass('fas');
+                    icon.addClass('far');
+                }
+                
+                if (reloadOnComplete) {
+                    location.reload();
+                }
+            }
+        });
+    }
+
 </script>

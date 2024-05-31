@@ -1,0 +1,114 @@
+﻿@page "/favourites"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data
+@using ReplayBrowser.Data.Models
+@using ReplayBrowser.Helpers
+@using ReplayBrowser.Pages.Shared
+@inject ReplayHelper ReplayHelper
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<PageTitle>Favorites</PageTitle>
+
+<h3>Saved replays</h3>
+
+@if (_replays == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (_replays.Count == 0)
+{
+    <p><em>No replays saved yet.</em></p>
+}
+else
+{
+    <p>Page @(_page + 1) of @_totalPages</p>
+    <div class="replay-list">
+        @foreach (var replay in _replays)
+        {
+            <ReplayDisplay ReplayData="replay" ReloadOnFavourite="true" />
+        }
+    </div>
+    <div class="pagination">
+        @if (_page > 0)
+        {
+            <button class="btn btn-primary" onclick="pageDown()">Previous page</button>
+        } else
+        {
+            <button class="btn btn-primary" disabled>Previous page</button>
+        }
+        @if (_page < _totalPages - 1)
+        {
+            <button class="btn btn-primary" onclick="pageUp()">Next page</button>
+        } else
+        {
+            <button class="btn btn-primary" disabled>Next page</button>
+        }
+    </div>
+}
+
+<style>
+    .replay-list {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin: 0 0 1rem 0;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin: 1rem 0;
+    }
+
+    .pagination .btn {
+        margin: 0 0.5rem;
+    }
+</style>
+
+
+<script>
+    const currentPage = @_page;
+    const totalPages = @_totalPages;
+    function pageUp() {
+        if (currentPage == (totalPages - 1)) return;
+        window.location.href = `/favourites?page=${currentPage + 1}`;
+    }
+    function pageDown() {
+        if (currentPage == 0) return;
+        window.location.href = `/favourites?page=${currentPage - 1}`;
+    }
+</script>
+
+@code {
+    private List<Replay>? _replays;
+    private int _totalPages = 0;
+    private int _totalCount = 0;
+    private int _page = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var uri = new Uri(NavigationManager.Uri);
+        var query = uri.Query;
+        var replays = await ReplayHelper.GetFavorites(authState);
+        if (query.Length > 1)
+        {
+            var queryDict = System.Web.HttpUtility.ParseQueryString(query.Substring(1));
+        
+            // Try to get the page number from the query string
+            if (int.TryParse(queryDict["page"], out var page))
+            {
+                _page = page;
+            }
+        }
+        
+        // Paginate the replays
+        _totalCount = replays.Count;
+        _totalPages = (int)Math.Ceiling((double)_totalCount / Constants.ReplaysPerPage);
+        _replays = replays.Skip(_page * Constants.ReplaysPerPage).Take(Constants.ReplaysPerPage).ToList();
+    }
+}
