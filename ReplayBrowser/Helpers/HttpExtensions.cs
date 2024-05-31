@@ -6,24 +6,36 @@ public static class HttpExtensions
     {
         var response = await client.GetAsync(requestUri, HttpCompletionOption.ResponseHeadersRead, token);
         var contentLength = response.Content.Headers.ContentLength;
-        var stream = await response.Content.ReadAsStreamAsync();
+        var httpStream = await response.Content.ReadAsStreamAsync(token);
+        var memoryStream = new MemoryStream();
         var totalRead = 0L;
         var buffer = new byte[81920];
-        var isMoreToRead = true;
+
+        int bytesRead;
         do
         {
             token.ThrowIfCancellationRequested();
-            var read = await stream.ReadAsync(buffer, 0, buffer.Length, token);
-            if (read == 0)
+            bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length, token);
+            if (bytesRead == 0)
             {
-                isMoreToRead = false;
+                progress.Report(1);
+                break;
             }
             else
             {
-                totalRead += read;
+                await memoryStream.WriteAsync(buffer, 0, bytesRead, token);
+                totalRead += bytesRead;
                 progress.Report(contentLength == null ? 0 : (double)totalRead / contentLength.Value);
             }
-        } while (isMoreToRead);
-        return stream;
+        } while (true);
+
+        // If the download is completed, set the progress to 100%
+        if (bytesRead == 0)
+        {
+            progress.Report(1);
+        }
+
+        memoryStream.Position = 0; // Reset the stream position to the beginning
+        return memoryStream;
     }
 }

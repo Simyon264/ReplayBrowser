@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO.Compression;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
@@ -144,18 +145,18 @@ public class ReplayParserService : IHostedService, IDisposable
                         });
                         client.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
                         Log.Information("Downloading " + replay);
-                        var fileStream = await client.GetStreamAsync(replay, progress, token);
+                        var stream = await client.GetStreamAsync(replay, progress, token);
                         completed++;
                         Details = $"{completed}/{total}";
                         Replay? parsedReplay = null;
                         try
                         {
-                            parsedReplay = ParseReplay(fileStream);
+                            parsedReplay = ParseReplay(stream);
                         }
                         catch (Exception e)
                         {
-                            // Ignore
-                            await AddParsedReplayToDb(replay);
+                            Log.Error(e, "Error while parsing " + replay);
+                            await AddParsedReplayToDb(replay); // Prevent circular download eating up all resources.
                             return;
                         }
                         parsedReplay.Link = replay;
@@ -205,13 +206,10 @@ public class ReplayParserService : IHostedService, IDisposable
     /// <summary>
     /// Parses a replay file and returns a Replay object.
     /// </summary>
-    /// <param name="fileStream">The file.</param>
-    /// <returns>A parsed replay.</returns>
-    /// <exception cref="FileNotFoundException">The input file path is not valid.</exception>
-    private Replay ParseReplay(Stream fileStream)
+    private Replay ParseReplay(Stream stream)
     {
         // Read the replay file and unzip it.
-        var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Read);
+        var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read);
         var replayFile = zipArchive.GetEntry("_replay/replay_final.yml");
         
         if (replayFile == null)
