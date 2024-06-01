@@ -115,7 +115,7 @@
     function FavouriteReplay(replayId, reloadOnComplete = false) {
         // If we are not logged in, we set href to /account/login
         if (document.getElementById('logged-in-text') == null) {
-            window.location.href = '/account/login';
+            window.location.href = '/account/login'; // horrible code
             return;
         }
         
