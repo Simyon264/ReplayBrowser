@@ -57,7 +57,7 @@
     <main class="container my-5">
         @if (_user.Identity.IsAuthenticated)
         {
-            <p>Hello <strong>@_user.Claims.Single(c => c.Type == "name").Value!</strong></p>
+            <p id="logged-in-text">Hello <strong>@_user.Claims.Single(c => c.Type == "name").Value!</strong></p>
             
             <a href="/account/logout" class="btn btn-primary">Logout</a>
             <a class="btn btn-primary" onclick="window.location.href = '/account/manage';" style="margin-left: 10px">Manage</a>
@@ -96,8 +96,6 @@
 </footer>
 
 <script>
-    const isLoggedIn = @(_user.Identity.IsAuthenticated ? "true" : "false");
-    
     const modalRoot = document.getElementById('modal-root');
     const pageRoot = document.querySelector('.page');
     
@@ -115,9 +113,10 @@
     observer.observe(pageRoot, { childList: true, subtree: true });
 
     function FavouriteReplay(replayId, reloadOnComplete = false) {
-        if (!isLoggedIn) {
-            // not logged, redirect to login
+        // If we are not logged in, we set href to /account/login
+        if (document.getElementById('logged-in-text') == null) {
             window.location.href = '/account/login';
+            return;
         }
         
         fetch(`/api/replay/favourite/${replayId}`, {
@@ -128,22 +127,24 @@
         }).then(response => {
             if (response.ok) {
                 // the response is just a boolean, true if its now favourited, false if its not
-                const isFavourited = response.json();
-                let button = $(`#favorite-button-${replayId}`)
-                // we can just get the first child because the button only has one child
-                // either <i class="fas fa-star"></i> or <i class="far fa-star"></i>
-                let icon = button.children().first();
-                if (isFavourited) {
-                    icon.removeClass('far');
-                    icon.addClass('fas');
-                } else {
-                    icon.removeClass('fas');
-                    icon.addClass('far');
-                }
+                response.json().then(isFavourited => {
+                    let button = $(`#favorite-button-${replayId}`)
                 
-                if (reloadOnComplete) {
-                    location.reload();
-                }
+                    // we can just get the first child because the button only has one child
+                    // either <i class="fas fa-star"></i> or <i class="far fa-star"></i>
+                    let icon = button.children().first();
+                    if (isFavourited) {
+                        icon.removeClass('far');
+                        icon.addClass('fas');
+                    } else {
+                        icon.removeClass('fas');
+                        icon.addClass('far');
+                    }
+
+                    if (reloadOnComplete) {
+                        location.reload();
+                    }
+                })
             }
         });
     }

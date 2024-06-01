@@ -19,7 +19,7 @@
         </button>
         <a class="btn btn-secondary" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
         
-        <button class="btn btn-outline-danger" style="float: right" id="favorite-button-@ReplayData.Id" onclick="FavouriteReplay(@ReplayData.Id, @ReloadOnFavourite.ToString().ToLower())">
+        <button class="btn btn-outline-danger" style="float: right; margin-top: 10px" id="favorite-button-@ReplayData.Id" onclick="FavouriteReplay(@ReplayData.Id, @ReloadOnFavourite.ToString().ToLower())">
             @if (ReplayData.IsFavorite)
             {
                 <i class="fas fa-star"></i>
