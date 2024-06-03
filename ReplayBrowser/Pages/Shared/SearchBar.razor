@@ -45,6 +45,9 @@
 </style>
 
 <script>
+
+    let selectedAutocompleteOption = null;
+    
     // This is a script to make the dropdown change the text of the button
     const dropdowns = document.querySelectorAll('.dropdown-menu a');
     dropdowns.forEach((dropdown) => {
@@ -53,10 +56,18 @@
             document.getElementById('searchModeButton').textContent = text;
         });
     });
+
+    // event listener to track selected autocomplete option
+    $('#search').on('autocomplete:selected', function (event, suggestion, dataset) {
+        selectedAutocompleteOption = suggestion;
+    });
         
     function search(page) {
         const searchMode = document.getElementById('searchModeButton').textContent;
         const searchText = document.querySelector('.search-bar input').value;
+
+        // sanity check
+        if(page === null) page = 0;
         
         const builder = new URLSearchParams();
         builder.append('mode', searchMode);
@@ -64,11 +75,10 @@
         builder.append('page', page);
         window.location.href = '/search?' + builder.toString();
     }
-    
+
     document.querySelector('.search-bar input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            //search(0);
-            //Temporary remove since autocomplete uses enter to select
+        if (e.key === 'Enter' && !e.defaultPrevented) {)
+            search(0);
         }
     });
     
@@ -86,6 +96,11 @@
                     // Currently, autocomplete only supports searching for player names. So delete the item
                     item.remove();
                 }   
+            },
+            onPick(el, item) {
+                selectedAutocompleteOption = item.innerHTML;
+                document.querySelector('.search-bar input').value = selectedAutocompleteOption;
+                search(0)
             }
         })
     }, false);
