@@ -20,30 +20,77 @@ else
 {
     <table class="table">
         <thead>
-            <tr>
-                <th>Id</th>
-                <th>Username</th>
-                <th>Guid</th>
-                <th>IsAdmin</th>
-                <th>Settings</th>
-                <th>Logs</th>
-            </tr>
+        <tr>
+            <th>Id</th>
+            <th>Username</th>
+            <th>Guid</th>
+            <th>IsAdmin</th>
+            <th>Settings</th>
+            <th>Favorites</th>
+            <th>Logs</th>
+        </tr>
         </thead>
         <tbody>
-            @foreach (var account in _accounts)
-            {
-                <tr>
-                    <td>@account.Id</td>
-                    <td>@account.Username</td>
-                    <td>@account.Guid</td>
-                    <td>@account.IsAdmin</td>
-                    <td>@JsonSerializer.Serialize(account.Settings)</td>
-                    <td><a href="/account/logs?username=@account.Username">Logs</a></td>
-                </tr>
-            }
+        @foreach (var account in _accounts)
+        {
+            <tr>
+                <td>@account.Id</td>
+                <td>@account.Username</td>
+                <td>@account.Guid</td>
+                <td>@account.IsAdmin</td>
+                <td>@JsonSerializer.Serialize(account.Settings)</td>
+                <td>@JsonSerializer.Serialize(account.FavoriteReplays)</td>
+                <td><a href="/account/logs?username=@account.Username">Logs</a></td>
+            </tr>
+        }
         </tbody>
     </table>
+    
+    // GDPR compliance
+    <p>Putting in a guid in this field will delete and permanently remove any and all replay data associated with the account.</p>
+    <input type="text" id="deleteGuid" placeholder="Guid" class="form-control" />
+    <button id="deleteAccountButton" class="btn btn-primary">Delete account</button>
+    <button id="getAccountData" class="btn btn-primary">Download account data</button>
 }
+
+<script>
+    $(document).ready(function() {
+        $('#deleteAccountButton').click(function() {
+            var guid = $('#deleteGuid').val();
+            if (guid === '') {
+                alert('Guid cannot be empty.');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete the account?')) {
+                return;
+            }
+
+            $.ajax({
+                url: '/account/delete-admin?guid=' + guid,
+                type: 'POST',
+                contentType: 'application/json',
+                success: function() {
+                    alert('Account deleted.');
+                },
+                error: function() {
+                    alert('Failed to delete account.');
+                }
+            });
+        });
+        
+        $('#getAccountData').click(function() {
+            var guid = $('#deleteGuid').val();
+            if (guid === '') {
+                alert('Guid cannot be empty.');
+                return;
+            }
+
+            // Open a new tab with the account data
+            window.open('/account/download-data-admin?guid=' + guid, '_blank');
+        });
+    });
+</script>
 
 @code
 {

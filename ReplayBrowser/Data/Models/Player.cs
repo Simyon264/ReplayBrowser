@@ -24,10 +24,18 @@ public class Player
     public int? ReplayId { get; set; }
     public Replay? Replay { get; set; }
 
-    public void RedactInformation()
+    public void RedactInformation(bool wasGdpr = false)
     {
+        if (wasGdpr)
+        {
+            PlayerIcName = "Removed by GDPR request";
+            PlayerOocName = "Removed by GDPR request";
+        }
+        else
+        {
+            PlayerIcName = "Redacted";
+            PlayerOocName = "Redacted";
+        }
         PlayerGuid = Guid.Empty;
-        PlayerIcName = "Redacted";
-        PlayerOocName = "Redacted";
     }
 }

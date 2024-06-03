@@ -241,6 +241,19 @@ public class ReplayParserService : IHostedService, IDisposable
             replay.ServerName = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerName;
         }
         
+        // Check for GDPRed accounts
+        var gdprGuids = GetDbContext().GdprRequests.Select(x => x.Guid).ToList();
+        if (replay.RoundEndPlayers != null)
+        {
+            foreach (var player in replay.RoundEndPlayers)
+            {
+                if (gdprGuids.Contains(player.PlayerGuid))
+                {
+                    player.RedactInformation(true);
+                }
+            }
+        }
+        
         return replay;
     }
 
