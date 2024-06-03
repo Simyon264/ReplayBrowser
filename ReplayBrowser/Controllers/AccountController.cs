@@ -162,7 +162,7 @@ public class AccountController : Controller
         }
         
         zipStream.Seek(0, SeekOrigin.Begin);
-        var fileName = $"account-gdpr-{user.Guid}_{DateTime.Now:yyyy-MM-dd}.zip";
+        var fileName = $"account-gdpr-{guid}_{DateTime.Now:yyyy-MM-dd}.zip";
         return File(zipStream, "application/zip", fileName);
     }
     
