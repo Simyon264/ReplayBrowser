@@ -77,8 +77,7 @@
     }
 
     document.querySelector('.search-bar input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.defaultPrevented) {
-            console.log("search")
+        if (e.key === 'Enter' && !e.defaultPrevented) {)
             search(0);
         }
     });
@@ -100,7 +99,6 @@
             },
             onPick(el, item) {
                 selectedAutocompleteOption = item.innerHTML;
-                console.log("onpick", selectedAutocompleteOption, item.innerHTML)
                 document.querySelector('.search-bar input').value = selectedAutocompleteOption;
                 search(0)
             }
