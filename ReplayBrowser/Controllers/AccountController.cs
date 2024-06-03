@@ -119,29 +119,27 @@ public class AccountController : Controller
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == parsedGuid);
         
-        if (user == null)
-        {
-            return NotFound("Account is null. This should not happen.");
-        }
-        
         var zipStream = new MemoryStream();
         using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
         {
-            var historyEntry = archive.CreateEntry("history.json");
-            using (var entryStream = historyEntry.Open())
+            if (user != null)
             {
-                await JsonSerializer.SerializeAsync(entryStream, user.History);
-            }
-
-            user.History = null;
-
-            var baseEntry = archive.CreateEntry("user.json");
-            using (var entryStream = baseEntry.Open())
-            {
-                await JsonSerializer.SerializeAsync(entryStream, user, new JsonSerializerOptions
+                var historyEntry = archive.CreateEntry("history.json");
+                using (var entryStream = historyEntry.Open())
                 {
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                });
+                    await JsonSerializer.SerializeAsync(entryStream, user.History);
+                }
+
+                user.History = null;
+
+                var baseEntry = archive.CreateEntry("user.json");
+                using (var entryStream = baseEntry.Open())
+                {
+                    await JsonSerializer.SerializeAsync(entryStream, user, new JsonSerializerOptions
+                    {
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    });
+                }
             }
 
             var replays = await _context.Replays
