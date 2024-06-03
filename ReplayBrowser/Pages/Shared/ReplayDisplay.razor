@@ -12,6 +12,10 @@
         <h5 class="card-title">@_nameFormatted</h5>
         <p class="card-text">Map: @ReplayData.Map</p>
         <p class="card-text">Gamemode: @ReplayData.Gamemode</p>
+        @if (ReplayData.RoundEndPlayers == null || ReplayData.RoundEndText == null)
+        {
+            <p class="card-text text-danger">Incomplete data</p>
+        }
     </div>
     <div class="card-footer">
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#r-@ReplayData.Id">

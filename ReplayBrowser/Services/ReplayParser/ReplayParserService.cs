@@ -151,7 +151,7 @@ public class ReplayParserService : IHostedService, IDisposable
                         Replay? parsedReplay = null;
                         try
                         {
-                            parsedReplay = ParseReplay(stream);
+                            parsedReplay = ParseReplay(stream, replay);
                         }
                         catch (Exception e)
                         {
@@ -159,7 +159,6 @@ public class ReplayParserService : IHostedService, IDisposable
                             await AddParsedReplayToDb(replay); // Prevent circular download eating up all resources.
                             return;
                         }
-                        parsedReplay.Link = replay;
                         // See if the link matches the date regex, if it does set the date
                         var replayFileName = Path.GetFileName(replay);
                         var match = RegexList.ReplayRegex.Match(replayFileName);
@@ -206,7 +205,7 @@ public class ReplayParserService : IHostedService, IDisposable
     /// <summary>
     /// Parses a replay file and returns a Replay object.
     /// </summary>
-    private Replay ParseReplay(Stream stream)
+    private Replay ParseReplay(Stream stream, string replayLink)
     {
         // Read the replay file and unzip it.
         var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read);
@@ -228,6 +227,19 @@ public class ReplayParserService : IHostedService, IDisposable
         {
             throw new Exception("Replay is not valid.");
         }
+
+        replay.Link = replayLink;
+
+        var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
+        if (replay.ServerId == Constants.UnsetServerId)
+        {
+            replay.ServerId = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerId;
+        }
+        
+        if (replay.ServerName == Constants.UnsetServerName)
+        {
+            replay.ServerName = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerName;
+        }
         
         return replay;
     }
@@ -244,6 +256,10 @@ public class ReplayParserService : IHostedService, IDisposable
             {
                 return;
             }
+        } else
+        {
+            Log.Warning("Replay " + replay + " does not match the regex.");
+            return;
         }
         
         // If it's already in the database, skip it.

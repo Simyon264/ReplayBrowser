@@ -13,7 +13,10 @@
     <p>Round ID: @Replay.RoundId</p>
     <p>Gamemode: @Replay.Gamemode</p>
     <p>Size: @FormattedSize</p>
-    
+    @if (Replay.RoundEndPlayers == null || Replay.RoundEndText == null)
+    {
+        <p class="card-text text-danger">Replay not complete, round end text and/or round end players not available</p>
+    }
     
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalEndText-@Replay.Id">
         View Round End Text

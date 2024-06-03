@@ -2,9 +2,12 @@
 
 public class StorageUrl
 {
-    public string Url { get; set; }
-    public string Provider { get; set; }
-
+    public required string Url { get; set; }
+    public required string Provider { get; set; }
+    
+    public required string FallBackServerName { get; set; } 
+    public required string FallBackServerId { get; set; }
+    
     public override string ToString()
     {
         return Url;
