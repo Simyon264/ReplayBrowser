@@ -248,6 +248,9 @@ public class ReplayHelper
     
     private Replay FilterReplay(Replay replay, Account? caller = null)
     {
+        if (replay.RoundEndPlayers == null)
+            return replay;
+        
         foreach (var replayRoundEndPlayer in replay.RoundEndPlayers)
         {
             var accountForPlayer = _accountService.GetAccountSettings(replayRoundEndPlayer.PlayerGuid);

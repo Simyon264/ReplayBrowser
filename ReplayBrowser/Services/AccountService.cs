@@ -180,6 +180,7 @@ public class AccountService : IHostedService, IDisposable
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
         context.Accounts.Update(account);
+        GenerateAccountSettings();
         await context.SaveChangesAsync();
     }
 

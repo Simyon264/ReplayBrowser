@@ -152,18 +152,23 @@ public class LeaderboardService : IHostedService, IDisposable
             });
         }
         
-        if (username != null && accountCaller != null)
+        if (username != null)
         {
             var accountRequested = await context.Accounts
                 .Include(a => a.Settings)
                 .FirstOrDefaultAsync(a => a.Username.ToLower() == username.ToLower());
 
-            if (accountRequested != null && accountRequested.Settings.RedactInformation &&
-                (accountCaller == null || accountCaller.Guid != accountRequested.Guid))
+            if (accountRequested != null)
             {
-                if (accountCaller == null || !accountCaller.IsAdmin)
+                if (accountRequested.Settings.RedactInformation)
                 {
-                    throw new UnauthorizedAccessException("This user has chosen to privatize their information.");
+                    if (accountRequested.Id != accountCaller?.Id)
+                    {
+                        if (accountCaller is not { IsAdmin: true })
+                        {
+                            throw new UnauthorizedAccessException("This user has chosen to privatize their information.");
+                        }
+                    }
                 }
             }
         }
