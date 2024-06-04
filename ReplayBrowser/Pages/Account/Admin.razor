@@ -56,7 +56,7 @@ else
 <script>
     $(document).ready(function() {
         $('#deleteAccountButton').click(function() {
-            var guid = $('#deleteGuid').val();
+            const guid = $('#deleteGuid').val();
             if (guid === '') {
                 alert('Guid cannot be empty.');
                 return;
@@ -80,7 +80,7 @@ else
         });
         
         $('#getAccountData').click(function() {
-            var guid = $('#deleteGuid').val();
+            const guid = $('#deleteGuid').val();
             if (guid === '') {
                 alert('Guid cannot be empty.');
                 return;
