@@ -1,5 +1,4 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.EntityFrameworkCore
 @using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models.Account
 @using ReplayBrowser.Helpers
@@ -9,6 +8,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayDbContext DbContext
 @inject Ss14ApiHelper Ss14ApiHelper
+@inject NavigationManager NavigationManager
 
 @code
 {
@@ -23,27 +23,13 @@
         {
             var guid = (Guid)AccountHelper.GetAccountGuid(authState)!;
             _account = DbContext.Accounts.FirstOrDefault(a => a.Guid == guid);
-            var data = await Ss14ApiHelper.FetchPlayerDataFromGuid(guid);
-
             if (_account == null)
             {
-                _account = new Account()
+                Log.Error("Account {Guid} is authenticated but not found in the database", guid);
+                NavigationManager.NavigateTo("account/redirect", new NavigationOptions()
                 {
-                    Guid = guid,
-                    Username = data.Username
-                };
-
-                DbContext.Accounts.Add(_account);
-                DbContext.SaveChanges();
-            
-                Log.Information("Created new account for {Guid} with username {Username}", guid, data.Username);
-            }
-        
-            if (_account.Username != data.Username)
-            {
-                _account.Username = data.Username;
-                await DbContext.SaveChangesAsync();
-                Log.Information("Updated username for account {Guid} to {Username}", guid, data.Username);
+                    ForceLoad = true
+                });
             }
         }
     }

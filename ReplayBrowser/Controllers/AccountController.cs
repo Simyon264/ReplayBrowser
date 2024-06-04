@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
+using ReplayBrowser.Data.Models.Account;
 using ReplayBrowser.Helpers;
+using Serilog;
 
 namespace ReplayBrowser.Controllers;
 
@@ -18,11 +20,13 @@ public class AccountController : Controller
 {
     private readonly IConfiguration _configuration;
     private readonly ReplayDbContext _context;
+    private readonly Ss14ApiHelper _ss14ApiHelper;
     
-    public AccountController(IConfiguration configuration, ReplayDbContext context)
+    public AccountController(IConfiguration configuration, ReplayDbContext context, Ss14ApiHelper ss14ApiHelper)
     {
         _configuration = configuration;
         _context = context;
+        _ss14ApiHelper = ss14ApiHelper;
     }
     
     [Route("login")]
@@ -38,6 +42,48 @@ public class AccountController : Controller
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync("Cookies");
+        return Redirect("/");
+    }
+
+    /// <summary>
+    /// Creates an account in the database, then redirects to the home page.
+    /// </summary>
+    [Authorize]
+    [Route("redirect")]
+    public async Task<IActionResult> RedirectFromLogin()
+    {
+        if (!User.Identity.IsAuthenticated)
+        {
+            return Unauthorized();
+        }
+        
+        var guid = AccountHelper.GetAccountGuid(User);
+        
+        if (guid == null) 
+            return BadRequest("Guid is null. This should not happen.");
+        
+        var user = _context.Accounts.FirstOrDefault(a => a.Guid == guid);
+        var data = await _ss14ApiHelper.FetchPlayerDataFromGuid((Guid)guid);
+        if (user == null)
+        {
+            user = new Account()
+            {
+                Guid = (Guid) guid,
+                Username = data?.Username ?? "API Error",
+            };
+            _context.Accounts.Add(user);
+            await _context.SaveChangesAsync();
+            Log.Information("Created new account for {Guid} with username {Username}", guid, data?.Username);
+        }
+        else
+        {
+            if (data?.Username != user.Username) 
+            {
+                user.Username = data?.Username ?? "API Error";
+                await _context.SaveChangesAsync();
+                Log.Information("Updated username for {Guid} to {Username}", guid, data?.Username);
+            }
+        }
         return Redirect("/");
     }
 
