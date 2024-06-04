@@ -61,6 +61,19 @@ else if (account != null)
         </div>
     </div>
     
+    // Collapse for permanently deleting account
+    <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#deleteAccountPermanently" aria-expanded="false" aria-controls="deleteAccountPermanently">
+        Delete Account Permanently And Remove All Data From Replays
+    </button>
+    
+    <div class="collapse" id="deleteAccountPermanently">
+        <div class="card card-body">
+            <p>Are you sure you want to delete your account? This action is <b>irreversible</b> and will delete all your settings and all other data related to your account.</p>
+            <b>Furthermore, all replays that have your name in them will have your name removed from them. This cannot be undone.</b>
+            <button class="btn btn-danger" id="deleteAccountPermanently">Delete Account Permanently</button>
+        </div>
+    </div>
+    
     // Download data
     <a class="btn btn-primary" href="/account/download" target="_blank">Download Account Data</a>
 }
@@ -82,6 +95,13 @@ else
             if (confirm("Are you sure you want to delete your account? This action is irreversible and will delete all your settings and all other data related to your account."))
             {
                 window.location.href = "/account/delete";
+            }
+        });
+        
+        $("#deleteAccountPermanently").click(function() {
+            if (confirm("This will remove you permanently from all replays. Are you sure? Even you will not be able to search for yourself in replays anymore. This action is irreversible and will delete all your settings and all other data related to your account."))
+            {
+                window.location.href = "/account/delete?permanently=true";
             }
         });
     });

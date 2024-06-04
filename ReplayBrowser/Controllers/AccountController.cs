@@ -62,6 +62,13 @@ public class AccountController : Controller
         if (guid == null) 
             return BadRequest("Guid is null. This should not happen.");
         
+        var gdprRequest = await _context.GdprRequests.FirstOrDefaultAsync(g => g.Guid == guid);
+        if (gdprRequest != null)
+        {
+            await HttpContext.SignOutAsync("Cookies");
+            return BadRequest("You have requested to be deleted from the database. You cannot create an account.");
+        }
+        
         var user = _context.Accounts.FirstOrDefault(a => a.Guid == guid);
         var data = await _ss14ApiHelper.FetchPlayerDataFromGuid((Guid)guid);
         if (user == null)
@@ -91,7 +98,9 @@ public class AccountController : Controller
     /// Deletes the account from the logged in user.
     /// </summary>
     [HttpGet("delete")]
-    public async Task<IActionResult> DeleteAccount()
+    public async Task<IActionResult> DeleteAccount(
+        [FromQuery] bool permanently = false
+        )
     {
         if (!User.Identity.IsAuthenticated)
         {
@@ -108,6 +117,26 @@ public class AccountController : Controller
         if (user == null)
         {
             return NotFound("Account is null. This should not happen.");
+        }
+        
+        if (permanently)
+        {
+            _context.GdprRequests.Add(new GdprRequest
+            {
+                Guid = (Guid) guid
+            });
+            
+            _context.Replays
+                .Include(replay => replay.RoundEndPlayers)
+                .Where(r => r.RoundEndPlayers != null && r.RoundEndPlayers.Any(p => p.PlayerGuid == guid))
+                .ToList()
+                .ForEach(r =>
+                {
+                    r.RoundEndPlayers!
+                        .Where(p => p.PlayerGuid == guid)
+                        .ToList()
+                        .ForEach(p => p.RedactInformation(true));
+                });
         }
         
         _context.Accounts.Remove(user);
