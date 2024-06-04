@@ -211,6 +211,59 @@ public class AccountController : Controller
         var fileName = $"account-gdpr-{guid}_{DateTime.Now:yyyy-MM-dd}.zip";
         return File(zipStream, "application/zip", fileName);
     }
+
+    /// <summary>
+    /// Deletes an account in a way a user also has the option to delete. This does not remove them from future and past replays, instead only the entry in the account table.
+    /// </summary>
+    [HttpPost("delete-admin-non-gdpr")]
+    [Authorize]
+    public async Task<IActionResult> AdminDeleteNonGdpr(
+        [FromQuery] string guid
+    )
+    {
+        if (string.IsNullOrWhiteSpace(guid))
+        {
+            return BadRequest("Guid is null or empty.");
+        }
+        
+        if (!Guid.TryParse(guid, out var parsedGuid))
+        {
+            return BadRequest("Guid is not a valid guid.");
+        }
+        
+        if (!User.Identity.IsAuthenticated)
+        {
+            return Unauthorized();
+        }
+        
+        var guidRequestor = AccountHelper.GetAccountGuid(User);
+        
+        var requestor = await _context.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .FirstOrDefaultAsync(a => a.Guid == guidRequestor);
+        
+        if (requestor == null)
+        {
+            return NotFound("Account is null. This should not happen.");
+        }
+        
+        if (!requestor.IsAdmin) 
+            return Unauthorized("You are not an admin.");
+        
+        var user = await _context.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .FirstOrDefaultAsync(a => a.Guid == parsedGuid);
+        
+        if (user != null) 
+        {
+            _context.Accounts.Remove(user);
+            await _context.SaveChangesAsync();
+        }
+        
+        return Ok();        
+    }
     
     /// <summary>
     /// Removed a specific guid permanently from the database. Future replays will have this player replaced with "Removed by GDPR request".
@@ -218,7 +271,7 @@ public class AccountController : Controller
     /// <returns></returns>
     [HttpPost("delete-admin")]
     [Authorize]
-    public async Task<IActionResult> AdminDelete(
+    public async Task<IActionResult> AdminDeleteGdpr(
         [FromQuery] string guid
         )
     {

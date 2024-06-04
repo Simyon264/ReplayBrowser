@@ -49,8 +49,9 @@ else
     // GDPR compliance
     <p>Putting in a guid in this field will delete and permanently remove any and all replay data associated with the account.</p>
     <input type="text" id="deleteGuid" placeholder="Guid" class="form-control" />
-    <button id="deleteAccountButton" class="btn btn-primary">Delete account</button>
+    <button id="deleteAccountButton" class="btn btn-primary">Delete account (gdpr)</button>
     <button id="getAccountData" class="btn btn-primary">Download account data</button>
+    <button id="deleteAccountNonGdpr" class="btn btn-primary">Delete account (non-gdpr)</button>
 }
 
 <script>
@@ -88,6 +89,30 @@ else
 
             // Open a new tab with the account data
             window.open('/account/download-data-admin?guid=' + guid, '_blank');
+        });
+        
+        $('#deleteAccountNonGdpr').click(function() {
+            const guid = $('#deleteGuid').val();
+            if (guid === '') {
+                alert('Guid cannot be empty.');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete the account?')) {
+                return;
+            }
+
+            $.ajax({
+                url: '/account/delete-admin-non-gdpr?guid=' + guid,
+                type: 'POST',
+                contentType: 'application/json',
+                success: function() {
+                    alert('Account deleted.');
+                },
+                error: function() {
+                    alert('Failed to delete account.');
+                }
+            });
         });
     });
 </script>
