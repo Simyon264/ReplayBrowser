@@ -178,8 +178,6 @@ public class ReplayParserService : IHostedService, IDisposable
                             }
                         }
                         
-                        DownloadProgress.TryRemove(replay, out _);
-                        
                         // One more check to see if it's already in the database.
                         if (await IsReplayParsed(replay))
                         {
