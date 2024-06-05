@@ -1,6 +1,8 @@
 ﻿@using System.Text.RegularExpressions
 @using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models
+@using ReplayBrowser.Services.ReplayParser
+@inject ReplayParserService ReplayParserService
 
 @if(Replay != null)
 {
@@ -204,8 +206,10 @@
         {
             return;
         }
-        var matchName = RegexList.ServerNameRegex.Match(fileName);
-        var matchDate = RegexList.ReplayRegex.Match(fileName);
+
+        var storageUrl = ReplayParserService.GetStorageUrlFromReplayLink(Replay.Link);
+        var matchName = storageUrl.ServerNameRegexCompiled.Match(fileName);
+        var matchDate = storageUrl.ReplayRegexCompiled.Match(fileName);
         if (matchName.Success && matchDate.Success)
         {
             NameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value.Replace("_","-")}";

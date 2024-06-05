@@ -72,8 +72,9 @@ public class Startup
         services.AddSingleton<Ss14ApiHelper>();
         services.AddSingleton<AccountService>();
         services.AddSingleton<LeaderboardService>();
+        services.AddSingleton<ReplayParserService>();
         
-        services.AddHostedService<ReplayParserService>();
+        services.AddHostedService<BackgroundServiceStarter<ReplayParserService>>();
         services.AddHostedService<BackgroundServiceStarter<AccountService>>();
         services.AddHostedService<BackgroundServiceStarter<LeaderboardService>>();
         

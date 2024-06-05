@@ -3,9 +3,11 @@
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
 @using ReplayBrowser.Services
+@using ReplayBrowser.Services.ReplayParser
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayHelper ReplayHelper
 @inject AccountService AccountService
+@inject ReplayParserService ReplayParserService
 
 <div class="card" style="width: 18rem; margin-top: 1rem">
     <div class="card-body">
@@ -68,11 +70,20 @@
         {
             return;
         }
-        var matchName = RegexList.ServerNameRegex.Match(fileName);
-        var matchDate = RegexList.ReplayRegex.Match(fileName);
+        var storageUrl = ReplayParserService.GetStorageUrlFromReplayLink(ReplayData.Link);
+        var matchName = storageUrl.ServerNameRegexCompiled.Match(fileName);
+        var matchDate = storageUrl.ReplayRegexCompiled.Match(fileName);
         if (matchName.Success && matchDate.Success)
         {
-            _nameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value}";
+            if (string.IsNullOrWhiteSpace(matchName.Groups[1].Value)) 
+            {
+                // wut? Fallback to server id
+                _nameFormatted = $"{ReplayData.ServerId} - {matchDate.Groups[1].Value}";
+            }
+            else
+            {
+                _nameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value}";
+            }
         }
         else
         { 

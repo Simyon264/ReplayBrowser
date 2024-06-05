@@ -161,7 +161,8 @@ public class ReplayParserService : IHostedService, IDisposable
                         }
                         // See if the link matches the date regex, if it does set the date
                         var replayFileName = Path.GetFileName(replay);
-                        var match = RegexList.ReplayRegex.Match(replayFileName);
+                        var storageUrl = GetStorageUrlFromReplayLink(replay);
+                        var match = storageUrl.ReplayRegexCompiled.Match(replayFileName);
                         if (match.Success)
                         {
                             var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
@@ -257,11 +258,20 @@ public class ReplayParserService : IHostedService, IDisposable
         return replay;
     }
 
+    public StorageUrl GetStorageUrlFromReplayLink(string replayLink)
+    {
+        var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
+        var fetched = replayUrls.First(x => replayLink.Contains(x.Url));
+        fetched.CompileRegex();
+        return fetched;
+    }
+    
     public async Task AddReplayToQueue(string replay)
     {
         // Use regex to check and retrieve the date from the file name.
+        var storageUrl = GetStorageUrlFromReplayLink(replay);
         var fileName = Path.GetFileName(replay);
-        var match = RegexList.ReplayRegex.Match(fileName);
+        var match = storageUrl.ReplayRegexCompiled.Match(fileName);
         if (match.Success)
         {
             var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
