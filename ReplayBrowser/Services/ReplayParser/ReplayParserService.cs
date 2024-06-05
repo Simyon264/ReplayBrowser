@@ -165,9 +165,17 @@ public class ReplayParserService : IHostedService, IDisposable
                         var match = storageUrl.ReplayRegexCompiled.Match(replayFileName);
                         if (match.Success)
                         {
-                            var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
-                            // Need to mark it as UTC, since the server is in UTC.
-                            parsedReplay.Date = date.ToUniversalTime();
+                            try
+                            {
+                                var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
+                                // Need to mark it as UTC, since the server is in UTC.
+                                parsedReplay.Date = date.ToUniversalTime();
+                            }
+                            catch (FormatException e)
+                            {
+                                var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                                parsedReplay.Date = date.ToUniversalTime();
+                            }
                         }
                         
                         DownloadProgress.TryRemove(replay, out _);
