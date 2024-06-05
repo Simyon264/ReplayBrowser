@@ -274,11 +274,23 @@ public class ReplayParserService : IHostedService, IDisposable
         var match = storageUrl.ReplayRegexCompiled.Match(fileName);
         if (match.Success)
         {
-            var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
-            if (date < CutOffDateTime)
+            try
             {
-                return;
+                var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
+                if (date < CutOffDateTime)
+                {
+                    return;
+                }
             }
+            catch (FormatException e)
+            {
+                var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                if (date < CutOffDateTime)
+                {
+                    return;
+                }
+            }
+
         } else
         {
             Log.Warning("Replay " + replay + " does not match the regex.");
