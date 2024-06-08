@@ -1,4 +1,5 @@
 ﻿@using System.Text.RegularExpressions
+@using Humanizer.Bytes
 @using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Services.ReplayParser
@@ -14,7 +15,8 @@
     <p>Server Name: @Replay.ServerName</p>
     <p>Round ID: @Replay.RoundId</p>
     <p>Gamemode: @Replay.Gamemode</p>
-    <p>Size: @FormattedSize</p>
+    <p>Download Size: @ByteSize.FromBytes(Replay.Size).ToString()</p>
+    <p>Uncompressed Size: @ByteSize.FromBytes(Replay.UncompressedSize).ToString()</p>
     @if (Replay.RoundEndPlayers == null || Replay.RoundEndText == null)
     {
         <p class="card-text text-danger">Replay not complete, round end text and/or round end players not available</p>
@@ -110,7 +112,6 @@
 
     public MarkupString ReplayEndTextFormatted { get; set; } = new MarkupString(""); 
     public MarkupString ReplayPlayersFormatted { get; set; } = new MarkupString("");
-    public string FormattedSize { get; set; } = "";
     public string NameFormatted { get; set; } = "";
     public string DateFormatted { get; set; } = "";
 
@@ -147,19 +148,6 @@
             DateFormatted = "Unknown";
         }
         
-        // Format Replay.UncompressedSize to a human-readable format (e.g. 1.2 GB)
-        var size = Replay.UncompressedSize;
-        if (size > 0)
-        {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" }; // I for sure fucking hope it never reaches TB lmao
-            var order = 0;
-            while (size >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                size = size / 1024;
-            }
-            FormattedSize = $"{size:0.##} {sizes[order]}";
-        }
 
         // Format the player list
         var players = Replay.RoundEndPlayers;
@@ -214,6 +202,14 @@
         {
             NameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value.Replace("_","-")}";
             DateFormatted = matchDate.Groups[1].Value.Replace("_", "-");
+            if (string.IsNullOrWhiteSpace(matchName.Groups[1].Value)) 
+            {
+                NameFormatted = $"{Replay.ServerId} - {matchDate.Groups[1].Value}";
+            }
+            else
+            {
+                NameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value}";
+            }
         }
         else
         {
