@@ -385,7 +385,7 @@ public class ReplayHelper
         };
     }
     
-        /// <summary>
+    /// <summary>
     /// Searches a list of replays for a specific query.
     /// </summary>
     /// <param name="mode">The search mode.</param>
@@ -411,13 +411,10 @@ public class ReplayHelper
 
         var stopWatch = new Stopwatch();
         stopWatch.Start();
-        var queryable = _context.Replays.AsQueryable();
+        var queryable = _context.Replays.Include(r => r.RoundEndPlayers).AsQueryable();
 
         foreach (var searchItem in searchItems)
         {
-            IIncludableQueryable<Player, Replay?>? players;
-            IQueryable<int?>? replayIds;
-            
             switch (searchItem.SearchModeEnum)
             {
                 case SearchMode.Map:
@@ -430,25 +427,13 @@ public class ReplayHelper
                     queryable = queryable.Where(x => x.ServerId.ToLower().Contains(searchItem.SearchValue.ToLower()));
                     break;
                 case SearchMode.Guid:
-                    players = _context.Players
-                        .Where(p => p.PlayerGuid.ToString().ToLower().Contains(searchItem.SearchValue.ToLower()))
-                        .Include(p => p.Replay);
-                    replayIds = players.Select(p => p.ReplayId).Distinct();
-                    queryable = _context.Replays.Where(r => replayIds.Contains(r.Id));
+                    queryable = queryable.Where(r => r.RoundEndPlayers.Where(p => p.PlayerGuid.ToString().ToLower().Contains(searchItem.SearchValue.ToLower())).Count() > 0);
                     break;
                 case SearchMode.PlayerIcName:
-                    players = _context.Players
-                        .Where(p => p.PlayerIcName.ToLower().Contains(searchItem.SearchValue.ToLower()))
-                        .Include(p => p.Replay);
-                    replayIds = players.Select(p => p.ReplayId).Distinct();
-                    queryable = _context.Replays.Where(r => replayIds.Contains(r.Id));
+                    queryable = queryable.Where(r => r.RoundEndPlayers.Where(p => p.PlayerIcName.ToLower().Contains(searchItem.SearchValue.ToLower())).Count() > 0);
                     break;
                 case SearchMode.PlayerOocName:
-                    players = _context.Players
-                        .Where(p => p.PlayerOocName.ToLower().Contains(searchItem.SearchValue.ToLower()))
-                        .Include(p => p.Replay);
-                    replayIds = players.Select(p => p.ReplayId).Distinct();
-                    queryable = _context.Replays.Where(r => replayIds.Contains(r.Id));
+                    queryable = queryable.Where(r => r.RoundEndPlayers.Where(p => p.PlayerOocName.ToLower().Contains(searchItem.SearchValue.ToLower())).Count() > 0);
                     break;
                 case SearchMode.RoundEndText:
                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall (its lying, this works)
@@ -469,7 +454,6 @@ public class ReplayHelper
 
         // Get all results and store them in the cache
         var allResults = queryable
-            .Include(r => r.RoundEndPlayers)
             .OrderByDescending(r => r.Date ?? DateTime.MinValue)
             .Take(Constants.SearchLimit)
             .ToList();
