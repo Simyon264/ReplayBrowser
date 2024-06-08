@@ -20,12 +20,12 @@
         }
     </div>
     <div class="card-footer">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#r-@ReplayData.Id">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#r-@ReplayData.Id" style="margin-right: 0.1rem">
             View replay
         </button>
-        <a class="btn btn-secondary" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
+        <a class="btn btn-secondary" style="margin-right: 0.1rem" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
         
-        <button class="btn btn-outline-danger" style="float: right; margin-top: 10px" id="favorite-button-@ReplayData.Id" onclick="FavouriteReplay(@ReplayData.Id, @ReloadOnFavourite.ToString().ToLower())">
+        <button class="btn btn-outline-danger" style="float: right; margin-top: 10px; margin-right: 0;" id="favorite-button-@ReplayData.Id" onclick="FavouriteReplay(@ReplayData.Id, @ReloadOnFavourite.ToString().ToLower())">
             @if (ReplayData.IsFavorite)
             {
                 <i class="fas fa-star"></i>

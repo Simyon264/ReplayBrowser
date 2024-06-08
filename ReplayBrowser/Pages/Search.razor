@@ -130,6 +130,15 @@
 
     public SearchResult SearchResult { get; set; } = new SearchResult();
     
+    /// <summary>
+    /// Search modes that you can only once in a query to save on processing time
+    /// </summary>
+    private static List<SearchMode> LimitedSearchModes = new List<SearchMode>
+    {
+        SearchMode.ServerId,
+        SearchMode.RoundEndText,
+    };
+    
     protected override async Task OnInitializedAsync()
     {
         stopWatch.Start();
@@ -140,55 +149,73 @@
         if (query.Length > 1)
         {
             var queryDict = System.Web.HttpUtility.ParseQueryString(query.Substring(1));
-            var mode = queryDict.Get("mode");
-            var search = queryDict.Get("query");
+            var searches = queryDict.Get("searches");
             var page = queryDict.Get("page") ?? "0";
             var pageInt = int.Parse(page);
             
-            if (mode == null || search == null)
+            if (searches == null)
             {
                 ErrorMessage = "Invalid search query";
                 stopWatch.Stop();
                 return;
             }
-            
-            // query cannot be empty and must be at least 3 characters
-            if (search.Length < 3)
+
+            var searchItems = new List<SearchQueryItem>();
+            // Searches is a base64 encoded json string
+            try
             {
-                ErrorMessage = "Query must be at least 3 characters long";
+                var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(searches));
+                searchItems = System.Text.Json.JsonSerializer.Deserialize<List<SearchQueryItem>>(decoded);
+            }
+            catch (Exception e)
+            {
+                ErrorMessage = "Invalid search query";
+                ErrorDetails = e.Message;
                 stopWatch.Stop();
                 return;
             }
             
-            // convert mode to enum
-            // because we are using a human readable string, we can't use Enum.TryParse
-            var searchMode = SearchMode.PlayerOocName;
-            var didFind = false;
-            foreach (SearchMode value in Enum.GetValues(typeof(SearchMode)))
+            // If any SearchMode is invalid, we throw an error
+            try
             {
-                if (value.Humanize().Equals(mode, StringComparison.OrdinalIgnoreCase))
+                searchItems.ForEach(x => _ = x.SearchModeEnum); // we dont care about the result, just need to call the getter
+            }
+            catch (ArgumentOutOfRangeException e)
+            {
+                ErrorMessage = "Invalid search mode";
+                ErrorDetails = "Search mode could not be assigned to a valid enum value\n Value: " + e.ActualValue;
+                stopWatch.Stop();
+                return;
+            }
+            
+            // If any SearchMode in the query is a LimitedSearchMode, we check if it is duplicated, if it is, we throw an error
+            var searchModes = searchItems.Select(x => x.SearchModeEnum).ToList();
+            foreach (var limitedSearchMode in LimitedSearchModes)
+            {
+                if (searchModes.Count(x => x == limitedSearchMode) > 1)
                 {
-                    searchMode = value;
-                    didFind = true;
-                    break;
+                    ErrorMessage = "Invalid search query";
+                    ErrorDetails = "Search mode " + limitedSearchMode + " is a limited search mode and can only be used once in a query";
+                    stopWatch.Stop();
+                    return;
                 }
             }
             
-            if (!didFind)
+            if (searchItems.Count == 0)
             {
-                ErrorMessage = "Invalid search mode";
+                ErrorMessage = "Invalid search query";
+                ErrorDetails = "No search items found";
                 stopWatch.Stop();
                 return;
             }
-            
-            if (searchMode is SearchMode.PlayerOocName)
+            if (searchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
             {
-                ProfileFound = await ReplayHelper.HasProfile(search, authState);
+                ProfileFound = await ReplayHelper.HasProfile(searchItems.Find(x => x.SearchModeEnum == SearchMode.PlayerOocName).SearchValue, authState);
             }
 
             try
             {
-                SearchResult = await ReplayHelper.SearchReplays(searchMode, search, pageInt, authState);
+                SearchResult = await ReplayHelper.SearchReplays(searchItems, pageInt, authState);
             }
             catch (UnauthorizedAccessException e)
             {

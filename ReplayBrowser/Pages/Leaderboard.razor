@@ -3,10 +3,12 @@
 @using ReplayBrowser.Data
 @using ReplayBrowser.Services
 @using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Helpers
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IConfiguration Configuration
 @inject LeaderboardService LeaderboardService
+@inject Ss14ApiHelper Ss14ApiHelper
 @attribute [StreamRendering]
 
 <PageTitle>Leaderboard</PageTitle>
@@ -172,6 +174,17 @@ else
         // Need to convert the timerange number to the enum
         var timeRangeEnum = (RangeOption) timeRange;
         var username = queryDictionary["username"];
+
+        if (username != null)
+        {
+            // Try to find the account
+            var data = await Ss14ApiHelper.FetchPlayerDataFromUsername(username);
+            if (data == null)
+            {
+                // If the account doesn't exist, we set username to null
+                username = null;
+            }
+        }
         
         LeaderboardData? leaderboard = null;
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();

@@ -6,17 +6,15 @@
 @{
     var searchModes = Enum.GetValues(typeof(SearchMode)).Cast<SearchMode>().ToList();
     <div class="search-bar">
-        <div class="d-flex ms-auto">
+        <div class="d-flex ms-auto hidden prefab" style="margin-bottom: 1rem">
             <input 
                 type="text" 
                 class="form-control" 
-                placeholder="Search for a replay..." 
-                onsubmit="search()" 
+                placeholder="Search for a replay..."
                 aria-label="Search"
                 data-filter="/api/Data/username-completion?username=#QUERY#"
-                id="search"
-                >
-            <button class="btn-secondary btn dropdown-toggle" type="button" id="searchModeButton" style="margin-left: 1rem; margin-right: 1rem;" data-bs-toggle="dropdown" aria-expanded="false">
+            >
+            <button class="btn-secondary btn dropdown-toggle" type="button" style="margin-left: 1rem; margin-right: 1rem;" data-bs-toggle="dropdown" aria-expanded="false">
                 @SearchMode.PlayerOocName.Humanize()
             </button>
             <ul class="dropdown-menu no-affect">
@@ -25,8 +23,23 @@
                     <li><a class="dropdown-item">@mode.Humanize()</a></li>
                 }
             </ul>
-            <button class="btn btn-outline-success" type="button" onclick="search(0)">Search</button>
+            <button class="btn btn-outline-danger remove-bar">
+                -
+            </button>
+            <button class="btn btn-outline-primary" type="button" onclick="moveUp(this)">
+                ↑
+            </button>
+            <button class="btn btn-outline-primary" type="button" onclick="moveDown(this)">
+                ↓
+            </button>
         </div>
+    </div>
+    
+    <div class="d-flex" style="margin-top: 1rem;">
+        <button class="btn btn-outline-primary" style="margin-right: 1rem" type="button" id="addSearchBar">
+            +
+        </button>
+        <button class="btn btn-outline-success" type="button" onclick="search(0)">Search</button>
     </div>
 }
 
@@ -42,66 +55,170 @@
     .no-affect {
         margin-top: 0;
     }
+    
+    .hidden {
+        display: none !important;
+    }
+    
+    .btn {
+        margin-right: 0.5rem;
+    }
 </style>
 
 <script>
-
     let selectedAutocompleteOption = null;
+
+    function moveUp(element) {
+        const parent = element.parentElement;
+        const previousElement = parent.previousElementSibling;
+        if (previousElement !== null) {
+            parent.parentNode.insertBefore(parent, previousElement);
+        }
+    }
     
-    // This is a script to make the dropdown change the text of the button
-    const dropdowns = document.querySelectorAll('.dropdown-menu a');
-    dropdowns.forEach((dropdown) => {
+    function moveDown(element) {
+        const parent = element.parentElement;
+        const nextElement = parent.nextElementSibling;
+        if (nextElement !== null) {
+            parent.parentNode.insertBefore(nextElement, parent);
+        }
+    }
+
+    function search(page) {
+        const searchBars = document.querySelectorAll('.search-bar input');
+
+        // sanity check
+        if(page === null) page = 0;
+
+        const builder = new URLSearchParams();
+        let searches = []
+        searchBars.forEach((searchBar, index) => {
+            const searchMode = searchBar.parentElement.querySelector('.dropdown-toggle').textContent;
+            const searchValue = searchBar.value;
+            if (searchValue !== '') {
+                searches.push({
+                    searchMode: searchMode,
+                    searchValue: searchValue
+                });
+            }
+        });
+        
+        // Remove duplicates
+        searches = searches.filter((search, index, self) =>
+            index === self.findIndex((t) => (
+                t.searchMode === search.searchMode && t.searchValue === search.searchValue
+            ))
+        );
+
+        // Encode the searches as base64
+        const encodedSearches = btoa(JSON.stringify(searches));
+        builder.append('searches', encodedSearches);
+        builder.append('page', page);
+
+        window.location.href = `/search?${builder.toString()}`
+    }
+    
+    document.getElementById('addSearchBar').addEventListener('click', () => {
+        const searchBarPrefab = document.getElementsByClassName('prefab');
+        const newSearchBar = searchBarPrefab[0].cloneNode(true);
+        newSearchBar.classList.remove('hidden');
+        newSearchBar.classList.remove('prefab');
+        document.querySelector('.search-bar').appendChild(newSearchBar);
+
+        // add autocomplete on newSearchBar only using $.autocomplete
+        $(newSearchBar.querySelector('input')).autocomplete({
+            onItemRendered(el, item) {
+                const currentSelectedSearchMode = newSearchBar.querySelector('.dropdown-toggle').textContent;
+                if (currentSelectedSearchMode !== "@SearchMode.PlayerOocName.Humanize()") {
+                    // Currently, autocomplete only supports searching for player names. So delete the item
+                    item.remove();
+                }
+            },
+            onPick(el, item) {
+                selectedAutocompleteOption = item.innerHTML;
+                // if we are the last search bar and we have a selected option, search
+                if (newSearchBar === document.querySelector('.search-bar').lastElementChild && selectedAutocompleteOption !== null) {
+                    document.querySelector('.search-bar input').value = selectedAutocompleteOption;
+                    search(0)
+                }
+            }
+        });
+        
+
+        const dropdown = newSearchBar.querySelector('.dropdown-menu');
         dropdown.addEventListener('click', (e) => {
             const text = e.target.textContent;
-            document.getElementById('searchModeButton').textContent = text;
+            e.target.closest('.d-flex').querySelector('.dropdown-toggle').textContent = text;
         });
+        
+        // enter key listener
+        newSearchBar.querySelector('input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.defaultPrevented) {
+                search(0);
+            }
+        });
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-bar')) {
+            e.target.parentElement.remove();
+        }
     });
 
     // event listener to track selected autocomplete option
     $('#search').on('autocomplete:selected', function (event, suggestion, dataset) {
         selectedAutocompleteOption = suggestion;
     });
-        
-    function search(page) {
-        const searchMode = document.getElementById('searchModeButton').textContent;
-        const searchText = document.querySelector('.search-bar input').value;
-
-        // sanity check
-        if(page === null) page = 0;
-        
-        const builder = new URLSearchParams();
-        builder.append('mode', searchMode);
-        builder.append('query', searchText);
-        builder.append('page', page);
-        window.location.href = '/search?' + builder.toString();
-    }
-
-    document.querySelector('.search-bar input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.defaultPrevented) {
-            search(0);
-        }
-    });
-    
-    // Set the content of the search mode button to the value of the search mode
-    document.getElementById('searchModeButton').textContent = new URLSearchParams(window.location.search).get('mode');
-    
-    // Set the value of the search input to the value of the query
-    document.querySelector('.search-bar input').value = new URLSearchParams(window.location.search).get('query');
     
     document.addEventListener('DOMContentLoaded', e => {
-        $('#search').autocomplete({
-            onItemRendered(el, item) {
-                const currentSelectedSearchMode = document.getElementById('searchModeButton').textContent;
-                if (currentSelectedSearchMode !== "@SearchMode.PlayerOocName.Humanize()") {
-                    // Currently, autocomplete only supports searching for player names. So delete the item
-                    item.remove();
-                }   
-            },
-            onPick(el, item) {
-                selectedAutocompleteOption = item.innerHTML;
-                document.querySelector('.search-bar input').value = selectedAutocompleteOption;
-                search(0)
-            }
-        })
+        // Based on the current query, if we have anything loaded already in the query, create search bars based on that, otherwise if its empty, create a new one
+        const searchParams = new URLSearchParams(window.location.search);
+        const searches = searchParams.get('searches');
+        if (searches !== null) {
+            const decodedSearches = JSON.parse(atob(searches));
+            decodedSearches.forEach(searchObject => {
+                const searchBarPrefab = document.getElementsByClassName('prefab');
+                const newSearchBar = searchBarPrefab[0].cloneNode(true);
+                newSearchBar.classList.remove('hidden');
+                newSearchBar.classList.remove('prefab');
+                document.querySelector('.search-bar').appendChild(newSearchBar);
+                // autocomplete
+                $(newSearchBar.querySelector('input')).autocomplete({
+                    onItemRendered(el, item) {
+                        const currentSelectedSearchMode = newSearchBar.querySelector('.dropdown-toggle').textContent;
+                        if (currentSelectedSearchMode !== "@SearchMode.PlayerOocName.Humanize()") {
+                            // Currently, autocomplete only supports searching for player names. So delete the item
+                            item.remove();
+                        }
+                    },
+                    onPick(el, item) {
+                        selectedAutocompleteOption = item.innerHTML;
+                        // if we are the last search bar and we have a selected option, search
+                        if (newSearchBar === document.querySelector('.search-bar').lastElementChild && selectedAutocompleteOption !== null) {
+                            document.querySelector('.search-bar input').value = selectedAutocompleteOption;
+                            search(0)
+                        }
+                    }
+                });
+
+                const dropdown = newSearchBar.querySelector('.dropdown-menu');
+                dropdown.addEventListener('click', (e) => {
+                    const text = e.target.textContent;
+                    e.target.closest('.d-flex').querySelector('.dropdown-toggle').textContent = text;
+                });
+
+                // enter key listener
+                newSearchBar.querySelector('input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.defaultPrevented) {
+                        search(0);
+                    }
+                });
+                
+                newSearchBar.querySelector('.dropdown-toggle').textContent = searchObject.searchMode;
+                newSearchBar.querySelector('input').value = searchObject.searchValue;
+            });
+        } else {
+            document.getElementById('addSearchBar').click();
+        }
     }, false);
 </script>
