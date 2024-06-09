@@ -23,15 +23,17 @@
                     <li><a class="dropdown-item">@mode.Humanize()</a></li>
                 }
             </ul>
-            <button class="btn btn-outline-danger remove-bar">
-                -
-            </button>
-            <button class="btn btn-outline-primary" type="button" onclick="moveUp(this)">
-                ↑
-            </button>
-            <button class="btn btn-outline-primary" type="button" onclick="moveDown(this)">
-                ↓
-            </button>
+            <div>
+                <button class="btn btn-outline-danger remove-bar">
+                    -
+                </button>
+                <button class="btn btn-outline-primary" type="button" onclick="moveUp(this)">
+                    ↑
+                </button>
+                <button class="btn btn-outline-primary" type="button" onclick="moveDown(this)">
+                    ↓
+                </button>
+            </div>
         </div>
     </div>
     
@@ -62,6 +64,25 @@
     
     .btn {
         margin-right: 0.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .search-bar .d-flex {
+            flex-direction: column;
+        }
+
+        .search-bar input {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            margin-bottom: 10px;
+        }
+
+        .dropdown-menu {
+            font-size: 18px;
+        }
     }
 </style>
 
