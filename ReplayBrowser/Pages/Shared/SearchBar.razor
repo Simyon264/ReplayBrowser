@@ -6,7 +6,7 @@
 @{
     var searchModes = Enum.GetValues(typeof(SearchMode)).Cast<SearchMode>().ToList();
     <div class="search-bar">
-        <div class="d-flex ms-auto hidden prefab" style="margin-bottom: 1rem">
+        <div class="d-flex ms-auto hidden prefab search-form">
             <input 
                 type="text" 
                 class="form-control" 
@@ -23,7 +23,7 @@
                     <li><a class="dropdown-item">@mode.Humanize()</a></li>
                 }
             </ul>
-            <div>
+            <div class="search-container">
                 <button class="btn btn-outline-danger remove-bar">
                     -
                 </button>
@@ -66,22 +66,36 @@
         margin-right: 0.5rem;
     }
 
+    .search-bar .search-form {
+        margin-bottom: 1rem;
+        max-height: 3rem;
+    }
+    
+    .search-container {
+        display: flex;
+        flex-direction: row;
+    }
+    
     @@media (max-width: 768px) {
-        .search-bar .d-flex {
-            flex-direction: column;
+        .search-bar .search-form {
+            flex-direction: column !important;
+        }
+        
+        .search-form {
+            margin-bottom: 6rem !important;
         }
 
         .search-bar input {
-            font-size: 18px;
-            margin-bottom: 10px;
+            font-size: 18px !important;
+            margin-bottom: 10px !important;
         }
 
         .btn {
-            margin-bottom: 10px;
+            margin-bottom: 10px !important;
         }
 
         .dropdown-menu {
-            font-size: 18px;
+            font-size: 18px !important;
         }
     }
 </style>
@@ -90,7 +104,7 @@
     let selectedAutocompleteOption = null;
 
     function moveUp(element) {
-        const parent = element.parentElement;
+        const parent = element.parentElement.parentElement;
         const previousElement = parent.previousElementSibling;
         if (previousElement !== null) {
             parent.parentNode.insertBefore(parent, previousElement);
@@ -98,7 +112,7 @@
     }
     
     function moveDown(element) {
-        const parent = element.parentElement;
+        const parent = element.parentElement.parentElement;
         const nextElement = parent.nextElementSibling;
         if (nextElement !== null) {
             parent.parentNode.insertBefore(nextElement, parent);
@@ -182,7 +196,7 @@
     
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('remove-bar')) {
-            e.target.parentElement.remove();
+            e.target.parentElement.parentElement.remove();
         }
     });
 
