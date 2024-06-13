@@ -19,10 +19,9 @@
     <p>Uncompressed Size: @ByteSize.FromBytes(Replay.UncompressedSize).ToString()</p>
     
     <h3>Extended Properties</h3>
-    <em>Data that is not directly given by the replay file.</em>
     @if (Replay.RoundEndPlayers != null)
     {
-        <p>Percentage of New players in round: @((int) Math.Round((double) Replay.NewPlayers / Replay.RoundEndPlayers.Count * 100))% (@Replay.NewPlayers)</p>
+        <p>Percentage of new players in round: @((int) Math.Round((double) Replay.NewPlayers / Replay.RoundEndPlayers.Count * 100))% (@Replay.NewPlayers)</p>
     }
     @if (Replay.RoundEndPlayers == null || Replay.RoundEndText == null)
     {
