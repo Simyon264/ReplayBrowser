@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Caching.Memory;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
@@ -45,6 +44,13 @@ public class ReplayHelper
             Time = DateTime.UtcNow,
             Details = string.Empty
         });
+        
+        for (var i = 0; i < replays.Count; i++)
+        {
+            var replay = replays[i];
+            PopulateExtendedFields(ref replay);
+            replays[i] = replay;
+        }
         
         return replays;
     }
@@ -243,6 +249,7 @@ public class ReplayHelper
 
         var caller = await _accountService.GetAccount(authstate);
         replay = FilterReplay(replay, caller);
+        PopulateExtendedFields(ref replay);
         return replay;
     }
     
@@ -340,6 +347,13 @@ public class ReplayHelper
         var found = SearchReplays(searchItems, page, Constants.ReplaysPerPage);
         var pageCount = (int) Math.Ceiling((double) found.results / Constants.ReplaysPerPage);
         var replays = FilterReplays(found.Item1, callerAccount?.Guid);
+        
+        for (var i = 0; i < replays.Count; i++)
+        {
+            var replay = replays[i];
+            PopulateExtendedFields(ref replay);
+            replays[i] = replay;
+        }
         
         return new SearchResult()
         {
@@ -496,5 +510,32 @@ public class ReplayHelper
             .ToListAsync();
 
         return FilterReplays(replays, account.Guid);
+    }
+
+    private void PopulateExtendedFields(ref Replay replay)
+    {
+        // In order to populate the amount of new players, we see if that is the first time that player was seen on that server ID.
+        if (replay.RoundEndPlayers == null)
+        {
+            return;
+        }
+        
+        var newPlayers = 0;
+        var playerGuids = replay.RoundEndPlayers.Select(p => p.PlayerGuid).Distinct();
+        foreach (var playerGuid in playerGuids)
+        {
+            var firstSeen = _context.Players
+                .Where(p => p.PlayerGuid == playerGuid)
+                .Include(p => p.Replay)
+                .OrderBy(p => p.Replay.Date)
+                .FirstOrDefault();
+            
+            if (firstSeen != null && firstSeen.ReplayId == replay.Id) // If the first time we saw the player was this replay.
+            {
+                newPlayers++;
+            }
+        }
+        
+        replay.NewPlayers = newPlayers;
     }
 }

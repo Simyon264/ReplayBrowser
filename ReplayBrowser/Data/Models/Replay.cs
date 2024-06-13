@@ -51,6 +51,17 @@ public class Replay
     [NotMapped]
     public bool IsFavorite { get; set; }
 
+    #region Extended Properties
+
+    /// <summary>
+    /// Num of players that joined that server for the first time.
+    /// </summary>
+    [JsonIgnore]
+    [NotMapped]
+    public int NewPlayers { get; set; }
+
+    #endregion
+    
     public void RedactInformation(Guid? accountGuid)
     {
         if (accountGuid == null)
