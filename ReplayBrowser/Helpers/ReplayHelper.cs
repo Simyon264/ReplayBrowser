@@ -290,10 +290,10 @@ public class ReplayHelper
     {
         var callerAccount = await _accountService.GetAccount(authenticationState);
         
-        if (searchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
+        foreach (var searchQueryItem in searchItems.Where(x => x.SearchModeEnum == SearchMode.PlayerOocName))
         {
-            var query = searchItems.First(x => x.SearchModeEnum == SearchMode.PlayerOocName).SearchValue;
-            
+            var query = searchQueryItem.SearchValue;
+                
             var foundOocAccount = _context.Accounts
                 .Include(a => a.Settings)
                 .FirstOrDefault(a => a.Username.ToLower().Equals(query.ToLower()));
@@ -313,14 +313,14 @@ public class ReplayHelper
             }
         }
         
-        if (searchItems.Exists(x => x.SearchModeEnum == SearchMode.Guid))
+        foreach (var searchQueryItem in searchItems.Where(x => x.SearchModeEnum == SearchMode.Guid))
         {
-            var query = searchItems.First(x => x.SearchModeEnum == SearchMode.Guid).SearchValue;
+            var query = searchQueryItem.SearchValue;
             
             var foundGuidAccount = _context.Accounts
                 .Include(a => a.Settings)
                 .FirstOrDefault(a => a.Guid.ToString().ToLower().Contains(query.ToLower()));
-                
+            
             if (foundGuidAccount != null && foundGuidAccount.Settings.RedactInformation)
             {
                 if (callerAccount != null)
