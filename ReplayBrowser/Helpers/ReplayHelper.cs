@@ -310,6 +310,9 @@ public class ReplayHelper
                         }
                     }
                 }
+            } else if (foundOocAccount != null && foundOocAccount.Settings.RedactInformation)
+            {
+                throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
             }
         }
         
@@ -333,7 +336,13 @@ public class ReplayHelper
                             throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
                         }
                     }
+                } else
+                {
+                    throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
                 }
+            } else if (foundGuidAccount != null && foundGuidAccount.Settings.RedactInformation)
+            {
+                throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
             }
         }
 
