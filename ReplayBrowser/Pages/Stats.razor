@@ -1,4 +1,5 @@
 ﻿@page "/stats"
+@using System.Drawing
 @using System.Globalization
 @using ReplayBrowser.Data
 @using ReplayBrowser.Services
@@ -54,11 +55,19 @@ else
             _errorMessage = ex.Message;
         }
     }
+    
+    private Color GenerateColorFromName(string name)
+    {
+        var random = new Random(name.GetHashCode());
+        return Color.FromArgb(random.Next(0, 255), random.Next(0, 255), random.Next(0, 255));
+    }
 
     private string GetChartScript(Analytics data)
     {
         var labels = string.Join(",", data.Data.Select(x => $"'{x.Label}'"));
         var dataset = string.Join(",", data.Data.Select(x => x.Data.ToString(CultureInfo.InvariantCulture)));
+        var backgroundColor = GenerateColorFromName(data.Name).ToArgb();
+        var borderColor = GenerateColorFromName(data.Name).ToArgb();
 
         return $@"
             <script>
@@ -69,8 +78,8 @@ else
                         datasets: [{{
                             label: 'Count',
                             data: [{dataset}],
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba({Color.FromArgb(backgroundColor).R}, {Color.FromArgb(backgroundColor).G}, {Color.FromArgb(backgroundColor).B}, 0.2)',
+                            borderColor: 'rgba({Color.FromArgb(borderColor).R}, {Color.FromArgb(borderColor).G}, {Color.FromArgb(borderColor).B}, 1)',
                             borderWidth: 1
                         }}]
                     }},

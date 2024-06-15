@@ -78,7 +78,7 @@ public class AnalyticsService : IHostedService, IDisposable
             var resultsForUrl = result.Where(r => r.ServerName == storageUrl.FallBackServerName).ToList();
             var analytics = new Analytics
             {
-                Name = storageUrl.FallBackServerName,
+                Name = $"{storageUrl.FallBackServerName} ({storageUrl.FallBackServerId})",
                 Description = $"Average round duration for {storageUrl.FallBackServerName} in minutes.",
                 Type = "bar",
                 Data = resultsForUrl.Select(r => new ChartData
