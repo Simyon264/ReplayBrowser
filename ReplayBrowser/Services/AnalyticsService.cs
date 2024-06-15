@@ -88,6 +88,11 @@ public class AnalyticsService : IHostedService, IDisposable
                 }).ToList()
             };
             
+            if (analytics.Data.Count == 0)
+            {
+                analytics.Error = "Not enough data to generate chart.";
+            }
+            
             analyticsData.Analytics.Add(analytics);
         }
         

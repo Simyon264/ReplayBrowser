@@ -17,6 +17,11 @@ public class Analytics
     public required string Description { get; set; }
     
     /// <summary>
+    /// Did something go wrong when generating the chart?
+    /// </summary>
+    public string? Error { get; set; }
+    
+    /// <summary>
     /// The type of chart to display.
     /// </summary>
     public required string Type { get; set; }
