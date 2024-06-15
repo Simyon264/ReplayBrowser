@@ -2,9 +2,12 @@
 @using System.Globalization
 @using ReplayBrowser.Data
 @using ReplayBrowser.Services
+@using Microsoft.AspNetCore.Components.Web
 @inject AnalyticsService AnalyticsService
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<PageTitle>Stats</PageTitle>
 
 <h3>Stats</h3>
 @if (_errorMessage != null)
