@@ -73,10 +73,12 @@ public class Startup
         services.AddSingleton<AccountService>();
         services.AddSingleton<LeaderboardService>();
         services.AddSingleton<ReplayParserService>();
+        services.AddSingleton<AnalyticsService>();
         
         services.AddHostedService<BackgroundServiceStarter<ReplayParserService>>();
         services.AddHostedService<BackgroundServiceStarter<AccountService>>();
         services.AddHostedService<BackgroundServiceStarter<LeaderboardService>>();
+        services.AddHostedService<BackgroundServiceStarter<AnalyticsService>>();
         
         services.AddScoped<ReplayHelper>();
         

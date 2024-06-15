@@ -1,0 +1,84 @@
+﻿@page "/stats"
+@using System.Globalization
+@using ReplayBrowser.Data
+@using ReplayBrowser.Services
+@inject AnalyticsService AnalyticsService
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<h3>Stats</h3>
+@if (_errorMessage != null)
+{
+    <p>@_errorMessage</p>
+} else if (_isNotGenerated)
+{
+    <p>Analytics data is not generated yet. Please try again later.</p>
+}
+else if (_analyticsData != null)
+{
+    foreach (var data in _analyticsData.Analytics)
+    {
+        <div>
+            <h4>@data.Name</h4>
+            <p>@data.Description</p>
+            <canvas id="@data.Name" width="400" height="400"></canvas>
+            @((MarkupString)GetChartScript(data))
+        </div>
+    }
+}
+else
+{
+    <p>Loading...</p>
+}
+
+@code {
+    private AnalyticsData? _analyticsData;
+    private string? _errorMessage;
+    private bool _isNotGenerated = false;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _analyticsData = AnalyticsService.GetAnalytics();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _isNotGenerated = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private string GetChartScript(Analytics data)
+    {
+        var labels = string.Join(",", data.Data.Select(x => $"'{x.Label}'"));
+        var dataset = string.Join(",", data.Data.Select(x => x.Data.ToString(CultureInfo.InvariantCulture)));
+
+        return $@"
+            <script>
+                new Chart(document.getElementById('{data.Name}').getContext('2d'), {{
+                    type: '{data.Type}',
+                    data: {{
+                        labels: [{labels}],
+                        datasets: [{{
+                            label: 'Count',
+                            data: [{dataset}],
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }}]
+                    }},
+                    options: {{
+                        scales: {{
+                            y: {{
+                                beginAtZero: true
+                            }}
+                        }}
+                    }}
+                }});
+            </script>";
+    }
+}
