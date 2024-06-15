@@ -24,7 +24,7 @@ else if (_analyticsData != null)
         <div>
             <h4>@data.Name</h4>
             <p>@data.Description</p>
-            <canvas id="@data.Name" width="400" height="400"></canvas>
+            <canvas id="@data.Name" width="400" height="250"></canvas>
             @((MarkupString)GetChartScript(data))
         </div>
     }
