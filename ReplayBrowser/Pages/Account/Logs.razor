@@ -40,6 +40,10 @@
         var username = document.getElementById("search").value;
         window.location.href = "/account/logs?username=" + username;
     }
+
+    $(document).ready(function () {
+        $('#search').autocomplete();
+    });
 </script>
 
 @if(Is1984)
