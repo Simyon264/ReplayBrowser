@@ -9,7 +9,9 @@ using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Data.Models.Account;
 using ReplayBrowser.Helpers;
+using ReplayBrowser.Services;
 using Serilog;
+using Action = ReplayBrowser.Data.Models.Account.Action;
 
 namespace ReplayBrowser.Controllers;
 
@@ -21,12 +23,14 @@ public class AccountController : Controller
     private readonly IConfiguration _configuration;
     private readonly ReplayDbContext _context;
     private readonly Ss14ApiHelper _ss14ApiHelper;
+    private readonly AccountService _accountService;
     
-    public AccountController(IConfiguration configuration, ReplayDbContext context, Ss14ApiHelper ss14ApiHelper)
+    public AccountController(IConfiguration configuration, ReplayDbContext context, Ss14ApiHelper ss14ApiHelper, AccountService accountService)
     {
         _configuration = configuration;
         _context = context;
         _ss14ApiHelper = ss14ApiHelper;
+        _accountService = accountService;
     }
     
     [Route("login")]
@@ -91,6 +95,15 @@ public class AccountController : Controller
                 Log.Information("Updated username for {Guid} to {Username}", guid, data?.Username);
             }
         }
+        
+        // Add login to history
+        await _accountService.AddHistory(user, new HistoryEntry()
+        {
+            Action = Enum.GetName(typeof(Action), Action.Login) ?? "Unknown",
+            Time = DateTime.UtcNow,
+            Details = null
+        });
+        
         return Redirect("/");
     }
 

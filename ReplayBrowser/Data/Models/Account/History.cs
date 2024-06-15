@@ -13,6 +13,7 @@ public enum Action
 {
     // Account actions
     AccountSettingsChanged,
+    Login,
     
     // Site actions
     SearchPerformed,
