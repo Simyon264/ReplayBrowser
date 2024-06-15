@@ -80,7 +80,7 @@ public class AnalyticsService : IHostedService, IDisposable
             {
                 Name = storageUrl.FallBackServerName,
                 Description = $"Average round duration for {storageUrl.FallBackServerName} in minutes.",
-                Type = "line",
+                Type = "bar",
                 Data = resultsForUrl.Select(r => new ChartData
                 {
                     Label = r.DateOfReplay.ToString("yyyy-MM-dd"),
