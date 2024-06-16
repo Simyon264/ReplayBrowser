@@ -74,6 +74,7 @@ public class Startup
         services.AddSingleton<LeaderboardService>();
         services.AddSingleton<ReplayParserService>();
         services.AddSingleton<AnalyticsService>();
+        services.AddSingleton<NoticeHelper>();
         
         services.AddHostedService<BackgroundServiceStarter<ReplayParserService>>();
         services.AddHostedService<BackgroundServiceStarter<AccountService>>();
@@ -184,7 +185,9 @@ public class Startup
 
         services.AddRazorComponents()
             .AddInteractiveServerComponents();
-            
+
+        services.AddHttpContextAccessor();
+        
         JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
         services.AddAuthentication(options =>

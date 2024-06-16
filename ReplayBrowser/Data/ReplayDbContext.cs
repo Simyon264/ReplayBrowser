@@ -54,11 +54,15 @@ public class ReplayDbContext : DbContext
         modelBuilder.Entity<GdprRequest>()
             .HasKey(g => g.Guid);
         
+        modelBuilder.Entity<Notice>()
+            .HasKey(n => n.Id);
+        
         modelBuilder.Entity<Replay>().ToTable("Replays");
         modelBuilder.Entity<Player>().ToTable("Players");
         modelBuilder.Entity<ParsedReplay>().ToTable("ParsedReplays");
         modelBuilder.Entity<Account>().ToTable("Accounts");
         modelBuilder.Entity<GdprRequest>().ToTable("GdprRequests");
+        modelBuilder.Entity<Notice>().ToTable("Notices");
     }
     
     public DbSet<Replay> Replays { get; set; }
@@ -76,4 +80,9 @@ public class ReplayDbContext : DbContext
     /// Contains a list of GUIDs that have requested their data to be removed. Future replays will have this player replaced with "Removed by GDPR request".
     /// </summary>
     public DbSet<GdprRequest> GdprRequests { get; set; }
+    
+    /// <summary>
+    /// Contains a list of notices that are displayed to every user if the condition is met.
+    /// </summary>
+    public DbSet<Notice> Notices { get; set; }
 }

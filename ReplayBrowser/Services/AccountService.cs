@@ -285,4 +285,26 @@ public class AccountService : IHostedService, IDisposable
         await context.SaveChangesAsync();
         Log.Information($"Deleted account {account.Username} ({account.Guid})");
     }
+
+    public bool IsAdmin(ClaimsPrincipal user)
+    {
+        // Find account.
+        var guid = AccountHelper.GetAccountGuid(user);
+        if (guid == null)
+        {
+            return false;
+        }
+        
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+        var account = context.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .FirstOrDefault(a => a.Guid == guid);
+
+        if (account == null)
+            return false;
+        
+        return account.IsAdmin;
+    }
 }

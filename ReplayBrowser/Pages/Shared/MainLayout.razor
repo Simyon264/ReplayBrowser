@@ -7,8 +7,9 @@
 @inherits LayoutComponentBase
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayDbContext DbContext
-@inject Ss14ApiHelper Ss14ApiHelper
 @inject NavigationManager NavigationManager
+@inject NoticeHelper NoticeHelper
+@inject IHttpContextAccessor HttpContextAccessor
 
 @code
 {
@@ -41,17 +42,38 @@
 
 <div class="page">
     <main class="container my-5">
+        @foreach (var activeNotice in NoticeHelper.GetActiveNotices())
+        {
+            // See in cookies if we have already dismissed this notice
+            var dismissed = HttpContextAccessor.HttpContext != null && HttpContextAccessor.HttpContext.Request.Cookies.ContainsKey($"dismissed-notice-{activeNotice.Id}");
+            if (dismissed)
+                continue;
+            
+            <div class="alert alert-info" role="alert">
+                <h4 class="alert-heading">@activeNotice.Title</h4>
+                <p>@activeNotice.Message</p>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Close"
+                    onclick="document.cookie = `dismissed-notice-${@activeNotice.Id}=true; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/`;">
+                </button>
+            </div>
+        }
+
         @if (_user.Identity.IsAuthenticated)
         {
             <p id="logged-in-text">Hello <strong>@_user.Claims.Single(c => c.Type == "name").Value!</strong></p>
-            
+
             <a href="/account/logout" class="btn btn-primary" style="margin-right: 10px">Logout</a>
             <a class="btn btn-primary" onclick="window.location.href = '/account/manage';" style="margin-right: 10px">Manage</a>
             <a class="btn btn-primary" onclick="window.location.href = '/favourites';" style="margin-right: 10px">Favourites</a>
-            
-            @if(_account?.IsAdmin ?? false)
+
+            @if (_account?.IsAdmin ?? false)
             {
                 <a class="btn btn-primary" onclick="window.location.href = '/account/admin';" style="margin-right: 10px">Admin</a>
+                <a class="btn btn-primary" onclick="window.location.href = '/account/admin/notices';" style="margin-right: 10px">Manage notices</a>
             }
         }
         else
@@ -67,7 +89,7 @@
         <a class="btn btn-primary" onclick="window.location.href = '/changelog'" style="margin-right: 10px; margin-top: 10px">Changelog</a>
 
         <p>Warning: Replays recorded before @ReplayParserService.CutOffDateTime.ToLocalTime().ToString("yyyy-MM-dd") (yyyy-MM-dd) are not supported and are not counted</p>
-        
+
         <hr/>
         @Body
     </main>

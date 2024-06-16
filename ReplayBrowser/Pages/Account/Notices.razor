@@ -1,0 +1,190 @@
+﻿@page "/account/admin/notices"
+@using Microsoft.AspNetCore.Components.Web
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ReplayBrowser.Data.Models.Account
+@using ReplayBrowser.Services
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data.Models
+@using ReplayBrowser.Helpers
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AccountService AccountService
+@inject NoticeHelper NoticeHelper
+
+<PageTitle>Admin</PageTitle>
+
+<h3>Notices</h3>
+@if (_isNotAdmin)
+{
+    <p>You are not an admin.</p>
+} else if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Title</th>
+            <th>Message</th>
+            <th>Start and expire</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var notice in _notices)
+        {
+            <tr>
+                <td>@notice.Id</td>
+                <td>@notice.Title</td>
+                <td>@notice.Message</td>
+                <td>@notice.StartDate.ToShortDateString() - @notice.EndDate.ToShortDateString()</td>
+                <td>
+                    <button class="btn btn-primary" onclick="EditNotice(this)">Edit</button>
+                    <button class="btn btn-danger" onclick="DeleteNotice(this)">Delete</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    
+    <div>
+        <input type="text" class="form-control" placeholder="Title" id="titleField" />
+        <textarea class="form-control" placeholder="Message" id="messageField"></textarea>
+        <input type="date" class="form-control" id="startDateField" />
+        <input type="date" class="form-control" id="endDateField" />
+        <button class="btn btn-primary" onclick="SaveOrAdd()">Save</button>
+        <button class="btn btn-primary" onclick="SetAdd()">Start new</button>
+    </div>
+    
+    <script>
+        let mode = 'add';
+        let editId = 0;
+        
+        function SetAdd() {
+            document.getElementById('titleField').value = '';
+            document.getElementById('messageField').value = '';
+            document.getElementById('startDateField').value = '';
+            document.getElementById('endDateField').value = '';
+            
+            mode = 'add';
+        }
+        
+        function EditNotice(button) {
+            const row = button.closest('tr');
+            const cells = row.cells;
+            const title = cells[1].innerText;
+            const message = cells[2].innerText;
+            const start = cells[3].innerText.split(' - ')[0];
+            const end = cells[3].innerText.split(' - ')[1];
+            
+            document.getElementById('titleField').value = title;
+            document.getElementById('messageField').value = message;
+            document.getElementById('startDateField').value = start;
+            document.getElementById('endDateField').value = end;
+            
+            editId = cells[0].innerText;
+            
+            mode = 'edit';
+        }
+        
+        function DeleteNotice(button) {
+            const row = button.closest('tr');
+            const cells = row.cells;
+            const id = cells[0].innerText;
+            
+            $.ajax({
+                url: '/api/Notices/DeleteNotice/' + id,
+                type: 'DELETE',
+                contentType: 'application/json',
+                success: function() {
+                    location.reload();
+                },
+                error: function (xhr, ajaxOptions) {
+                    alert(xhr.status);
+                    alert(xhr.responseText);
+                }
+            });
+        }
+        
+        function SaveOrAdd() {
+            const title = document.getElementById('titleField').value;
+            const message = document.getElementById('messageField').value;
+            let start = document.getElementById('startDateField').value;
+            let end = document.getElementById('endDateField').value;
+            
+            // Make sure the start and end are in UTC
+            const startUtc = new Date(start);
+            startUtc.setMinutes(startUtc.getMinutes() + startUtc.getTimezoneOffset());
+            const endUtc = new Date(end);
+            endUtc.setMinutes(endUtc.getMinutes() + endUtc.getTimezoneOffset());
+            
+            if (mode === 'add') {
+                $.ajax({
+                    url: '/api/Notices/CreateNotice',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        title: title,
+                        message: message,
+                        startDate: start,
+                        endDate: end
+                    }),
+                    success: function() {
+                        location.reload();
+                    },
+                    error: function (xhr, ajaxOptions) {
+                        alert(xhr.status);
+                        alert(xhr.responseText);
+                    }
+                });
+            } else {
+                $.ajax({
+                    url: '/api/Notices/UpdateNotice',
+                    type: 'PATCH',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        id: editId,
+                        title: title,
+                        message: message,
+                        startDate: start,
+                        endDate: end
+                    }),
+                    success: function() {
+                        location.reload();
+                    },
+                    error: function (xhr, ajaxOptions) {
+                        alert(xhr.status);
+                        alert(xhr.responseText);
+                    }
+                });
+            }
+        }
+    
+    </script>
+}
+
+@code {
+    private List<Notice> _notices = new List<Notice>();
+    private bool _isNotAdmin = false;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await AccountService.GetAccount(authState);
+
+        if (user == null || !user.IsAdmin)
+        {
+            _isNotAdmin = true;
+            _isLoading = false;
+            return;
+        }
+
+        _notices = NoticeHelper.GetAllNotices();
+        _isLoading = false;
+    }
+}
