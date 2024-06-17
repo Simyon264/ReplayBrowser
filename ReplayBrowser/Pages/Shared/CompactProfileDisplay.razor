@@ -1,0 +1,61 @@
+﻿<div class="card" style="width: 18rem; margin-top: 1rem">
+    <div class="spinner-container">
+        <div class="spinner-border" role="status" id="loading-spinner-@ProfileId">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    <div class="card-body" id="content-body-@ProfileId">
+        <h5 class="card-title" id="content-title-@ProfileId"></h5>
+        <p class="card-text" id="content-text-@ProfileId"></p>
+    </div>
+    <div class="card-footer">
+        <a class="btn btn-secondary" style="margin-right: 0.1rem" href="/player/@ProfileId" target="_blank">View in new tab</a>
+
+        <button class="btn btn-outline-danger" style="float: right; margin-top: 10px; margin-right: 0;" id="favorite-button-@ProfileId" onclick="Unwatch('@ProfileId')">
+            <i class="fas fa-star"></i>
+            <p>Un-watch</p>
+        </button>
+    </div>
+</div>
+
+<script>
+    function Unwatch(profileId) {
+        $.ajax({
+            url: "api/Replay/watch/" + profileId,
+            type: "POST",
+            success: function(data) {
+                location.reload();
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        $.ajax({
+            url: "api/Replay/profile/" + "@ProfileId",
+            type: "GET",
+            success: function(data) {
+                console.debug(data)
+                $("#content-title-" + "@ProfileId").text(data.playerData.username);
+                let fields = [];
+                let lastPlayedParsedUtcDate = new Date(data.lastSeen);
+                fields.push("Last seen: " + timeDifference(new Date(), lastPlayedParsedUtcDate));
+                fields.push("Rounds played: " + data.totalRoundsPlayed);
+                fields.push("Total antag rounds played: " + data.totalAntagRoundsPlayed);
+                let mostPlayedCharacter = data.characters.sort((a, b) => b.roundsPlayed - a.roundsPlayed)[0];
+                fields.push("Most played character: " + mostPlayedCharacter.characterName + " (" + mostPlayedCharacter.roundsPlayed + " rounds)");
+                let mostPlayedJob = data.jobCount.sort((a, b) => b.roundsPlayed - a.roundsPlayed)[0];  
+                fields.push("Most played job: " + mostPlayedJob.jobPrototype + " (" + mostPlayedJob.roundsPlayed + " rounds)");
+
+                $("#content-text-" + "@ProfileId").html(fields.join("<br>"));
+                
+                // Finish loading
+                $("#loading-spinner-" + "@ProfileId").addClass("hidden");
+            }
+        });
+    });
+</script>
+
+@code {
+    [Parameter]
+    public required Guid ProfileId { get; set; }
+}

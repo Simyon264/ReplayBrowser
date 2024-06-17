@@ -55,6 +55,10 @@ public class ReplayHelper
         return replays;
     }
 
+    /// <summary>
+    /// Fetches a player profile from the database.
+    /// </summary>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the account is private and the requestor is not the account owner or an admin.</exception>
     public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState)
     {
         var accountCaller = await _accountService.GetAccount(authenticationState);
@@ -202,6 +206,11 @@ public class ReplayHelper
             LastSeen = lastSeen,
             JobCount = jobCount
         };
+        
+        if (accountCaller != null)
+        {
+            collectedPlayerData.IsWatched = accountCaller.SavedProfiles.Contains(playerGuid);
+        }
         
         await _accountService.AddHistory(accountCaller, new HistoryEntry()
         {

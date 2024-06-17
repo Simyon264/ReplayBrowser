@@ -31,6 +31,11 @@ public class CollectedPlayerData
     
     public DateTime LastSeen { get; set; } = DateTime.MinValue;
     
+    /// <summary>
+    /// Is this profile currently being "watched" by the user?
+    /// </summary>
+    public bool IsWatched { get; set; } = false;
+    
     public override bool Equals(object? obj)
     {
         if (obj is not CollectedPlayerData other)

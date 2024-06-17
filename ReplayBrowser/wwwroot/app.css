@@ -50,6 +50,17 @@ h1:focus {
     border-color: #929292;
 }
 
+.hidden {
+    display: none !important;
+}
+
 p {
     margin: 0;
+}
+
+.spinner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%; /* Adjust this value according to your needs */
 }

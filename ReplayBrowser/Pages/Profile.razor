@@ -24,6 +24,19 @@ else if (FailedToLoad)
 }
 else
 {
+    <button class="btn btn-outline-danger" id="watchButton" onclick="Watch()">
+        @if (_playerData.IsWatched)
+        {
+            <i class="fas fa-star"></i>
+            <p>Un-watch</p>
+        }
+        else
+        {
+            <i class="far fa-star"></i>
+            <p>Watch</p>
+        }
+    </button>
+    
     <h1>@_playerData.PlayerData.Username</h1>
 
     <p><b>Total estimated playtime:</b> @_playerData.TotalEstimatedPlaytime.Humanize()</p>
@@ -86,8 +99,38 @@ else
                 <td>@jobCountData.LastPlayed.Humanize()</td>
             </tr>
         }
-    </tbody>
+        </tbody>
     </table>
+    
+    <script>
+        function Watch() {
+            if ('@IsLoggedIn.ToString().ToLower()' === "false") {
+                location.href = "/account/login";
+                return
+            }
+        
+            const button = document.getElementById("watchButton");
+            const guid = "@Guid";
+            let url = "/api/Replay/watch/" + guid;
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            }).then(response => {
+                if (response.ok) {
+                    response.text().then(text => {
+                        if (text == 'false') {
+                            button.innerHTML = "<i class='far fa-star'></i><p>Watch</p>";
+                        } else {
+                            button.innerHTML = "<i class='fas fa-star'></i><p>Un-watch</p>";
+                        }
+                    });
+                }
+            });
+        }
+    
+    </script>
 }
 
 @code{
@@ -97,6 +140,7 @@ else
     private bool FailedToLoad { get; set; } = false;
     private Exception? Exception { get; set; }
     private bool IsPrivate { get; set; } = false;
+    private bool IsLoggedIn { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -111,6 +155,11 @@ else
             }
             
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                IsLoggedIn = true;
+            }
             
             _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState);
             _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();

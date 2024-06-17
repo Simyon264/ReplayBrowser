@@ -1,0 +1,87 @@
+﻿@page "/favorites/profiles"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Services
+@using ReplayBrowser.Pages.Shared
+@attribute [Authorize]
+@inject AccountService AccountService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Watched profiles</PageTitle>
+
+<h3>Watched profiles</h3>
+
+@if (_watchedProfiles.Count == 0)
+{
+    <p>You have not saved any profiles yet.</p>
+}
+else
+{
+    <div class="profile-list">
+        @foreach (var profileId in _watchedProfiles)
+        {
+            <CompactProfileDisplay ProfileId="@profileId" />
+        }
+    </div>
+}
+
+<style>
+    .profile-list {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin: 0 0 1rem 0;
+    }
+</style>
+
+<script>
+    function timeDifference(current, previous) {
+        const msPerMinute = 60 * 1000;
+        const msPerHour = msPerMinute * 60;
+        const msPerDay = msPerHour * 24;
+        const msPerMonth = msPerDay * 30;
+        const msPerYear = msPerDay * 365;
+
+        const elapsed = current - previous;
+
+        if (elapsed < msPerMinute) {
+            return Math.round(elapsed/1000) + ' seconds ago';
+        }
+
+        else if (elapsed < msPerHour) {
+            return Math.round(elapsed/msPerMinute) + ' minutes ago';
+        }
+
+        else if (elapsed < msPerDay ) {
+            return Math.round(elapsed/msPerHour ) + ' hours ago';
+        }
+
+        else if (elapsed < msPerMonth) {
+            return Math.round(elapsed/msPerDay) + ' days ago';
+        }
+
+        else if (elapsed < msPerYear) {
+            return Math.round(elapsed/msPerMonth) + ' months ago';
+        }
+
+        else {
+            return Math.round(elapsed/msPerYear ) + ' years ago';
+        }
+    }
+</script>
+
+@code {
+    private List<Guid> _watchedProfiles = new List<Guid>();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var account = await AccountService.GetAccount(authState);
+
+        if (account == null) 
+            throw new Exception("Account not found, how did you get here?");
+        
+        _watchedProfiles = account.SavedProfiles;
+    }
+}

@@ -14,5 +14,10 @@ public class Account
     /// Replays that the user has favorited.
     /// </summary>
     public List<int> FavoriteReplays { get; set; } = new();
+    
+    /// <summary>
+    /// Profiles that the user "watches".
+    /// </summary>
+    public List<Guid> SavedProfiles { get; set; } = new();
     public List<HistoryEntry> History { get; set; } = new();
 }
