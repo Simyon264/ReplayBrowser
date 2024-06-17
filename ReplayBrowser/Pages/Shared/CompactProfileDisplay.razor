@@ -44,8 +44,8 @@
                 if (data.characters.length == 0) {
                     fields.push("No character data available");
                 } else {
-                    let mostAntagCharacter = data.characters.sort((a, b) => b.antagRoundsPlayed - a.antagRoundsPlayed)[0];
-                    fields.push("Most antag rounds played: " + mostAntagCharacter.characterName + " (" + mostAntagCharacter.antagRoundsPlayed + " rounds)");
+                    let mostCharacter = data.characters.sort((a, b) => b.roundsPlayed - a.roundsPlayed)[0];
+                    fields.push("Most played character: " + mostCharacter.characterName + " (" + mostCharacter.roundsPlayed + " rounds)");
                 }
                 if (data.jobCount.length == 0) {
                     fields.push("No job data available");
