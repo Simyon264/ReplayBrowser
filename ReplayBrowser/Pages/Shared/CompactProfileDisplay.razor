@@ -41,12 +41,34 @@
                 fields.push("Last seen: " + timeDifference(new Date(), lastPlayedParsedUtcDate));
                 fields.push("Rounds played: " + data.totalRoundsPlayed);
                 fields.push("Total antag rounds played: " + data.totalAntagRoundsPlayed);
-                let mostPlayedCharacter = data.characters.sort((a, b) => b.roundsPlayed - a.roundsPlayed)[0];
-                fields.push("Most played character: " + mostPlayedCharacter.characterName + " (" + mostPlayedCharacter.roundsPlayed + " rounds)");
-                let mostPlayedJob = data.jobCount.sort((a, b) => b.roundsPlayed - a.roundsPlayed)[0];  
-                fields.push("Most played job: " + mostPlayedJob.jobPrototype + " (" + mostPlayedJob.roundsPlayed + " rounds)");
+                if (data.characters.length == 0) {
+                    fields.push("No character data available");
+                } else {
+                    let mostAntagCharacter = data.characters.sort((a, b) => b.antagRoundsPlayed - a.antagRoundsPlayed)[0];
+                    fields.push("Most antag rounds played: " + mostAntagCharacter.characterName + " (" + mostAntagCharacter.antagRoundsPlayed + " rounds)");
+                }
+                if (data.jobCount.length == 0) {
+                    fields.push("No job data available");
+                } else {
+                    let mostPlayedJob = data.jobCount.sort((a, b) => b.roundsPlayed - a.roundsPlayed)[0];
+                    fields.push("Most played job: " + mostPlayedJob.jobPrototype + " (" + mostPlayedJob.roundsPlayed + " rounds)");
+                }
 
                 $("#content-text-" + "@ProfileId").html(fields.join("<br>"));
+                
+                // Finish loading
+                $("#loading-spinner-" + "@ProfileId").addClass("hidden");
+            },
+            error: function(data) {
+                console.error(data);
+                // if we got a unauthorized response, profile is private
+                if (data.status == 401) {
+                    $("#content-title-" + "@ProfileId").text("Private profile");
+                    $("#content-text-" + "@ProfileId").text("This profile is private, you can't see any data.");
+                } else {
+                    $("#content-title-" + "@ProfileId").text("Error");
+                    $("#content-text-" + "@ProfileId").text("An error occurred while fetching data.");
+                }
                 
                 // Finish loading
                 $("#loading-spinner-" + "@ProfileId").addClass("hidden");
