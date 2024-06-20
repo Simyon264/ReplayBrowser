@@ -18,11 +18,7 @@
     <p>Download Size: @ByteSize.FromBytes(Replay.Size).ToString()</p>
     <p>Uncompressed Size: @ByteSize.FromBytes(Replay.UncompressedSize).ToString()</p>
     
-    <h3>Extended Properties</h3>
-    @if (Replay.RoundEndPlayers != null)
-    {
-        <p>Percentage of new players in round: @((int) Math.Round((double) Replay.NewPlayers / Replay.RoundEndPlayers.Count * 100))% (@Replay.NewPlayers)</p>
-    }
+
     @if (Replay.RoundEndPlayers == null || Replay.RoundEndText == null)
     {
         <p class="card-text text-danger">Replay not complete, round end text and/or round end players not available</p>

@@ -53,12 +53,7 @@ public class Replay
 
     #region Extended Properties
 
-    /// <summary>
-    /// Num of players that joined that server for the first time.
-    /// </summary>
-    [JsonIgnore]
-    [NotMapped]
-    public int NewPlayers { get; set; }
+    // None yet.
 
     #endregion
     

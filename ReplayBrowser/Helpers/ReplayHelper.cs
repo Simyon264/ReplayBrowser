@@ -532,28 +532,6 @@ public class ReplayHelper
 
     private void PopulateExtendedFields(ref Replay replay)
     {
-        // In order to populate the amount of new players, we see if that is the first time that player was seen on that server ID.
-        if (replay.RoundEndPlayers == null)
-        {
-            return;
-        }
-        
-        var newPlayers = 0;
-        var playerGuids = replay.RoundEndPlayers.Select(p => p.PlayerGuid).Distinct();
-        foreach (var playerGuid in playerGuids)
-        {
-            var firstSeen = _context.Players
-                .Where(p => p.PlayerGuid == playerGuid)
-                .Include(p => p.Replay)
-                .OrderBy(p => p.Replay.Date)
-                .FirstOrDefault();
-            
-            if (firstSeen != null && firstSeen.ReplayId == replay.Id) // If the first time we saw the player was this replay.
-            {
-                newPlayers++;
-            }
-        }
-        
-        replay.NewPlayers = newPlayers;
+        // Nothing yet.
     }
 }
