@@ -75,6 +75,12 @@ public class ReplayHelper
                 }
             }
         }
+        
+        var cacheKey = $"player-{playerGuid}";
+        if (_cache.TryGetValue(cacheKey, out CollectedPlayerData cachedPlayerData))
+        {
+            return cachedPlayerData;
+        }
 
         var replays = (await _context.Players
             .Where(p => p.PlayerGuid == playerGuid)
@@ -218,6 +224,8 @@ public class ReplayHelper
             Time = DateTime.UtcNow,
             Details = $"Player GUID: {playerGuid} Username: {collectedPlayerData.PlayerData.Username}"
         });
+        
+        _cache.Set(cacheKey, collectedPlayerData, TimeSpan.FromMinutes(5));
         
         return collectedPlayerData;
     }
