@@ -157,6 +157,7 @@
             {
                 ErrorMessage = "Invalid search query";
                 stopWatch.Stop();
+                NavigationManager.NavigateTo("/");
                 return;
             }
 
@@ -172,6 +173,7 @@
                 ErrorMessage = "Invalid search query";
                 ErrorDetails = e.Message;
                 stopWatch.Stop();
+                NavigationManager.NavigateTo("/");
                 return;
             }
             
@@ -206,6 +208,7 @@
                 ErrorMessage = "Invalid search query";
                 ErrorDetails = "No search items found";
                 stopWatch.Stop();
+                NavigationManager.NavigateTo("/");
                 return;
             }
             if (searchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
