@@ -4,6 +4,7 @@
 @using ReplayBrowser.Data
 @using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Helpers
+@using Serilog
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayHelper ReplayHelper
 @attribute [StreamRendering]
@@ -176,6 +177,7 @@ else
             FailedToLoad = true;
             Exception = e;
             _playerData = new();
+            Log.Error(e, "Failed to load player data.");
         }
     }
 }

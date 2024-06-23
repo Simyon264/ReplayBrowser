@@ -82,13 +82,13 @@ public class ReplayHelper
             return cachedPlayerData;
         }
 
-        var replays = (await _context.Players
-            .Where(p => p.PlayerGuid == playerGuid)
-            .Include(p => p.Replay)
-            .Include(r => r.Replay.RoundEndPlayers)
-            .Select(p => p.Replay)
-            .ToListAsync()
-            ).DistinctBy(p => p.Id);
+        var replays = await _context.Replays
+            .AsNoTracking()
+            .Include(r => r.RoundEndPlayers)
+            .Where(r => r.RoundEndPlayers != null)
+            .Where(r => r.RoundEndPlayers!.Any(p => p.PlayerGuid == playerGuid))
+            .Distinct() // only need one instance of each replay
+            .ToListAsync();
 
         var charactersPlayed = new List<CharacterData>();
         var totalPlaytime = TimeSpan.Zero;
@@ -99,14 +99,14 @@ public class ReplayHelper
         
         foreach (var replay in replays)
         {
-            if (replay == null)
-            {
-                Log.Warning("Replay is null for player with GUID {PlayerGuid}", playerGuid);
-                continue;
-            }
-            
             if (replay.RoundEndPlayers == null)
                 continue;
+            
+            if (replay.Date == null)
+            {
+                Log.Warning("Replay with ID {ReplayId} has no date", replay.Id);
+                continue;
+            }
             
             if (replay.Date > lastSeen) // Update last seen
             {
