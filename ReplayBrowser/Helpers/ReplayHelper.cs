@@ -29,6 +29,7 @@ public class ReplayHelper
     public async Task<List<Replay>> GetMostRecentReplays(AuthenticationState state)
     {
         var replays = await _context.Replays
+            .AsNoTracking()
             .OrderByDescending(r => r.Date)
             .Include(r => r.RoundEndPlayers)
             .Take(32)
@@ -225,7 +226,7 @@ public class ReplayHelper
             Details = $"Player GUID: {playerGuid} Username: {collectedPlayerData.PlayerData.Username}"
         });
         
-        _cache.Set(cacheKey, collectedPlayerData, TimeSpan.FromMinutes(5));
+        _cache.Set(cacheKey, collectedPlayerData, TimeSpan.FromMinutes(20));
         
         return collectedPlayerData;
     }
@@ -258,6 +259,7 @@ public class ReplayHelper
     public async Task<Replay?> GetReplay(int id, AuthenticationState authstate)
     {
         var replay = await _context.Replays
+            .AsNoTracking()
             .Include(r => r.RoundEndPlayers)
             .FirstOrDefaultAsync(r => r.Id == id);
         
@@ -451,7 +453,9 @@ public class ReplayHelper
 
         var stopWatch = new Stopwatch();
         stopWatch.Start();
-        var queryable = _context.Replays.Include(r => r.RoundEndPlayers).AsQueryable();
+        var queryable = _context.Replays
+            .AsNoTracking()
+            .Include(r => r.RoundEndPlayers).AsQueryable();
 
         foreach (var searchItem in searchItems)
         {
