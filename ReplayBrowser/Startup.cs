@@ -1,8 +1,10 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Reflection;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using OpenTelemetry.Metrics;
 using ReplayBrowser.Data;
@@ -27,6 +29,11 @@ public class Startup
     
     public void ConfigureServices(IServiceCollection services)
     {
+        services.AddMemoryCache(opts =>
+        {
+            opts.TrackStatistics = true;
+        });
+        
         services.AddControllersWithViews().AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -94,8 +101,6 @@ public class Startup
                     .AllowAnyHeader();
             });
         });
-        
-        services.AddMemoryCache();
         
         // Endpoint logging
         services.Configure<RequestLoggingOptions>(options =>

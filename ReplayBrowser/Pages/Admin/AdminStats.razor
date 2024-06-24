@@ -1,0 +1,87 @@
+﻿@page "/account/admin/stats"
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Caching.Memory
+@using ReplayBrowser.Helpers
+@using ReplayBrowser.Services
+@using Microsoft.AspNetCore.Components.Web
+@attribute [Authorize]
+@inject IMemoryCache MemoryCache
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AccountService AccountService
+@inject NavigationManager NavigationManager
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-json.min.js"></script>
+
+<PageTitle>Cache Stats</PageTitle>
+
+<h3>AdminStats</h3>
+@if(!_authed)
+{
+    <div class="alert alert-danger" role="alert">
+        Not authorized
+    </div>
+}
+else
+{
+    var stats = MemoryCache.GetCurrentStatistics();
+    if (stats == null)
+    {
+        <div class="alert alert-info" role="alert">
+            No stats available
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <p>Total hits: <span class="badge bg-primary">@stats.TotalHits</span></p>
+                <p>Total misses: <span class="badge bg-danger">@stats.TotalMisses</span></p>
+                <p>Total entries: <span class="badge bg-info">@stats.CurrentEntryCount</span></p>
+                <p>Estimated size: <span class="badge bg-warning">@stats.CurrentEstimatedSize</span></p>
+            </div>
+        </div>
+    }
+
+    var keys = MemoryCache.GetKeys();
+    foreach (var key in keys)
+    {
+        var entry = MemoryCache.Get(key);
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <p>
+                    Key: <span class="text-muted">@key</span><br/>
+                    Value:
+                    <pre><code class="language-json">@JsonSerializer.Serialize(entry, new JsonSerializerOptions() { WriteIndented = true })</code></pre><br/>
+                </p>
+            </div>
+        </div>
+    }
+    
+    <script>
+        $(document).ready(function() {
+            Prism.highlightAll();
+        });
+    </script>
+}
+@code {
+    private bool _authed = false;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await AccountService.GetAccount(authState);
+        
+        if (user == null || !user.IsAdmin)
+        {
+            NavigationManager.NavigateTo("/");
+            return;
+        }
+        
+        _authed = true;
+    }    
+}
