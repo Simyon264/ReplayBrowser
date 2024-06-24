@@ -62,7 +62,7 @@ public class ProfilePregeneratorService : IHostedService, IDisposable, IAsyncDis
             await replayHelper.GetPlayerProfile(guid, new AuthenticationState(new ClaimsPrincipal()), true, true);
             Log.Information("Pregenerated profile for {Guid}.", guid);
             // in order to prevent db spamming, we wait a bit before the next profile
-            await Task.Delay(10000); // 10 seconds
+            await Task.Delay(3000); // 3 seconds
         }
         sw.Stop();
         Log.Information("Profile pregeneration finished in {ElapsedMilliseconds}ms.", sw.ElapsedMilliseconds);
