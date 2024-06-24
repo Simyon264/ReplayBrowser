@@ -60,25 +60,28 @@ public class ReplayHelper
     /// Fetches a player profile from the database.
     /// </summary>
     /// <exception cref="UnauthorizedAccessException">Thrown when the account is private and the requestor is not the account owner or an admin.</exception>
-    public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState)
+    public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, bool skipCache = false, bool skipPermsCheck = false)
     {
         var accountCaller = await _accountService.GetAccount(authenticationState);
         
         var accountRequested = _accountService.GetAccountSettings(playerGuid);
-        
-        if (accountRequested is { RedactInformation: true })
+
+        if (!skipPermsCheck)
         {
-            if (accountCaller == null || !accountCaller.IsAdmin)
+            if (accountRequested is { RedactInformation: true })
             {
-                if (accountCaller?.Guid != playerGuid)
+                if (accountCaller == null || !accountCaller.IsAdmin)
                 {
-                    throw new UnauthorizedAccessException("The account you are trying to view is private. Contact the account owner and ask them to make their account public.");
+                    if (accountCaller?.Guid != playerGuid)
+                    {
+                        throw new UnauthorizedAccessException("The account you are trying to view is private. Contact the account owner and ask them to make their account public.");
+                    }
                 }
             }
         }
         
         var cacheKey = $"player-{playerGuid}";
-        if (_cache.TryGetValue(cacheKey, out CollectedPlayerData cachedPlayerData))
+        if (_cache.TryGetValue(cacheKey, out CollectedPlayerData cachedPlayerData) && !skipCache)
         {
             return cachedPlayerData;
         }
@@ -218,15 +221,18 @@ public class ReplayHelper
         {
             collectedPlayerData.IsWatched = accountCaller.SavedProfiles.Contains(playerGuid);
         }
-        
-        await _accountService.AddHistory(accountCaller, new HistoryEntry()
+
+        if (!skipPermsCheck)
         {
-            Action = Enum.GetName(typeof(Action), Action.ProfileViewed) ?? "Unknown",
-            Time = DateTime.UtcNow,
-            Details = $"Player GUID: {playerGuid} Username: {collectedPlayerData.PlayerData.Username}"
-        });
+            await _accountService.AddHistory(accountCaller, new HistoryEntry()
+            {
+                Action = Enum.GetName(typeof(Action), Action.ProfileViewed) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = $"Player GUID: {playerGuid} Username: {collectedPlayerData.PlayerData.Username}"
+            });
+        }
         
-        _cache.Set(cacheKey, collectedPlayerData, TimeSpan.FromMinutes(20));
+        _cache.Set(cacheKey, collectedPlayerData, TimeSpan.FromMinutes(60));
         
         return collectedPlayerData;
     }
@@ -513,7 +519,7 @@ public class ReplayHelper
             paginatedResults.Add((paginatedList, totalItems));
         }
 
-        _cache.Set(cacheKey, paginatedResults, TimeSpan.FromMinutes(5));
+        _cache.Set(cacheKey, paginatedResults, TimeSpan.FromMinutes(35));
 
         stopWatch.Stop();
         Log.Information("Search took " + stopWatch.ElapsedMilliseconds + "ms.");
