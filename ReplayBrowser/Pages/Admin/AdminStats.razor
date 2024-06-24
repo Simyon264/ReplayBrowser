@@ -47,6 +47,7 @@ else
     }
 
     var keys = MemoryCache.GetKeys();
+    int i = 0;
     foreach (var key in keys)
     {
         var entry = MemoryCache.Get(key);
@@ -56,17 +57,22 @@ else
                 <p>
                     Key: <span class="text-muted">@key</span><br/>
                     Value:
-                    <pre><code class="language-json">@JsonSerializer.Serialize(entry, new JsonSerializerOptions() { WriteIndented = true })</code></pre><br/>
+                    <pre id="json-@i"><code>@JsonSerializer.Serialize(entry, new JsonSerializerOptions() { WriteIndented = true })</code></pre><br/>
                 </p>
+                <button id="highlight-btn-@i" class="btn btn-primary">Highlight JSON</button>
             </div>
         </div>
+
+        <script>
+            $("#highlight-btn-@i").click(function() {
+                // add the required class (language-json)
+                document.getElementById("json-@i").classList.add("language-json");
+                Prism.highlightElement(document.getElementById("json-@i"));
+            });
+        </script>
+
+        i++;
     }
-    
-    <script>
-        $(document).ready(function() {
-            Prism.highlightAll();
-        });
-    </script>
 }
 @code {
     private bool _authed = false;
