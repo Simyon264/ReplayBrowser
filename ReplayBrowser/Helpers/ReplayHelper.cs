@@ -232,7 +232,7 @@ public class ReplayHelper
             });
         }
         
-        _cache.Set(cacheKey, collectedPlayerData, TimeSpan.FromMinutes(60));
+        _cache.Set(cacheKey, collectedPlayerData, TimeSpan.FromMinutes(120));
         
         return collectedPlayerData;
     }
