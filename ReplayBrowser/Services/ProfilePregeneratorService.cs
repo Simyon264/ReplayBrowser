@@ -47,6 +47,7 @@ public class ProfilePregeneratorService : IHostedService, IDisposable, IAsyncDis
         var dbContext = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
         var replayHelper = scope.ServiceProvider.GetRequiredService<ReplayHelper>();
         var profilesToGenerate = new List<Guid>();
+        profilesToGenerate.AddRange(AlwaysGenerateProfiles);
         
         dbContext.Accounts.Select(a => a.SavedProfiles).ToList().ForEach(profiles =>
         {
