@@ -15,6 +15,11 @@ public class ProfilePregeneratorService : IHostedService, IDisposable, IAsyncDis
     private Timer? _timer = null;
     private readonly IServiceScopeFactory _scopeFactory;
     
+    /// <summary>
+    /// List of profiles which get generated even if they are not on a watched profile list. (example being leaderboards)
+    /// </summary>
+    public List<Guid> AlwaysGenerateProfiles = new List<Guid>();
+    
     public ProfilePregeneratorService(IServiceScopeFactory scopeFactory)
     {
         _scopeFactory = scopeFactory;
@@ -22,7 +27,7 @@ public class ProfilePregeneratorService : IHostedService, IDisposable, IAsyncDis
     
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromMinutes(30));
+        _timer = new Timer(DoWork, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(30));
         return Task.CompletedTask;
     }
     

@@ -93,13 +93,15 @@ public class LeaderboardService : IHostedService, IDisposable
     private readonly Ss14ApiHelper _apiHelper;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly AccountService _accountService;
+    private readonly ProfilePregeneratorService _profilePregeneratorService;
     
-    public LeaderboardService(IMemoryCache cache, Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService)
+    public LeaderboardService(IMemoryCache cache, Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService, ProfilePregeneratorService profilePregeneratorService)
     {
         _cache = cache;
         _apiHelper = apiHelper;
         _scopeFactory = factory;
         _accountService = accountService;
+        _profilePregeneratorService = profilePregeneratorService;
     }
     
     
@@ -395,6 +397,24 @@ public class LeaderboardService : IHostedService, IDisposable
         
         stopwatch.Stop();
         Log.Information("Calculating leaderboard took {Time}ms", stopwatch.ElapsedMilliseconds);
+        
+        // We loop through every leaderboard and add the player to the permanent pregenerator list if they are not already on it.
+        foreach (var leaderboard in leaderboards)
+        {
+            foreach (var player in leaderboard.Value.Data)
+            {
+                if (player.Value.Player == null)
+                    continue;
+                
+                if (player.Value.Player.PlayerGuid == null)
+                    continue;
+                
+                if (_profilePregeneratorService.AlwaysGenerateProfiles.Contains((Guid)player.Value.Player.PlayerGuid))
+                    continue;
+                
+                _profilePregeneratorService.AlwaysGenerateProfiles.Add((Guid)player.Value.Player.PlayerGuid);
+            }
+        }
         
         // Save leaderboard to cache (its expensive as fuck to calculate)
         var cacheEntryOptions = new MemoryCacheEntryOptions()
