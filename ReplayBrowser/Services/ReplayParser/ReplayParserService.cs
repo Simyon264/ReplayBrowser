@@ -27,6 +27,11 @@ public class ReplayParserService : IHostedService, IDisposable
 
     public CancellationTokenSource TokenSource = new();
     
+    /// <summary>
+    /// Event that is fired when all replays have been parsed.
+    /// </summary>
+    public event EventHandler<List<Replay>> OnReplaysFinishedParsing;
+    
     private readonly IConfiguration _configuration;
     private readonly IServiceScopeFactory _factory;
     
@@ -107,6 +112,7 @@ public class ReplayParserService : IHostedService, IDisposable
         
         var total = Queue.Count;
         var completed = 0;
+        var parsedReplays = new List<Replay>();
         
         // Consume the queue.
         while (Queue.Count > 0)
@@ -186,6 +192,7 @@ public class ReplayParserService : IHostedService, IDisposable
                             
                         await AddReplayToDb(parsedReplay);
                         await AddParsedReplayToDb(replay);
+                        parsedReplays.Add(parsedReplay);
                         Log.Information("Parsed " + replay);
                     }
                     catch (Exception e)
@@ -207,6 +214,8 @@ public class ReplayParserService : IHostedService, IDisposable
                 Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
             }
         }
+        
+        OnReplaysFinishedParsing?.Invoke(this, parsedReplays);
     }
     
     /// <summary>

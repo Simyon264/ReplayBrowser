@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data;
+using ReplayBrowser.Services;
 using ReplayBrowser.Services.ReplayParser;
 
 namespace ReplayBrowser.Controllers;
@@ -10,10 +11,12 @@ namespace ReplayBrowser.Controllers;
 public class DataController : Controller
 {
     private readonly ReplayDbContext _context;
+    private readonly ProfilePregeneratorService _profilePregeneratorService;
     
-    public DataController(ReplayDbContext context)
+    public DataController(ReplayDbContext context, ProfilePregeneratorService profilePregeneratorService)
     {
         _context = context;
+        _profilePregeneratorService = profilePregeneratorService;
     }
     
     [HttpGet("username-completion")]
@@ -41,7 +44,8 @@ public class DataController : Controller
         {
             Progress = ReplayParserService.DownloadProgress.ToDictionary(x => x.Key, x => x.Value),
             Status = ReplayParserService.Status.ToFriendlyString(),
-            Details = ReplayParserService.Details
+            Details = ReplayParserService.Details,
+            PregenerationProgress = _profilePregeneratorService.PregenerationProgress
         };
     }
 }
@@ -52,4 +56,5 @@ public class DownloadProgress
     public required Dictionary<string, double> Progress { get; set; }
     
     public required string Details { get; set; }
+    public required ProfilePregeneratorService.PreGenerationProgress PregenerationProgress { get; set; }
 }

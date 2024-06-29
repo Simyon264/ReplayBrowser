@@ -505,7 +505,7 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         }
         stopwatch.Stop();
-        Log.Information("Fetching player data took {Time}ms", stopwatch.ElapsedMilliseconds);
+        Log.Verbose("Fetching player data took {Time}ms", stopwatch.ElapsedMilliseconds);
         
         return returnValue;
     }

@@ -5,6 +5,11 @@
 
 <h3>Downloads</h3>
 <p>Here you can see the progress of the internal downloads of the website.<br/>The website looks for new replays every 10th minute. So 12:00, 12:10, 12:20, 12:30, etc.</p>
+<div id="pregenerationStatus">
+    <p>Pregeneration: <b id="pregenerationCurrent">0</b> / <b id="pregenerationMax">0</b></p>
+    <progress id="pregenerationProgress" value="0" max="1"></progress>
+</div>
+
 <p>Status: <b id="status-text">Waiting...</b> <span id="details"></span></p>
 
 <table class="table table-striped">
@@ -23,6 +28,8 @@
     let Downloads = [];
     let Status = "";
     let Details = "";
+    let PregenerationCurrent = 0;
+    let PregenerationMax = 0;
     
     setInterval(() => {
         download();
@@ -30,9 +37,12 @@
     
     function download() {
         $.get('/api/Data/download-progress', (data) => {
+            console.debug(data);
             Downloads = data.progress;
             Status = data.status;
             Details = data.details;
+            PregenerationCurrent = data.pregenerationProgress.current;
+            PregenerationMax = data.pregenerationProgress.max;
             updateDownloads();
         });
     }
@@ -46,6 +56,12 @@
         } else {
             document.getElementById('download-text-no').style.display = 'none';
         }
+        
+        document.getElementById('pregenerationCurrent').innerText = PregenerationCurrent;
+        document.getElementById('pregenerationMax').innerText = PregenerationMax;
+        if (PregenerationMax !== 0) { // Prevent division by zero
+            document.getElementById('pregenerationProgress').value = PregenerationCurrent / PregenerationMax;
+        } 
 
         document.getElementById('status-text').innerText = Status;
         document.getElementById('details').innerText = Details;

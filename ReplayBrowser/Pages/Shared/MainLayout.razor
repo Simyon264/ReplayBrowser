@@ -2,6 +2,7 @@
 @using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models.Account
 @using ReplayBrowser.Helpers
+@using ReplayBrowser.Services
 @using ReplayBrowser.Services.ReplayParser
 @using Serilog
 @inherits LayoutComponentBase
@@ -10,6 +11,7 @@
 @inject NavigationManager NavigationManager
 @inject NoticeHelper NoticeHelper
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ProfilePregeneratorService ProfilePregeneratorService
 
 @code
 {
@@ -59,6 +61,14 @@
                     aria-label="Close"
                     onclick="document.cookie = `dismissed-notice-${@activeNotice.Id}=true; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/`;">
                 </button>
+            </div>
+        }
+        
+        @if(ProfilePregeneratorService.IsFirstRun)
+        {
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading">Profile pregeneration</h4>
+                <p>Profile pregeneration is currently running. This process will take a while, but it will make the website faster in the future. You can still use the website while this is running, but some features may be slower than expected. You can see the progress at the downloads page.</p>
             </div>
         }
 
