@@ -117,6 +117,7 @@ public class ProfilePregeneratorService : IHostedService
         // Remove every profile already found in _generatedProfiles
         profilesToGenerate = profilesToGenerate.Except(_generatedProfiles).ToList();
         PregenerationProgress.Max = profilesToGenerate.Count;
+        PregenerationProgress.Current = 0;
         
         foreach (var guid in profilesToGenerate)
         {
