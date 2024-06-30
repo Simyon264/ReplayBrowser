@@ -162,7 +162,7 @@ else
                 IsLoggedIn = true;
             }
             
-            _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState);
+            _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState, TimeSpan.FromHours(2));
             _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
             _playerData.JobCount = _playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
         }

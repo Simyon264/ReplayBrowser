@@ -32,7 +32,7 @@ public class ReplayController : Controller
         
         try
         {
-            return Ok(await _replayHelper.GetPlayerProfile(profileGuid, authState));
+            return Ok(await _replayHelper.GetPlayerProfile(profileGuid, authState, TimeSpan.FromHours(2)));
         }
         catch (UnauthorizedAccessException e)
         {

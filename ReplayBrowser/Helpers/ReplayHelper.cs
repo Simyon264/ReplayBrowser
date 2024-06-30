@@ -60,7 +60,7 @@ public class ReplayHelper
     /// Fetches a player profile from the database.
     /// </summary>
     /// <exception cref="UnauthorizedAccessException">Thrown when the account is private and the requestor is not the account owner or an admin.</exception>
-    public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, bool skipCache = false, bool skipPermsCheck = false)
+    public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, TimeSpan cacheExpire, bool skipCache = false, bool skipPermsCheck = false)
     {
         var accountCaller = await _accountService.GetAccount(authenticationState);
         
@@ -232,7 +232,7 @@ public class ReplayHelper
             });
         }
         
-        _cache.Set(cacheKey, collectedPlayerData, TimeSpan.FromMinutes(120));
+        _cache.Set(cacheKey, collectedPlayerData, cacheExpire);
         
         return collectedPlayerData;
     }

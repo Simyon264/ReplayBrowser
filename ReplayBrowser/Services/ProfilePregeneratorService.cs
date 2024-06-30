@@ -121,7 +121,7 @@ public class ProfilePregeneratorService : IHostedService
         
         foreach (var guid in profilesToGenerate)
         {
-            await replayHelper.GetPlayerProfile(guid, new AuthenticationState(new ClaimsPrincipal()), true, true);
+            await replayHelper.GetPlayerProfile(guid, new AuthenticationState(new ClaimsPrincipal()), TimeSpan.FromDays(999), true, true);
             Log.Information("Pregenerated profile for {Guid}.", guid);
             _generatedProfiles.Add(guid);
             PregenerationProgress.Current++;
