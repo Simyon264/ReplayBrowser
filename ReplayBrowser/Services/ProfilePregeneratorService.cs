@@ -113,6 +113,12 @@ public class ProfilePregeneratorService : IHostedService
             {
                 try
                 {
+                    if (dbContext.PlayerProfiles.Any(x => x.PlayerGuid == guid))
+                    {
+                        // overwrite existing profile
+                        dbContext.PlayerProfiles.RemoveRange(dbContext.PlayerProfiles.Where(x => x.PlayerGuid == guid));
+                        await dbContext.SaveChangesAsync();
+                    }
                     dbContext.PlayerProfiles.Add(generated);
                     await dbContext.SaveChangesAsync();
                 }
