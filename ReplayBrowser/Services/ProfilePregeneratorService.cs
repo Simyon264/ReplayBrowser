@@ -136,9 +136,9 @@ public class ProfilePregeneratorService : IHostedService
         sw.Stop();
         Log.Information("Profile pregeneration finished in {ElapsedMilliseconds}ms.", sw.ElapsedMilliseconds);
         
-        _queuedPreGenerations--;
         if (_queuedPreGenerations > 0)
         {
+            _queuedPreGenerations--;
             PregenerateProfiles(); // this is stupid, but then again, this whole codebase is, and its not like someone else is going to read this. Right?
             Log.Information("Pregeneration queued.");
         }
