@@ -101,6 +101,8 @@ public class ReplayHelper
             
             if (profile != null)
             {
+                profile.IsWatched = accountCaller?.SavedProfiles.Contains(playerGuid) ?? false;
+                
                 return profile;
             }
         }
