@@ -25,11 +25,6 @@ public class ProfilePregeneratorService : IHostedService
     private readonly List<Guid> _generatedProfiles = new(); 
     
     /// <summary>
-    /// List of profiles which get generated even if they are not on a watched profile list. (example being leaderboards)
-    /// </summary>
-    public List<Guid> AlwaysGenerateProfiles = new List<Guid>();
-    
-    /// <summary>
     /// A var which tracks the progress of the pregeneration.
     /// </summary>
     public PreGenerationProgress PregenerationProgress { get; private set; } = new PreGenerationProgress();
@@ -45,9 +40,7 @@ public class ProfilePregeneratorService : IHostedService
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _replayParserService.OnReplaysFinishedParsing += OnReplaysParsed;
-        
-        // In one minute, start the pregeneration.
-        Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ContinueWith(t => QueuePregeneration(), cancellationToken);
+        QueuePregeneration();
         return Task.CompletedTask;
     }
     
@@ -102,17 +95,12 @@ public class ProfilePregeneratorService : IHostedService
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
         var replayHelper = scope.ServiceProvider.GetRequiredService<ReplayHelper>();
-        var profilesToGenerate = new List<Guid>();
-        profilesToGenerate.AddRange(AlwaysGenerateProfiles);
         
-        await foreach (var account in dbContext.Accounts)
-        {
-            foreach (var profile in account.SavedProfiles)
-            {
-                if (profilesToGenerate.Contains(profile)) continue;
-                profilesToGenerate.Add(profile);
-            }
-        }
+        var profilesToGenerate = dbContext.Players
+            .Select(x => x.PlayerGuid)
+            .Where(x => !_generatedProfiles.Contains(x))
+            .Distinct()
+            .ToList();
         
         // Remove every profile already found in _generatedProfiles
         profilesToGenerate = profilesToGenerate.Except(_generatedProfiles).ToList();
