@@ -91,7 +91,7 @@ public class ReplayHelper
         }
         
         // first check for the db cache
-        if (_context.PlayerProfiles.Any(p => p.PlayerGuid == playerGuid))
+        if (_context.PlayerProfiles.Any(p => p.PlayerGuid == playerGuid) && !skipPermsCheck)
         {
             var profile = await _context.PlayerProfiles
                 .Include(p => p.Characters)
