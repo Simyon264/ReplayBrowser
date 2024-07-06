@@ -60,7 +60,7 @@ public class ReplayHelper
     /// Fetches a player profile from the database.
     /// </summary>
     /// <exception cref="UnauthorizedAccessException">Thrown when the account is private and the requestor is not the account owner or an admin.</exception>
-    public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, TimeSpan cacheExpire, bool skipCache = false, bool skipPermsCheck = false)
+    public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, bool skipPermsCheck = false)
     {
         var accountCaller = await _accountService.GetAccount(authenticationState);
         
@@ -80,12 +80,31 @@ public class ReplayHelper
             }
         }
         
-        var cacheKey = $"player-{playerGuid}";
-        if (_cache.TryGetValue(cacheKey, out CollectedPlayerData cachedPlayerData) && !skipCache)
+        if (!skipPermsCheck)
         {
-            return cachedPlayerData;
+            await _accountService.AddHistory(accountCaller, new HistoryEntry()
+            {
+                Action = Enum.GetName(typeof(Action), Action.ProfileViewed) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = $"Player GUID: {playerGuid} Username: {(await _apiHelper.FetchPlayerDataFromGuid(playerGuid)).Username ?? "Unknown"}"
+            });
         }
-
+        
+        // first check for the db cache
+        if (_context.PlayerProfiles.Any(p => p.PlayerGuid == playerGuid))
+        {
+            var profile = await _context.PlayerProfiles
+                .Include(p => p.Characters)
+                .Include(p => p.JobCount)
+                .Include(p => p.PlayerData)
+                .FirstOrDefaultAsync(p => p.PlayerGuid == playerGuid);
+            
+            if (profile != null)
+            {
+                return profile;
+            }
+        }
+        
         var replays = await _context.Replays
             .AsNoTracking()
             .Include(r => r.RoundEndPlayers)
@@ -209,30 +228,20 @@ public class ReplayHelper
                 Username = (await _apiHelper.FetchPlayerDataFromGuid(playerGuid))?.Username ??
                            "Unable to fetch username (API error)"
             },
+            PlayerGuid = playerGuid,
             Characters = charactersPlayed,
             TotalEstimatedPlaytime = totalPlaytime,
             TotalRoundsPlayed = totalRoundsPlayed.Count,
             TotalAntagRoundsPlayed = totalAntagRoundsPlayed.Count,
             LastSeen = lastSeen,
-            JobCount = jobCount
+            JobCount = jobCount,
+            GeneratedAt = DateTime.UtcNow
         };
         
         if (accountCaller != null)
         {
             collectedPlayerData.IsWatched = accountCaller.SavedProfiles.Contains(playerGuid);
         }
-
-        if (!skipPermsCheck)
-        {
-            await _accountService.AddHistory(accountCaller, new HistoryEntry()
-            {
-                Action = Enum.GetName(typeof(Action), Action.ProfileViewed) ?? "Unknown",
-                Time = DateTime.UtcNow,
-                Details = $"Player GUID: {playerGuid} Username: {collectedPlayerData.PlayerData.Username}"
-            });
-        }
-        
-        _cache.Set(cacheKey, collectedPlayerData, cacheExpire);
         
         return collectedPlayerData;
     }

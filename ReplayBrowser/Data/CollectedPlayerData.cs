@@ -1,10 +1,18 @@
-﻿namespace ReplayBrowser.Data;
+﻿using System.Text.Json.Serialization;
+
+namespace ReplayBrowser.Data;
 
 /// <summary>
 /// Represents a player's data over all replays.
 /// </summary>
 public class CollectedPlayerData
 {
+    [JsonIgnore]
+    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    
+    [JsonIgnore]
+    public Guid PlayerGuid { get; set; }
+    
     public PlayerData PlayerData { get; init; } = new();
 
     /// <summary>
@@ -54,6 +62,11 @@ public class CollectedPlayerData
 
 public class CharacterData
 {
+    public int Id { get; set; }
+    
+    // Foreign key
+    public CollectedPlayerData? CollectedPlayerData { get; set; }
+    
     public string CharacterName { get; set; }
     public DateTime LastPlayed { get; set; } = DateTime.MinValue;
     public int RoundsPlayed { get; set; }
@@ -61,6 +74,11 @@ public class CharacterData
 
 public class JobCountData
 {
+    public int Id { get; set; }
+    
+    // Foreign key
+    public CollectedPlayerData? CollectedPlayerData { get; set; }
+    
     public string JobPrototype { get; set; }
     public int RoundsPlayed { get; set; }
     public DateTime LastPlayed { get; set; } = DateTime.MinValue;

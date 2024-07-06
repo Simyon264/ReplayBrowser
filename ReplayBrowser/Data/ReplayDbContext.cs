@@ -56,6 +56,21 @@ public class ReplayDbContext : DbContext
         
         modelBuilder.Entity<Notice>()
             .HasKey(n => n.Id);
+
+        modelBuilder.Entity<CollectedPlayerData>()
+            .HasKey(p => p.PlayerGuid);
+        modelBuilder.Entity<CollectedPlayerData>()
+            .HasIndex(p => p.PlayerGuid)
+            .IsUnique();
+        
+        modelBuilder.Entity<JobCountData>()
+            .HasKey(j => j.Id);
+
+        modelBuilder.Entity<CharacterData>()
+            .HasKey(c => c.Id);
+        
+        modelBuilder.Entity<PlayerData>()
+            .HasKey(p => p.Id);
         
         modelBuilder.Entity<Replay>().ToTable("Replays");
         modelBuilder.Entity<Player>().ToTable("Players");
@@ -63,6 +78,7 @@ public class ReplayDbContext : DbContext
         modelBuilder.Entity<Account>().ToTable("Accounts");
         modelBuilder.Entity<GdprRequest>().ToTable("GdprRequests");
         modelBuilder.Entity<Notice>().ToTable("Notices");
+        modelBuilder.Entity<CollectedPlayerData>().ToTable("PlayerProfiles");
     }
     
     public DbSet<Replay> Replays { get; set; }
@@ -85,4 +101,10 @@ public class ReplayDbContext : DbContext
     /// Contains a list of notices that are displayed to every user if the condition is met.
     /// </summary>
     public DbSet<Notice> Notices { get; set; }
+    
+    /// <summary>
+    /// Cached player data.
+    /// </summary>
+    /// <returns></returns>
+    public DbSet<CollectedPlayerData> PlayerProfiles { get; set; }
 }
