@@ -63,14 +63,6 @@
                 </button>
             </div>
         }
-        
-        @if(ProfilePregeneratorService.IsFirstRun)
-        {
-            <div class="alert alert-warning" role="alert">
-                <h4 class="alert-heading">Profile pregeneration</h4>
-                <p>Profile pregeneration is currently running. This process will take a while, but it will make the website faster in the future. You can still use the website while this is running, but some features may be slower than expected. You can see the progress at the downloads page.</p>
-            </div>
-        }
 
         @if (_user.Identity.IsAuthenticated)
         {

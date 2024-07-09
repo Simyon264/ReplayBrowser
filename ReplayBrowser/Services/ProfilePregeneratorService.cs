@@ -16,26 +16,25 @@ public class ProfilePregeneratorService : IHostedService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private ReplayParserService _replayParserService;
-    public bool IsFirstRun { get; private set;  } = true;
+
+    private Queue<List<Guid>> _queue = new();
+    private Timer? _timer = null;
     
     /// <summary>
     /// A var which tracks the progress of the pregeneration.
     /// </summary>
     public PreGenerationProgress PregenerationProgress { get; private set; } = new PreGenerationProgress();
-    
-    private int _queuedPreGenerations = 0;
-    private List<Guid> _players = new();
-    
     public ProfilePregeneratorService(IServiceScopeFactory scopeFactory, ReplayParserService replayParserService)
     {
         _scopeFactory = scopeFactory;
         _replayParserService = replayParserService;
+        _timer = new Timer(_ => PregenerateProfiles(), null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
     }
     
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _replayParserService.OnReplaysFinishedParsing += OnReplaysParsed;
-        QueuePregeneration();
+        _queue.Enqueue(new List<Guid>());
         return Task.CompletedTask;
     }
     
@@ -47,13 +46,6 @@ public class ProfilePregeneratorService : IHostedService
 
     private void OnReplaysParsed(object? sender, List<Replay> replays)
     {
-        if (IsFirstRun)
-        {
-            // We are waiting for the first run to complete
-            Log.Warning("Triggered OnReplaysParsed before the first run has completed.");
-            return;
-        }
-
         var players = new List<Guid>();
         
         foreach (var replay in replays)
@@ -67,82 +59,63 @@ public class ProfilePregeneratorService : IHostedService
             }
         }
         
-        _players = players.Distinct().ToList();
-        QueuePregeneration();
-    }
-
-    private void QueuePregeneration()
-    {
-        _queuedPreGenerations++;
-
-        if (_queuedPreGenerations == 1) // If we are the first one, start the pregeneration.
-            PregenerateProfiles();
+        _queue.Enqueue(players);
     }
 
     private async void PregenerateProfiles()
     {
-        var sw = new Stopwatch();
-        Log.Information("Starting profile pregeneration.");
-        sw.Start();
-        
-        using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
-        var replayHelper = scope.ServiceProvider.GetRequiredService<ReplayHelper>();
-        
-        var profilesToGenerate = dbContext.Players
-            .Select(x => x.PlayerGuid)
-            .Distinct()
-            .ToList();
-
-        var alreadyGenerated = dbContext.PlayerProfiles
-            .Select(x => x.PlayerGuid)
-            .ToList();
-        
-        profilesToGenerate = profilesToGenerate.Except(alreadyGenerated).ToList();
-        profilesToGenerate.AddRange(_players);
-        
-        PregenerationProgress.Max = profilesToGenerate.Count;
-        PregenerationProgress.Current = 0;
-        
-        foreach (var guid in profilesToGenerate)
+        while (_queue.TryDequeue(out var players))
         {
-            var generated= await replayHelper.GetPlayerProfile(guid, new AuthenticationState(new ClaimsPrincipal()), true);
-            Log.Verbose("Pregenerated profile for {Guid}.", guid);
-            PregenerationProgress.Current++;
-            if (generated != null)
+            var sw = new Stopwatch();
+            Log.Information("Starting profile pregeneration.");
+            sw.Start();
+            
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+            var replayHelper = scope.ServiceProvider.GetRequiredService<ReplayHelper>();
+            
+            var profilesToGenerate = dbContext.Players
+                .Select(x => x.PlayerGuid)
+                .Distinct()
+                .ToList();
+
+            var alreadyGenerated = dbContext.PlayerProfiles
+                .Select(x => x.PlayerGuid)
+                .ToList();
+            
+            profilesToGenerate = profilesToGenerate.Except(alreadyGenerated).ToList();
+            profilesToGenerate.AddRange(players);
+            
+            PregenerationProgress.Max = profilesToGenerate.Count;
+            PregenerationProgress.Current = 0;
+            
+            foreach (var guid in profilesToGenerate)
             {
-                try
+                var generated= await replayHelper.GetPlayerProfile(guid, new AuthenticationState(new ClaimsPrincipal()), true);
+                Log.Verbose("Pregenerated profile for {Guid}.", guid);
+                PregenerationProgress.Current++;
+                if (generated != null)
                 {
-                    if (dbContext.PlayerProfiles.Any(x => x.PlayerGuid == guid))
+                    try
                     {
-                        // overwrite existing profile
-                        dbContext.PlayerProfiles.RemoveRange(dbContext.PlayerProfiles.Where(x => x.PlayerGuid == guid));
+                        if (dbContext.PlayerProfiles.Any(x => x.PlayerGuid == guid))
+                        {
+                            // overwrite existing profile
+                            dbContext.PlayerProfiles.RemoveRange(dbContext.PlayerProfiles.Where(x => x.PlayerGuid == guid));
+                            await dbContext.SaveChangesAsync();
+                        }
+                        dbContext.PlayerProfiles.Add(generated);
                         await dbContext.SaveChangesAsync();
                     }
-                    dbContext.PlayerProfiles.Add(generated);
-                    await dbContext.SaveChangesAsync();
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Failed to save pregenerated profile for {Guid}.", guid);
+                    catch (Exception e)
+                    {
+                        Log.Error(e, "Failed to save pregenerated profile for {Guid}.", guid);
+                    }
                 }
             }
-        }
-
-        if (IsFirstRun)
-        {
-            IsFirstRun = false;
-            Log.Information("First run completed.");            
-        }
-        
-        sw.Stop();
-        Log.Information("Profile pregeneration finished in {ElapsedMilliseconds}ms.", sw.ElapsedMilliseconds);
-        
-        if (_queuedPreGenerations > 0)
-        {
-            _queuedPreGenerations--;
-            PregenerateProfiles(); // this is stupid, but then again, this whole codebase is, and its not like someone else is going to read this. Right?
-            Log.Information("Pregeneration queued.");
+            
+            sw.Stop();
+            Log.Information("Profile pregeneration finished in {ElapsedMilliseconds}ms.", sw.ElapsedMilliseconds);
         }
     }
     
