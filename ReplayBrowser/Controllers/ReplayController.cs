@@ -23,7 +23,63 @@ public class ReplayController : Controller
         _accountService = accountService;
         _replayHelper = replayHelper;
     }
+    
+    /// <summary>
+    /// Deletes all stored profiles for a server group.
+    /// </summary>
 
+    [HttpDelete("profile/delete/{serverId}")]
+    public async Task<IActionResult> DeleteProfile(string serverId)
+    {
+        if (!User.Identity.IsAuthenticated)
+        {
+            return Unauthorized();
+        }
+        
+        var guidRequestor = AccountHelper.GetAccountGuid(User);
+        
+        var requestor = await _dbContext.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .FirstOrDefaultAsync(a => a.Guid == guidRequestor);
+        
+        if (requestor == null)
+        {
+            return NotFound("Account is null. This should not happen.");
+        }
+        
+        if (!requestor.IsAdmin) 
+            return Unauthorized("You are not an admin.");
+
+        var players = await _dbContext.Replays
+            .Where(r => r.ServerId == serverId)
+            .Include(r => r.RoundEndPlayers)
+            .Where(r => r.RoundEndPlayers != null)
+            .SelectMany(r => r.RoundEndPlayers)
+            .Select(p => p.PlayerGuid)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var player in players)
+        {
+            await _dbContext.Database.ExecuteSqlRawAsync($"""
+                                                      DELETE FROM "CharacterData"
+                                                      WHERE "CollectedPlayerDataPlayerGuid" = '{player}';
+                                                      """);
+            
+            await _dbContext.Database.ExecuteSqlRawAsync($"""
+                                                          DELETE FROM "JobCountData"
+                                                          WHERE "CollectedPlayerDataPlayerGuid" = '{player}';
+                                                          """);
+        }
+        
+        await _dbContext.PlayerProfiles
+            .Where(p => players.Contains(p.PlayerGuid))
+            .ExecuteDeleteAsync();
+        
+        return Ok();
+    }
+    
     [HttpGet("profile/{profileGuid:guid}")]
     public async Task<IActionResult> GetPlayerData(Guid profileGuid)
     {

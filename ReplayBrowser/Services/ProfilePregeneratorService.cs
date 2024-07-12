@@ -102,11 +102,23 @@ public class ProfilePregeneratorService : IHostedService
                     {
                         if (dbContext.PlayerProfiles.Any(x => x.PlayerGuid == guid))
                         {
-                            // overwrite existing profile
-                            dbContext.PlayerProfiles.RemoveRange(dbContext.PlayerProfiles.Where(x => x.PlayerGuid == guid));
-                            await dbContext.SaveChangesAsync();
+                            // Get the existing profile and update it
+                            var existing = dbContext.PlayerProfiles.First(x => x.PlayerGuid == guid);
+                            existing.GeneratedAt = generated.GeneratedAt;
+                            existing.PlayerGuid = generated.PlayerGuid;
+                            existing.PlayerData = generated.PlayerData;
+                            existing.Characters = generated.Characters;
+                            existing.TotalEstimatedPlaytime = generated.TotalEstimatedPlaytime;
+                            existing.TotalRoundsPlayed = generated.TotalRoundsPlayed;
+                            existing.TotalAntagRoundsPlayed = generated.TotalAntagRoundsPlayed;
+                            existing.JobCount = generated.JobCount;
+                            existing.LastSeen = generated.LastSeen;
+                            existing.IsWatched = generated.IsWatched;
                         }
-                        dbContext.PlayerProfiles.Add(generated);
+                        else
+                        {
+                            dbContext.PlayerProfiles.Add(generated);
+                        }
                         await dbContext.SaveChangesAsync();
                     }
                     catch (Exception e)
