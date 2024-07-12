@@ -28,6 +28,7 @@ public class ProfilePregeneratorService : IHostedService
     {
         _scopeFactory = scopeFactory;
         _replayParserService = replayParserService;
+        _queue.Enqueue([]);
         _timer = new Timer(_ => PregenerateProfiles(), null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
     }
     
