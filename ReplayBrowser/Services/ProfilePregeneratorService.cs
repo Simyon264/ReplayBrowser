@@ -19,6 +19,7 @@ public class ProfilePregeneratorService : IHostedService
 
     private Queue<List<Guid>> _queue = new();
     private Timer? _timer = null;
+    private bool _running = false;
     
     /// <summary>
     /// A var which tracks the progress of the pregeneration.
@@ -67,6 +68,10 @@ public class ProfilePregeneratorService : IHostedService
 
     private async void PregenerateProfiles()
     {
+        if (_running)
+            return;
+        _running = true;
+        
         while (_queue.TryDequeue(out var players))
         {
             var sw = new Stopwatch();
@@ -133,6 +138,8 @@ public class ProfilePregeneratorService : IHostedService
             sw.Stop();
             Log.Information("Profile pregeneration finished in {ElapsedMilliseconds}ms.", sw.ElapsedMilliseconds);
         }
+        
+        _running = false;
     }
     
     public class PreGenerationProgress
