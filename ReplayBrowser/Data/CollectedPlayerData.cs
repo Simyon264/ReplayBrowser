@@ -63,10 +63,6 @@ public class CollectedPlayerData
 public class CharacterData
 {
     public int Id { get; set; }
-    
-    // Foreign key
-    public CollectedPlayerData? CollectedPlayerData { get; set; }
-    
     public string CharacterName { get; set; }
     public DateTime LastPlayed { get; set; } = DateTime.MinValue;
     public int RoundsPlayed { get; set; }
@@ -75,9 +71,6 @@ public class CharacterData
 public class JobCountData
 {
     public int Id { get; set; }
-    
-    // Foreign key
-    public CollectedPlayerData? CollectedPlayerData { get; set; }
     
     public string JobPrototype { get; set; }
     public int RoundsPlayed { get; set; }

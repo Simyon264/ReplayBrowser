@@ -59,6 +59,8 @@ public class ProfilePregeneratorService : IHostedService
             }
         }
         
+        players = players.Distinct().ToList();
+        
         _queue.Enqueue(players);
     }
 
