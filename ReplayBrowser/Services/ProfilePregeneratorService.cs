@@ -87,6 +87,7 @@ public class ProfilePregeneratorService : IHostedService
             
             profilesToGenerate = profilesToGenerate.Except(alreadyGenerated).ToList();
             profilesToGenerate.AddRange(players);
+            profilesToGenerate = profilesToGenerate.Distinct().ToList();
             
             PregenerationProgress.Max = profilesToGenerate.Count;
             PregenerationProgress.Current = 0;
