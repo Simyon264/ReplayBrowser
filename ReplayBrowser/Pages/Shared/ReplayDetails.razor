@@ -8,7 +8,14 @@
 @if(Replay != null)
 {
     <h2>@NameFormatted</h2>
-    <p>Map: @Replay.Map</p>
+    @if (Replay.Map == null)
+    {
+        <p>Maps: @string.Join(',', Replay.Maps)</p>
+    }
+    else
+    {
+        <p>Map: @Replay.Map</p>
+    }
     <p>Duration: @Replay.Duration</p>
     <p>Date: @DateFormatted</p>
     <p>Server ID: @Replay.ServerId</p>

@@ -19,7 +19,10 @@ public class Replay
     public DateTime? Date { get; set; }
     
     [YamlMember(Alias = "map")]
-    public string Map { get; set; }
+    public string? Map { get; set; }
+    
+    [YamlMember(Alias = "maps")]
+    public List<string>? Maps { get; set; }
     [YamlMember(Alias = "gamemode")]
     public string Gamemode { get; set; }
     [YamlMember(Alias = "roundEndPlayers")]

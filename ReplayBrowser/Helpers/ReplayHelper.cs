@@ -447,9 +447,6 @@ public class ReplayHelper
     /// <summary>
     /// Searches a list of replays for a specific query.
     /// </summary>
-    /// <param name="mode">The search mode.</param>
-    /// <param name="query">The search query.</param>
-    /// <param name="replays">The list of replays to search.</param>
     /// <returns>
     /// A list of replays that match the search query.
     /// </returns>
@@ -479,7 +476,7 @@ public class ReplayHelper
             switch (searchItem.SearchModeEnum)
             {
                 case SearchMode.Map:
-                    queryable = queryable.Where(x => x.Map.ToLower().Contains(searchItem.SearchValue.ToLower()));
+                    queryable = queryable.Where(x => x.Map.ToLower().Contains(searchItem.SearchValue.ToLower()) || x.Maps.Contains(searchItem.SearchValue.ToLower()));
                     break;
                 case SearchMode.Gamemode:
                     queryable = queryable.Where(x => x.Gamemode.ToLower().Contains(searchItem.SearchValue.ToLower()));

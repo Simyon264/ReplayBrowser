@@ -12,7 +12,14 @@
 <div class="card" style="width: 18rem; margin-top: 1rem">
     <div class="card-body">
         <h5 class="card-title">@_nameFormatted</h5>
-        <p class="card-text">Map: @ReplayData.Map</p>
+        @if (ReplayData.Map == null)
+        {
+        <p>Maps: @string.Join(',', ReplayData.Maps)</p>
+        }
+        else
+        {
+        <p>Map: @ReplayData.Map</p>
+        }
         <p class="card-text">Gamemode: @ReplayData.Gamemode</p>
         @if (ReplayData.RoundEndPlayers == null || ReplayData.RoundEndText == null)
         {

@@ -239,7 +239,7 @@ public class ReplayParserService : IHostedService, IDisposable
             .IgnoreUnmatchedProperties()
             .Build();
         var replay = deserializer.Deserialize<Replay>(reader);
-        if (replay.Map == null)
+        if (replay.Map == null && replay.Maps == null)
         {
             throw new Exception("Replay is not valid.");
         }
