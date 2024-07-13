@@ -333,8 +333,10 @@ namespace Server.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Map")
-                        .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<List<string>>("Maps")
+                        .HasColumnType("text[]");
 
                     b.Property<string>("RoundEndText")
                         .HasColumnType("text");
