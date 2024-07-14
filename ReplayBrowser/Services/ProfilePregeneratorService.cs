@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
@@ -109,6 +110,16 @@ public class ProfilePregeneratorService : IHostedService
                     {
                         if (dbContext.PlayerProfiles.Any(x => x.PlayerGuid == guid))
                         {
+                            await dbContext.Database.ExecuteSqlRawAsync($"""
+                                                                         DELETE FROM "CharacterData"
+                                                                         WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
+                                                                         """);
+            
+                            await dbContext.Database.ExecuteSqlRawAsync($"""
+                                                                         DELETE FROM "JobCountData"
+                                                                         WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
+                                                                         """);
+                            
                             // Get the existing profile and update it
                             var existing = dbContext.PlayerProfiles.First(x => x.PlayerGuid == guid);
                             existing.GeneratedAt = generated.GeneratedAt;
