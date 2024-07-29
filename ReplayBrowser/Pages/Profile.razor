@@ -17,7 +17,8 @@
 }
 else if (IsPrivate)
 {
-    <p>This player's data is private. Either log as this player or ask them to make their data public.</p>
+    <h1>Protected data</h1>
+    <p>@Exception.Message</p>
 }
 else if (FailedToLoad)
 {
@@ -170,6 +171,7 @@ else
         {
             FailedToLoad = true;
             IsPrivate = true;
+            Exception = e;
             _playerData = new();
         }
         catch (Exception e)
