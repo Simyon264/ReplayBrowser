@@ -66,6 +66,14 @@
 
         @if (_user.Identity.IsAuthenticated)
         {
+            @if (_account is { Protected: true })
+            {
+                <div class="alert alert-warning" role="alert">
+                    <h4 class="alert-heading">NOTICE</h4>
+                    <p>Your account is set as protected. Your redaction settings were automatically set to true, in order to prevent harassment or similar. Contact the site operator to remove your protection status.</p>
+                </div>
+            }
+            
             <p id="logged-in-text">Hello <strong>@_user.Claims.Single(c => c.Type == "name").Value!</strong></p>
 
             <a href="/account/logout" class="btn btn-primary" style="margin-right: 10px">Logout</a>
