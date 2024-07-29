@@ -5,8 +5,11 @@
 @using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Helpers
 @using Serilog
+
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayHelper ReplayHelper
+@inject Ss14ApiHelper Ss14ApiHelper
+
 @attribute [StreamRendering]
 
 <PageTitle>Player info</PageTitle>
@@ -17,7 +20,7 @@
 }
 else if (IsPrivate)
 {
-    <h1>Protected data</h1>
+    <h1>Protected data (@Ss14ApiHelper.FetchPlayerDataFromGuid(System.Guid.Parse(Guid)).Result.Username</h1>
     <p>@Exception.Message</p>
 }
 else if (FailedToLoad)
@@ -163,6 +166,7 @@ else
                 IsLoggedIn = true;
             }
             
+            Guid = guidParsed.ToString();
             _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState);
             _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
             _playerData.JobCount = _playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
