@@ -63,6 +63,12 @@ public class ReplayHelper
     public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, bool skipPermsCheck = false)
     {
         var accountCaller = await _accountService.GetAccount(authenticationState);
+
+        var isGdpr = _context.GdprRequests.Any(g => g.Guid == playerGuid);
+        if (isGdpr)
+        {
+            throw new UnauthorizedAccessException("This account is protected by a GDPR request. There is no data available.");
+        }
         
         var accountRequested = _accountService.GetAccountSettings(playerGuid);
 

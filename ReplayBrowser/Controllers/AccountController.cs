@@ -139,6 +139,16 @@ public class AccountController : Controller
                 Guid = (Guid) guid
             });
             
+            await _context.Database.ExecuteSqlRawAsync($"""
+                                                        DELETE FROM "CharacterData"
+                                                        WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
+                                                        """);
+            
+            await _context.Database.ExecuteSqlRawAsync($"""
+                                                        DELETE FROM "JobCountData"
+                                                        WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
+                                                        """);
+            
             _context.Replays
                 .Include(replay => replay.RoundEndPlayers)
                 .Where(r => r.RoundEndPlayers != null && r.RoundEndPlayers.Any(p => p.PlayerGuid == guid))
