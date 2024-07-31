@@ -70,17 +70,27 @@ public class ReplayHelper
             throw new UnauthorizedAccessException("This account is protected by a GDPR request. There is no data available.");
         }
         
-        var accountRequested = _accountService.GetAccountSettings(playerGuid);
+        var accountRequested = _context.Accounts
+            .Include(a => a.Settings)
+            .FirstOrDefault(a => a.Guid == playerGuid);
 
         if (!skipPermsCheck)
         {
-            if (accountRequested is { RedactInformation: true })
+            if (accountRequested is { Settings.RedactInformation: true })
             {
                 if (accountCaller == null || !accountCaller.IsAdmin)
                 {
                     if (accountCaller?.Guid != playerGuid)
                     {
-                        throw new UnauthorizedAccessException("The account you are trying to view is private. Contact the account owner and ask them to make their account public.");
+                        if (accountRequested.Protected)
+                        {
+                            throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
+                        }
+                        else
+                        {
+                            throw new UnauthorizedAccessException(
+                                "The account you are trying to view is private. Contact the account owner and ask them to make their account public.");
+                        }
                     }
                 }
             }
@@ -348,13 +358,28 @@ public class ReplayHelper
                     {
                         if (callerAccount == null || !callerAccount.IsAdmin)
                         {
-                            throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                            if (foundOocAccount.Protected) 
+                            {
+                                throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
+                            }
+                            else
+                            {
+                                throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                            }
                         }
                     }
                 }
             } else if (foundOocAccount != null && foundOocAccount.Settings.RedactInformation)
             {
-                throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                if (foundOocAccount.Protected)
+                {
+                    throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
+                }
+                else
+                {
+                    throw new UnauthorizedAccessException(
+                        "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                }
             }
         }
         
@@ -375,16 +400,40 @@ public class ReplayHelper
                         // if the requestor is not the found account and the requestor is not an admin, deny access
                         if (callerAccount == null || !callerAccount.IsAdmin)
                         {
-                            throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                            if (foundGuidAccount.Protected)
+                            {
+                                throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
+                            }
+                            else
+                            {
+                                throw new UnauthorizedAccessException(
+                                    "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                            }
                         }
                     }
                 } else
                 {
-                    throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                    if (foundGuidAccount.Protected)
+                    {
+                        throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
+                    }
+                    else
+                    {
+                        throw new UnauthorizedAccessException(
+                            "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                    }
                 }
             } else if (foundGuidAccount != null && foundGuidAccount.Settings.RedactInformation)
             {
-                throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                if (foundGuidAccount.Protected)
+                {
+                    throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
+                }
+                else
+                {
+                    throw new UnauthorizedAccessException(
+                        "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
+                }
             }
         }
 

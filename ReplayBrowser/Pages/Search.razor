@@ -222,7 +222,7 @@
             }
             catch (UnauthorizedAccessException e)
             {
-                ErrorMessage = "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.";
+                ErrorMessage = "Redacted account(s).";
                 ErrorDetails = e.Message;
                 stopWatch.Stop();
                 return;
