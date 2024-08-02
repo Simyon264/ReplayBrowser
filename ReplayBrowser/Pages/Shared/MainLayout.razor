@@ -50,10 +50,11 @@
             var dismissed = HttpContextAccessor.HttpContext != null && HttpContextAccessor.HttpContext.Request.Cookies.ContainsKey($"dismissed-notice-{activeNotice.Id}");
             if (dismissed)
                 continue;
+            var markupString = new MarkupString(activeNotice.Message);
             
             <div class="alert alert-info" role="alert">
                 <h4 class="alert-heading">@activeNotice.Title</h4>
-                <p>@activeNotice.Message</p>
+                <p>@markupString</p>
                 <button
                     type="button"
                     class="btn-close"
