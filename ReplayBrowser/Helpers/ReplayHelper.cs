@@ -30,10 +30,13 @@ public class ReplayHelper
     {
         var replays = await _context.Replays
             .AsNoTracking()
-            .OrderByDescending(r => r.Date)
-            .Include(r => r.RoundEndPlayers)
+            .OrderByDescending(r => r.Id)
             .Take(32)
+            .Include(r => r.RoundEndPlayers)
             .ToListAsync();
+        
+        // Sort the replays by date
+        replays.Sort((a, b) => (b.Date ?? DateTime.MinValue).CompareTo(a.Date ?? DateTime.MinValue));
         
         var caller = AccountHelper.GetAccountGuid(state);
         replays = FilterReplays(replays, caller);
