@@ -312,14 +312,21 @@ public class ReplayHelper
     {
         if (replay.RoundEndPlayers == null)
             return replay;
-        
+
+        var accountDictionary = new Dictionary<Guid, AccountSettings>();
         foreach (var replayRoundEndPlayer in replay.RoundEndPlayers)
         {
-            var accountForPlayer = _accountService.GetAccountSettings(replayRoundEndPlayer.PlayerGuid);
-            if (accountForPlayer == null)
+            if (!accountDictionary.ContainsKey(replayRoundEndPlayer.PlayerGuid))
             {
-                continue;
+                var accountForPlayerTemp = _accountService.GetAccountSettings(replayRoundEndPlayer.PlayerGuid);
+                if (accountForPlayerTemp == null)
+                {
+                    continue;
+                }
+
+                accountDictionary.Add(replayRoundEndPlayer.PlayerGuid, accountForPlayerTemp);
             }
+            var accountForPlayer = accountDictionary[replayRoundEndPlayer.PlayerGuid];
 
             if (!accountForPlayer.RedactInformation) continue;
             
@@ -440,11 +447,14 @@ public class ReplayHelper
             }
         }
 
-        await _accountService.AddHistory(callerAccount, new HistoryEntry()
+        Task.Run(async () =>
         {
-            Action = Enum.GetName(typeof(Action), Action.SearchPerformed) ?? "Unknown",
-            Time = DateTime.UtcNow,
-            Details = string.Join(", ", searchItems.Select(x => $"{x.SearchMode}={x.SearchValue}"))
+            await _accountService.AddHistory(callerAccount, new HistoryEntry()
+            {
+                Action = Enum.GetName(typeof(Action), Action.SearchPerformed) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = string.Join(", ", searchItems.Select(x => $"{x.SearchMode}={x.SearchValue}"))
+            });
         });
         
         var found = SearchReplays(searchItems, page, Constants.ReplaysPerPage);
