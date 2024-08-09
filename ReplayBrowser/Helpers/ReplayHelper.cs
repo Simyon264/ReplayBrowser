@@ -41,11 +41,15 @@ public class ReplayHelper
         replays = FilterReplays(replays, caller);
         var account = await _accountService.GetAccount(state);
         
-        await _accountService.AddHistory(account, new HistoryEntry()
+        // Log the action in a separate task to not block the request.
+        Task.Run(async () =>
         {
-            Action = Enum.GetName(typeof(Action), Action.MainPageViewed) ?? "Unknown",
-            Time = DateTime.UtcNow,
-            Details = string.Empty
+            await _accountService.AddHistory(account, new HistoryEntry()
+            {
+                Action = Enum.GetName(typeof(Action), Action.MainPageViewed) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = string.Empty
+            });
         });
         
         for (var i = 0; i < replays.Count; i++)
