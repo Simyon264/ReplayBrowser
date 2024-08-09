@@ -32,7 +32,6 @@ public class ReplayHelper
             .AsNoTracking()
             .OrderByDescending(r => r.Id)
             .Take(32)
-            .Include(r => r.RoundEndPlayers)
             .ToListAsync();
         
         // Sort the replays by date

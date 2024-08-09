@@ -24,6 +24,20 @@ public class ReplayController : Controller
         _replayHelper = replayHelper;
     }
     
+    [HttpGet("{replayId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetReplay(int replayId)
+    {
+        var authState = new AuthenticationState(HttpContext.User);
+        var replay = await _replayHelper.GetReplay(replayId, authState);
+        if (replay == null)
+        {
+            return NotFound();
+        }
+        
+        return Ok(replay);
+    }
+    
     /// <summary>
     /// Deletes all stored profiles for a server group.
     /// </summary>
