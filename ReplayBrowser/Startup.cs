@@ -38,7 +38,7 @@ public class Startup
         {
             options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         });
-        
+
         services.AddDbContext<ReplayDbContext>(options =>
         {
             if (Configuration.GetConnectionString("DefaultConnection") == null)
@@ -46,11 +46,11 @@ public class Startup
                 Log.Fatal("No connection string found in appsettings.json. Exiting.");
                 Environment.Exit(1);
             }
-            
+
             options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"));
-            
+
             options.EnableSensitiveDataLogging();
-            options.UseLoggerFactory(LoggerFactory.Create(builder => builder.AddSerilog()));
+            options.UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole().AddSerilog()));
         });
         
         // Run migrations on startup.

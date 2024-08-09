@@ -36,8 +36,8 @@ public class ReplayHelper
         
         // Sort the replays by date
         replays.Sort((a, b) => (b.Date ?? DateTime.MinValue).CompareTo(a.Date ?? DateTime.MinValue));
-        
-        var caller = AccountHelper.GetAccountGuid(state);
+
+        var caller = await _accountService.GetAccount(state);
         replays = FilterReplays(replays, caller);
         var account = await _accountService.GetAccount(state);
         
@@ -270,11 +270,8 @@ public class ReplayHelper
     /// Filters replays based on the account GUID.
     /// Replays for accounts that are private and not the requestor will be filtered out.
     /// </summary>
-    private List<Replay> FilterReplays(List<Replay> replays, Guid? caller)
+    private List<Replay> FilterReplays(List<Replay> replays, Account? callerAccount)
     {
-        var callerAccount = _context.Accounts
-            .FirstOrDefault(a => a.Guid == caller);
-        
         for (var i = 0; i < replays.Count; i++)
         {
             replays[i] = FilterReplay(replays[i], callerAccount);
@@ -448,7 +445,7 @@ public class ReplayHelper
         
         var found = SearchReplays(searchItems, page, Constants.ReplaysPerPage);
         var pageCount = (int) Math.Ceiling((double) found.results / Constants.ReplaysPerPage);
-        var replays = FilterReplays(found.Item1, callerAccount?.Guid);
+        var replays = FilterReplays(found.Item1, callerAccount);
         
         for (var i = 0; i < replays.Count; i++)
         {
@@ -610,7 +607,7 @@ public class ReplayHelper
             .Where(r => account.FavoriteReplays.Contains(r.Id))
             .ToListAsync();
 
-        return FilterReplays(replays, account.Guid);
+        return FilterReplays(replays, account);
     }
 
     private void PopulateExtendedFields(ref Replay replay)
