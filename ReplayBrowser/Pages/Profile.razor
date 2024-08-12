@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReplayBrowser.Data
 @using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
 @using Serilog
 
@@ -42,7 +43,7 @@ else
             <p>Watch</p>
         }
     </button>
-    
+
     <h1>@_playerData.PlayerData.Username</h1>
 
     <p><b>Total estimated playtime:</b> @_playerData.TotalEstimatedPlaytime.Humanize()</p>
@@ -98,7 +99,7 @@ else
             {
                 continue;
             }
-            
+
             <tr>
                 <td>@jobCountData.JobPrototype</td>
                 <td>@jobCountData.RoundsPlayed</td>
@@ -107,14 +108,14 @@ else
         }
         </tbody>
     </table>
-    
+
     <script>
         function Watch() {
             if ('@IsLoggedIn.ToString().ToLower()' === "false") {
                 location.href = "/account/login";
                 return
             }
-        
+
             const button = document.getElementById("watchButton");
             const guid = "@Guid";
             let url = "/api/Replay/watch/" + guid;
@@ -135,7 +136,7 @@ else
                 }
             });
         }
-    
+
     </script>
 }
 
@@ -160,9 +161,9 @@ else
                 _playerData = new();
                 return;
             }
-            
+
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            
+
             if (authState.User.Identity?.IsAuthenticated == true)
             {
                 IsLoggedIn = true;
@@ -176,7 +177,7 @@ else
             {
                 Username = "Unknown";
             }
-            
+
             Guid = guidParsed.ToString();
             _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState);
             _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();

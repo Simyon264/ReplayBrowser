@@ -2,6 +2,7 @@
 @using System.Drawing
 @using System.Globalization
 @using ReplayBrowser.Data
+@using ReplayBrowser.Models
 @using ReplayBrowser.Services
 @using Microsoft.AspNetCore.Components.Web
 @inject AnalyticsService AnalyticsService
@@ -62,7 +63,7 @@ else
             _errorMessage = ex.Message;
         }
     }
-    
+
     private Color GenerateColorFromName(string name)
     {
         var random = new Random(name.GetHashCode());

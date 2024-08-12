@@ -1,6 +1,6 @@
 ﻿using ReplayBrowser.Data.Models;
 
-namespace ReplayBrowser.Data;
+namespace ReplayBrowser.Models;
 
 public class SearchResult
 {
@@ -10,7 +10,7 @@ public class SearchResult
     public bool IsCache { get; set; } = false;
     public int PageCount { get; set; } = 1;
     public int CurrentPage { get; set; } = 1;
-    public List<Replay> Replays { get; set; } = new();
+    public List<ReplayResult> Replays { get; set; } = new();
     public int TotalReplays { get; set; } = 0;
     public List<SearchQueryItem> SearchItems { get; set; }
 }

@@ -19,14 +19,14 @@ else if (IsLoading)
 }
 else
 {
-    <ReplayDetails Replay="Replay" />
+    <ReplayDetails FullReplay="Replay" />
 }
 
 @code {
     [Parameter] public string Id { get; set; }
     public Replay? Replay { get; set; }
     public bool IsLoading { get; set; } = true;
-    
+
     protected override async Task OnInitializedAsync()
     {
         var authstate = await AuthenticationStateProvider.GetAuthenticationStateAsync();

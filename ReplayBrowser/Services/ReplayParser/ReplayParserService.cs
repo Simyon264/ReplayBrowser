@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
+using ReplayBrowser.Models;
 using ReplayBrowser.Services.ReplayParser.Providers;
 using Serilog;
 using YamlDotNet.Serialization;
@@ -18,7 +19,7 @@ public class ReplayParserService : IHostedService, IDisposable
     public static ConcurrentDictionary<string, double> DownloadProgress = new();
     public static ParserStatus Status = ParserStatus.Off;
     public static string Details = "";
-    
+
     /// <summary>
     /// Since the Replay Meta file was added just yesterday, we want to cut off all replays that were uploaded before that.
     /// </summary>
@@ -26,22 +27,22 @@ public class ReplayParserService : IHostedService, IDisposable
     public static DateTime CutOffDateTime = new(2024, 2, 17);
 
     public CancellationTokenSource TokenSource = new();
-    
+
     /// <summary>
     /// Event that is fired when all replays have been parsed.
     /// </summary>
     public event EventHandler<List<Replay>> OnReplaysFinishedParsing;
-    
+
     private readonly IConfiguration _configuration;
     private readonly IServiceScopeFactory _factory;
-    
-    
+
+
     public ReplayParserService(IConfiguration configuration, IServiceScopeFactory factory)
     {
         _configuration = configuration;
         _factory = factory;
     }
-    
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
         var urLs = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>();
@@ -49,7 +50,7 @@ public class ReplayParserService : IHostedService, IDisposable
         {
             throw new Exception("No replay URLs found in appsettings.json. Please set ReplayUrls to an array of URLs.");
         }
-        
+
         Status = ParserStatus.Idle;
         
         Task.Run(() => FetchReplays(TokenSource.Token, urLs), TokenSource.Token);
@@ -66,7 +67,7 @@ public class ReplayParserService : IHostedService, IDisposable
     {
         TokenSource.Dispose();
     }
-    
+
     /// <summary>
     /// Handles fetching replays from the remote storage.
     /// </summary>
@@ -88,10 +89,10 @@ public class ReplayParserService : IHostedService, IDisposable
                 {
                     Log.Error(e, "Error while fetching replays from " + storageUrl);
                 }
-                
+
                 Details = $"{Array.IndexOf(storageUrls, storageUrl) + 1}/{storageUrls.Length}";
             }
-            
+
             var now = DateTime.Now;
             var nextRun = now.AddMinutes(10 - now.Minute % 10).AddSeconds(-now.Second);
             var delay = nextRun - now;
@@ -102,18 +103,18 @@ public class ReplayParserService : IHostedService, IDisposable
             await Task.Delay(delay, token);
         }
     }
-    
+
     private async Task ConsumeQueue(CancellationToken token)
     {
         if (Queue.Count > 0)
         {
             DownloadProgress.Clear();
         }
-        
+
         var total = Queue.Count;
         var completed = 0;
         var parsedReplays = new List<Replay>();
-        
+
         // Consume the queue.
         while (Queue.Count > 0)
         {
@@ -122,7 +123,7 @@ public class ReplayParserService : IHostedService, IDisposable
             var startTime = DateTime.Now;
             // Clear the download progress.
             Details = $"{completed}/{total}";
-            
+
             DownloadProgress.Clear();
             Status = ParserStatus.Downloading;
             var tasks = new List<Task>();
@@ -139,7 +140,7 @@ public class ReplayParserService : IHostedService, IDisposable
                 {
                     continue;
                 }
-                
+
                 tasks.Add(Task.Run(async () =>
                 {
                     try
@@ -183,13 +184,13 @@ public class ReplayParserService : IHostedService, IDisposable
                                 parsedReplay.Date = date.ToUniversalTime();
                             }
                         }
-                        
+
                         // One more check to see if it's already in the database.
                         if (await IsReplayParsed(replay))
                         {
                             return;
                         }
-                            
+
                         await AddReplayToDb(parsedReplay);
                         await AddParsedReplayToDb(replay);
                         parsedReplays.Add(parsedReplay);
@@ -201,23 +202,23 @@ public class ReplayParserService : IHostedService, IDisposable
                     }
                 }, tokenSource.Token));
             }
-                
+
             // If the download takes too long, cancel it.
             // 10 minutes should be enough
             await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(600000, token));
-            await timeoutToken.CancelAsync(); 
+            await timeoutToken.CancelAsync();
             // Cancel the timeout token, so the background tasks cancel as well.
-                
+
             // If we timed out, log a warning.
             if (DateTime.Now - startTime > TimeSpan.FromMinutes(10))
             {
                 Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
             }
         }
-        
+
         OnReplaysFinishedParsing?.Invoke(this, parsedReplays);
     }
-    
+
     /// <summary>
     /// Parses a replay file and returns a Replay object.
     /// </summary>
@@ -226,12 +227,12 @@ public class ReplayParserService : IHostedService, IDisposable
         // Read the replay file and unzip it.
         var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read);
         var replayFile = zipArchive.GetEntry("_replay/replay_final.yml");
-        
+
         if (replayFile == null)
         {
             throw new FileNotFoundException($"Replay is missing the replay_final.yml file.");
         }
-        
+
         var replayStream = replayFile.Open();
         var reader = new StreamReader(replayStream);
 
@@ -251,12 +252,12 @@ public class ReplayParserService : IHostedService, IDisposable
         {
             replay.ServerId = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerId;
         }
-        
+
         if (replay.ServerName == Constants.UnsetServerName)
         {
             replay.ServerName = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerName;
         }
-        
+
         // Check for GDPRed accounts
         var gdprGuids = GetDbContext().GdprRequests.Select(x => x.Guid).ToList();
         if (replay.RoundEndPlayers != null)
@@ -269,7 +270,7 @@ public class ReplayParserService : IHostedService, IDisposable
                 }
             }
         }
-        
+
         return replay;
     }
 
@@ -280,7 +281,7 @@ public class ReplayParserService : IHostedService, IDisposable
         fetched.CompileRegex();
         return fetched;
     }
-    
+
     public async Task AddReplayToQueue(string replay)
     {
         // Use regex to check and retrieve the date from the file name.
@@ -311,7 +312,7 @@ public class ReplayParserService : IHostedService, IDisposable
             Log.Warning("Replay " + replay + " does not match the regex.");
             return;
         }
-        
+
         // If it's already in the database, skip it.
         if (await IsReplayParsed(replay))
         {
@@ -330,7 +331,7 @@ public class ReplayParserService : IHostedService, IDisposable
         await using var db = GetDbContext();
         return await db.ParsedReplays.AnyAsync(x => x.Name == replay);
     }
-    
+
     private async Task AddParsedReplayToDb(string replay)
     {
         await using var db = GetDbContext();
@@ -340,14 +341,14 @@ public class ReplayParserService : IHostedService, IDisposable
         });
         await db.SaveChangesAsync();
     }
-    
+
     private async Task AddReplayToDb(Replay replay)
     {
         await using var db = GetDbContext();
         await db.Replays.AddAsync(replay);
         await db.SaveChangesAsync();
     }
-    
+
     private ReplayDbContext GetDbContext()
     {
         var scope = _factory.CreateScope();

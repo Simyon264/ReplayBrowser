@@ -1,4 +1,4 @@
-﻿namespace ReplayBrowser.Data;
+﻿namespace ReplayBrowser.Models;
 
 /// <summary>
 /// Contains data for the analytics page.
@@ -15,17 +15,17 @@ public class Analytics
 {
     public required string Name { get; set; }
     public required string Description { get; set; }
-    
+
     /// <summary>
     /// Did something go wrong when generating the chart?
     /// </summary>
     public string? Error { get; set; }
-    
+
     /// <summary>
     /// The type of chart to display.
     /// </summary>
     public required string Type { get; set; }
-    
+
     /// <summary>
     /// The data for the chart.
     /// </summary>

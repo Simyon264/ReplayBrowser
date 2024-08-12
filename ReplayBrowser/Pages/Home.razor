@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
+@using ReplayBrowser.Models
 @using ReplayBrowser.Pages.Shared
 @attribute [StreamRendering]
 @inject ReplayHelper ReplayHelper
@@ -45,7 +46,7 @@
 
 @code {
     private bool IsLoading { get; set; } = true;
-    private List<Replay> Replays { get; set; } = [];
+    private List<ReplayResult> Replays { get; set; } = [];
     private int Count { get; set; } = 0;
 
     protected override async Task OnInitializedAsync()
