@@ -1,11 +1,13 @@
-﻿using YamlDotNet.Serialization;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using YamlDotNet.Serialization;
 
 namespace ReplayBrowser.Data.Models;
 
-public class Player
+public class Player : IEntityTypeConfiguration<Player>
 {
     public int Id { get; set; }
-    
+
     [YamlMember(Alias = "antagPrototypes")]
     public List<string> AntagPrototypes { get; set; }
     [YamlMember(Alias = "jobPrototypes")]
@@ -18,11 +20,20 @@ public class Player
     public string PlayerOocName { get; set; }
     [YamlMember(Alias = "antag")]
     public bool Antag { get; set; }
-    
+
     // Foreign key
-    
+
     public int? ReplayId { get; set; }
     public Replay? Replay { get; set; }
+
+
+    public void Configure(EntityTypeBuilder<Player> builder)
+    {
+        builder.HasIndex(p => p.PlayerGuid);
+        builder.HasIndex(p => p.PlayerIcName);
+        builder.HasIndex(p => p.PlayerOocName);
+        builder.HasIndex(p => p.ReplayId);
+    }
 
     public void RedactInformation(bool wasGdpr = false)
     {

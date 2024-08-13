@@ -2,6 +2,7 @@
 @using Humanizer.Bytes
 @using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models
+@using ReplayBrowser.Models
 @using ReplayBrowser.Services.ReplayParser
 @inject ReplayParserService ReplayParserService
 
@@ -24,8 +25,8 @@
     <p>Gamemode: @Replay.Gamemode</p>
     <p>Download Size: @ByteSize.FromBytes(Replay.Size).ToString()</p>
     <p>Uncompressed Size: @ByteSize.FromBytes(Replay.UncompressedSize).ToString()</p>
-    
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalEndText-@Replay.Id">
+
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalEndText-@Replay.Id" id="buttonEndText-@Replay.Id">
         View Round End Text
     </button>
     <div class="modal fade modal-lg" id="modalEndText-@Replay.Id" tabindex="-1" aria-labelledby="modalEndText-@Replay.Id" aria-hidden="true">
@@ -42,7 +43,13 @@
                      }
                 </div>
                 <div class="modal-body">
-                    <p>@ReplayEndTextFormatted</p>
+                    @if (FullReplay is not null && FullReplay.RoundEndText is not null)
+                    {
+                        <p id="endText-@Replay.Id">@ReplayEndTextFormatted</p>
+                    } else
+                    {
+                        <p id="endText-@Replay.Id">Loading...</p>
+                    }
                 </div>
                 @if(RequestModal != null)
                 {
@@ -79,7 +86,13 @@
                      }
                 </div>
                 <div class="modal-body">
-                    <p id="players-@Replay.Id">@ReplayPlayersFormatted</p>
+                    @if (FullReplay is not null && FullReplay.RoundEndPlayers is not null)
+                    {
+                        <p id="players-@Replay.Id">@ReplayPlayersFormatted</p>
+                    } else
+                    {
+                        <p id="players-@Replay.Id">Loading...</p>
+                    }
                 </div>
                 @if(RequestModal != null)
                 {
@@ -99,56 +112,86 @@
             </div>
         </div>
     </div>
-    
+
     <a href="@Replay.Link" target="_blank" class="btn btn-primary">Download</a>
-    
+
+
+    @if (FullReplay is null || FullReplay.RoundEndPlayers is null || FullReplay.RoundEndText is null) {
     <script>
     // Once the modal is opened, we need to rerequest the round end players if they are null
     // This is because the modal doesn't load the data until it is opened
+    async function loadDetails(players, endTextElement) {
+        let response = await fetch(`/api/Replay/@Replay.Id`);
+        let data = await response.json();
+
+        let playerList = "";
+        if (data.roundEndPlayers == null || data.roundEndPlayers.length == 0) {
+            players.innerHTML = "<p class='card-text text-danger'>Replay is incomplete. No players available.</p>";
+            return;
+        }
+
+        // Sort the players so that antags are at the top
+        data.roundEndPlayers.sort((a, b) => {
+            if (a.antagPrototypes.length > 0 && b.antagPrototypes.length == 0) {
+                return -1;
+            } else if (a.antagPrototypes.length == 0 && b.antagPrototypes.length > 0) {
+                return 1;
+            }
+            return 0;
+        });
+
+        if (!data.roundEndText || data.roundEndText.trim() == "") {
+            endTextElement.innerHTML = "No round end text available.";
+        } else {
+            const colorTagPattern = new RegExp("\\[color=(.*?)\\](.*?)\\[/color\\]", "g");
+            const colorTagReplacement = "<span style=\"color:$1\">$2</span>";
+
+            const boldTagPattern =  new RegExp("\\[bold\\](.*?)\\[/bold\\]", "g");
+            const boldTagReplacement = "<strong>$1</strong>";
+
+            endTextElement.innerHTML = data.roundEndText.trim()
+                .replaceAll(colorTagPattern, colorTagReplacement)
+                .replaceAll("\n", "<br>")
+                .replaceAll(boldTagPattern, boldTagReplacement);
+        }
+
+        data.roundEndPlayers.forEach(player => {
+            let job = "Unknown";
+            if (player.jobPrototypes.length > 0) {
+                job = player.jobPrototypes[0];
+            }
+            let playerText = `<a href="/player/${player.playerGuid}"><span style="color: gray">${player.playerOocName}</span></a> was <bold>${player.playerIcName}</bold> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
+            if (player.antagPrototypes.length > 0) {
+                playerText = `<a href="/player/${player.playerGuid}"><span style="color: red">${player.playerOocName}</span></a> was <span style="color:red"><bold>${player.playerIcName}</bold></span> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
+            }
+            // Need to show the guid as well
+            playerText += `<br><span style="color: gray;font-size: x-small;"> ${player.playerGuid}</span>`;
+            playerList += playerText + "<br>";
+        });
+        players.innerHTML = playerList;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const modalPlayers = document.getElementById("buttonPlayers-@Replay.Id")
         modalPlayers.addEventListener('click', function() {
-            const players = document.getElementById("players-@Replay.Id")
+            const players = document.getElementById("players-@Replay.Id");
+            const endTextElement = document.getElementById("endText-@Replay.Id");
             // Do an HTTP request to get the replay
-            if (players.innerHTML === "") {
-                fetch(`/api/Replay/@Replay.Id`)
-                    .then(response => response.json())
-                    .then(data => {
-                        let playerList = "";
-                        if (data.roundEndPlayers == null || data.roundEndPlayers.length == 0) {
-                            players.innerHTML = "<p class='card-text text-danger'>Replay is incomplete. No players available.</p>";
-                            return;
-                        }
-                        
-                        // Sort the players so that antags are at the top
-                        data.roundEndPlayers.sort((a, b) => {
-                            if (a.antagPrototypes.length > 0 && b.antagPrototypes.length == 0) {
-                                return -1;
-                            } else if (a.antagPrototypes.length == 0 && b.antagPrototypes.length > 0) {
-                                return 1;
-                            }
-                            return 0;
-                        });
-                        
-                        data.roundEndPlayers.forEach(player => {
-                            let job = "Unknown";
-                            if (player.jobPrototypes.length > 0) {
-                                job = player.jobPrototypes[0];
-                            }
-                            let playerText = `<a href="/player/${player.playerGuid}"><span style="color: gray">${player.playerOocName}</span></a> was <bold>${player.playerIcName}</bold> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
-                            if (player.antagPrototypes.length > 0) {
-                                playerText = `<a href="/player/${player.playerGuid}"><span style="color: red">${player.playerOocName}</span></a> was <span style="color:red"><bold>${player.playerIcName}</bold></span> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
-                            }
-                            // Need to show the guid as well
-                            playerText += `<br><span style="color: gray;font-size: x-small;"> ${player.playerGuid}</span>`;
-                            playerList += playerText + "<br>";
-                        });
-                        players.innerHTML = playerList;
-                    });
-            }
+            if (players.innerHTML == "Loading...")
+                loadDetails(players, endTextElement);
+        });
+
+        const modalEndText = document.getElementById("buttonEndText-@Replay.Id")
+        modalEndText.addEventListener('click', function() {
+            const players = document.getElementById("players-@Replay.Id");
+            const endTextElement = document.getElementById("endText-@Replay.Id");
+            // Do an HTTP request to get the replay
+            if (endTextElement.innerHTML == "Loading...")
+                loadDetails(players, endTextElement);
         });
     });
     </script>
+    }
 } else
 {
     <p>Oops! This component is missing a replay. Please report this to the developers.</p>
@@ -156,12 +199,15 @@
 
 @code {
     [Parameter]
-    public Replay? Replay { get; set; }
-    
+    public ReplayResult? Replay { get; set; }
+
+    [Parameter]
+    public Replay? FullReplay { get; set; }
+
     [Parameter]
     public string? RequestModal { get; set; }
 
-    public MarkupString ReplayEndTextFormatted { get; set; } = new MarkupString(""); 
+    public MarkupString ReplayEndTextFormatted { get; set; } = new MarkupString("");
     public MarkupString ReplayPlayersFormatted { get; set; } = new MarkupString("");
     public string NameFormatted { get; set; } = "";
     public string DateFormatted { get; set; } = "";
@@ -169,27 +215,14 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
+
+        if (Replay is null && FullReplay is not null)
+            Replay = FullReplay.ToResult();
+
         if (Replay == null)
             return;
 
-        var text = Replay.RoundEndText ?? "No round end text available.";
 
-        if (Replay.ServerName == null)
-        {
-            Replay.ServerName = "Unknown";
-        }
-        
-        const string colorTagPattern = @"\[color=(.*?)\](.*?)\[/color\]";
-        const string colorTagReplacement = "<span style=\"color:$1\">$2</span>";
-        
-        const string boldTagPattern = @"\[bold\](.*?)\[/bold\]";
-        const string boldTagReplacement = "<strong>$1</strong>";
-
-        text = Regex.Replace(text, colorTagPattern, colorTagReplacement);
-        text = text.Replace("\n", "<br>");
-        text = Regex.Replace(text, boldTagPattern, boldTagReplacement);
-        
-        ReplayEndTextFormatted = new MarkupString(text);
         if (Replay.Date != null)
         {
             DateFormatted = Replay.Date.Value.ToString("yyyy-MM-dd");
@@ -198,13 +231,32 @@
         {
             DateFormatted = "Unknown";
         }
-        
+
+        if (Replay.ServerName is null)
+        {
+            Replay.ServerName = "Unknown";
+        }
+
+        if (FullReplay is not null) {
+            var text = FullReplay.RoundEndText ?? "No round end text available.";
+
+            const string colorTagPattern = @"\[color=(.*?)\](.*?)\[/color\]";
+            const string colorTagReplacement = "<span style=\"color:$1\">$2</span>";
+
+            const string boldTagPattern = @"\[bold\](.*?)\[/bold\]";
+            const string boldTagReplacement = "<strong>$1</strong>";
+
+            text = Regex.Replace(text, colorTagPattern, colorTagReplacement);
+            text = text.Replace("\n", "<br>");
+            text = Regex.Replace(text, boldTagPattern, boldTagReplacement);
+
+            ReplayEndTextFormatted = new MarkupString(text);
+        }
 
         // Format the player list
-        var players = Replay.RoundEndPlayers;
-        if (players != null)
+        if (FullReplay is not null && FullReplay.RoundEndPlayers is not null)
         {
-            // Antags are placed at the top
+            var players = FullReplay.RoundEndPlayers;
             players.Sort((a, b) =>
             {
                 if (a.AntagPrototypes.Count > 0 && b.AntagPrototypes.Count == 0)
@@ -216,10 +268,9 @@
                 }
                 return 0;
             });
-            
-            var playerList = new List<string>();
-            foreach (var player in players)
-            {
+
+            // Antags are placed at the top
+            var playerList = players.Select(player => {
                 var job = "Unknown";
                 if (player.JobPrototypes.Count > 0)
                 {
@@ -233,13 +284,13 @@
                 }
                 // Need to show the guid as well
                 playerText += $"<br><span style=\"color: gray;font-size: x-small;\"> {{{player.PlayerGuid}}}</span>";
-                
-                playerList.Add(playerText);
-            }
-            
+
+                return playerText;
+            });
+
             ReplayPlayersFormatted = new MarkupString(string.Join("<br>", playerList));
         }
-        
+
         var fileName = Path.GetFileName(Replay.Link);
         if (fileName == null)
         {
@@ -253,7 +304,7 @@
         {
             NameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value.Replace("_","-")}";
             DateFormatted = matchDate.Groups[1].Value.Replace("_", "-");
-            if (string.IsNullOrWhiteSpace(matchName.Groups[1].Value)) 
+            if (string.IsNullOrWhiteSpace(matchName.Groups[1].Value))
             {
                 NameFormatted = $"{Replay.ServerId} - {matchDate.Groups[1].Value}";
             }

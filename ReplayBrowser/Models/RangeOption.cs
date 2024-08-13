@@ -1,4 +1,4 @@
-﻿namespace ReplayBrowser.Data;
+﻿namespace ReplayBrowser.Models;
 
 /// <summary>
 /// Supported ranges for date-based queries.
@@ -9,27 +9,27 @@ public enum RangeOption
     /// The last 24 hours.
     /// </summary>
     Last24Hours = 0,
-    
+
     /// <summary>
     /// The last 7 days.
     /// </summary>
     Last7Days = 1,
-    
+
     /// <summary>
     /// The last 30 days.
     /// </summary>
     Last30Days = 2,
-    
+
     /// <summary>
     /// The last three months.
     /// </summary>
     Last90Days = 3,
-    
+
     /// <summary>
     /// The last year.
     /// </summary>
     Last365Days = 4,
-    
+
     /// <summary>
     /// All time.
     /// </summary>
