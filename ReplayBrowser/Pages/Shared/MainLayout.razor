@@ -12,6 +12,7 @@
 @inject NoticeHelper NoticeHelper
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ProfilePregeneratorService ProfilePregeneratorService
+@inject IConfiguration Configuration
 
 @code
 {
@@ -112,7 +113,7 @@
     </div>
     
     <div class="container">
-        <p><a href="/contact">Contact</a> | <a href="/privacy">Privacy Policy</a></p>
+        <p><a href="/contact">Contact</a> | <a href="/privacy">Privacy Policy</a> | <a href="@Configuration["Contact:Server"]" target="_blank">Discord Server</a></p>
     </div>
 </footer>
 
