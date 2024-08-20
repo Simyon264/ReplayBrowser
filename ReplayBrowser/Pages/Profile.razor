@@ -180,8 +180,8 @@ else
 
             Guid = guidParsed.ToString();
             _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState);
-            _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
-            _playerData.JobCount = _playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
+            _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ThenByDescending(x => x.LastPlayed).ToList();
+            _playerData.JobCount = _playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ThenByDescending(x => x.LastPlayed).ToList();
         }
         catch (UnauthorizedAccessException e)
         {

@@ -106,6 +106,7 @@ public class ReplayHelper
         if (_context.PlayerProfiles.Any(p => p.PlayerGuid == playerGuid) && !skipPermsCheck)
         {
             var profile = await _context.PlayerProfiles
+                .AsNoTracking()
                 .Include(p => p.Characters)
                 .Include(p => p.JobCount)
                 .Include(p => p.PlayerData)
@@ -119,120 +120,46 @@ public class ReplayHelper
             }
         }
 
-        var replays = await _context.Replays
+       var replayPlayers = await _context.Players
             .AsNoTracking()
-            .Include(r => r.RoundEndPlayers)
-            .Where(r => r.RoundEndPlayers != null)
-            .Where(r => r.RoundEndPlayers!.Any(p => p.PlayerGuid == playerGuid))
-            .Distinct() // only need one instance of each replay
+            .Where(p => p.PlayerGuid == playerGuid)
+            .Where(p => p.Replay!.Date != null)
+            .Include(p => p.Replay)
+            .Select(p => new {
+                p.Id,
+                p.ReplayId,
+                Date = (DateTime) p.Replay!.Date,
+                p.Replay!.Duration,
+                p.JobPrototypes,
+                // .Antag becomes unnecessary because this always has at least an empty string,
+                p.AntagPrototypes,
+                p.PlayerIcName,
+            })
             .ToListAsync();
 
-        var charactersPlayed = new List<CharacterData>();
-        var totalPlaytime = TimeSpan.Zero;
-        var totalRoundsPlayed = new List<int>();
-        var totalAntagRoundsPlayed = new List<int>();
-        var lastSeen = DateTime.MinValue;
-        var jobCount = new List<JobCountData>();
+        var replayPlayerGroup = replayPlayers.GroupBy(rp => rp.ReplayId);
 
-        foreach (var replay in replays)
-        {
-            if (replay.RoundEndPlayers == null)
-                continue;
+        var totalRoundsPlayed = replayPlayerGroup.Count();
+        var totalAntagRoundsPlayed = replayPlayerGroup.Select(rpg => rpg.Any(rp => rp.AntagPrototypes.Count > 0)).Count();
 
-            if (replay.Date == null)
-            {
-                Log.Warning("Replay with ID {ReplayId} has no date", replay.Id);
-                continue;
-            }
+        // Estimated
+        var totalPlaytime = new TimeSpan(replayPlayerGroup.Sum(rpg => (TimeSpan.TryParse(rpg.First().Duration, out var durationSpan) ? durationSpan : TimeSpan.Zero).Ticks));
 
-            if (replay.Date > lastSeen) // Update last seen
-            {
-                lastSeen = (DateTime)replay.Date;
-            }
+        var lastSeen = replayPlayerGroup.Max(g => g.First().Date);
 
-            var characters = replay.RoundEndPlayers
-                .Where(p => p.PlayerGuid == playerGuid)
-                .Select(p => p.PlayerIcName)
-                .Distinct()
-                .ToList();
+        var charactersPlayed = replayPlayers.GroupBy(rp => rp.PlayerIcName).Select(rpg => new CharacterData {
+            CharacterName = rpg.Key,
+            LastPlayed = rpg.Max(rp => rp.Date),
+            RoundsPlayed = rpg.Count()
+        }).ToList();
 
-            foreach (var character in characters)
-            {
-                // Check if the character is already in the list
-                var characterData = charactersPlayed.FirstOrDefault(c => c.CharacterName == character);
-                if (characterData == null)
-                {
-                    charactersPlayed.Add(new CharacterData()
-                    {
-                        CharacterName = character,
-                        LastPlayed = (DateTime)replay.Date,
-                        RoundsPlayed = 1
-                    });
-                }
-                else
-                {
-                    characterData.RoundsPlayed++;
-                    if (replay.Date > characterData.LastPlayed)
-                    {
-                        characterData.LastPlayed = (DateTime)replay.Date;
-                    }
-                }
-            }
-
-            var jobPrototypes = replay.RoundEndPlayers
-                .Where(p => p.PlayerGuid == playerGuid)
-                .Select(p => p.JobPrototypes)
-                .Distinct()
-                .ToList();
-
-            foreach (var jobPrototypeList in jobPrototypes)
-            {
-                foreach (var jobPrototype in jobPrototypeList)
-                {
-                    var jobData = jobCount.FirstOrDefault(j => j.JobPrototype == jobPrototype);
-                    if (jobData == null)
-                    {
-                        jobCount.Add(new JobCountData()
-                        {
-                            JobPrototype = jobPrototype,
-                            RoundsPlayed = 1,
-                            LastPlayed = (DateTime)replay.Date
-                        });
-                    }
-                    else
-                    {
-                        jobData.RoundsPlayed++;
-                        if (replay.Date > jobData.LastPlayed)
-                        {
-                            jobData.LastPlayed = (DateTime)replay.Date;
-                        }
-                    }
-                }
-            }
-
-            // Since duration is a string (example 02:04:51.4258419), we need to parse it.
-            if (TimeSpan.TryParse(replay.Duration, out var duration))
-            {
-                totalPlaytime += duration;
-            }
-            else
-            {
-                Log.Warning("Unable to parse duration {Duration} for replay with ID {ReplayId}", replay.Duration, replay.Id);
-            }
-
-            if (!totalRoundsPlayed.Contains(replay.Id))
-            {
-                totalRoundsPlayed.Add(replay.Id);
-            }
-
-            if (replay.RoundEndPlayers.Any(p => p.PlayerGuid == playerGuid && p.Antag))
-            {
-                if (!totalAntagRoundsPlayed.Contains(replay.Id))
-                {
-                    totalAntagRoundsPlayed.Add(replay.Id);
-                }
-            }
-        }
+        var jobCount = replayPlayers.Where(rp => rp.JobPrototypes.Count > 0)
+            .GroupBy(rp => rp.JobPrototypes[0])
+            .Select(rpg => new JobCountData {
+                JobPrototype = rpg.Key,
+                RoundsPlayed = rpg.Count(),
+                LastPlayed = rpg.Max(rp => rp.Date)
+            }).ToList();
 
         CollectedPlayerData collectedPlayerData = new()
         {
@@ -245,8 +172,8 @@ public class ReplayHelper
             PlayerGuid = playerGuid,
             Characters = charactersPlayed,
             TotalEstimatedPlaytime = totalPlaytime,
-            TotalRoundsPlayed = totalRoundsPlayed.Count,
-            TotalAntagRoundsPlayed = totalAntagRoundsPlayed.Count,
+            TotalRoundsPlayed = totalRoundsPlayed,
+            TotalAntagRoundsPlayed = totalAntagRoundsPlayed,
             LastSeen = lastSeen,
             JobCount = jobCount,
             GeneratedAt = DateTime.UtcNow
