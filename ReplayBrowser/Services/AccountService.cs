@@ -139,15 +139,23 @@ public class AccountService : IHostedService, IDisposable
         _timer?.Dispose();
     }
 
-    public async Task<Account?> GetAccount(AuthenticationState authstate)
+    public async Task<Account?> GetAccount(AuthenticationState authstate, bool includeHistory = false)
     {
         var guid = AccountHelper.GetAccountGuid(authstate);
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
-        var account = context.Accounts
-            .Include(a => a.Settings)
-            .Include(a => a.History)
-            .FirstOrDefault(a => a.Guid == guid);
+        Account? account = null;
+        if (includeHistory)
+        {
+            account = context.Accounts
+                .Include(a => a.Settings)
+                .Include(a => a.History)
+                .FirstOrDefault(a => a.Guid == guid);
+        } else {
+            account = context.Accounts
+                .Include(a => a.Settings)
+                .FirstOrDefault(a => a.Guid == guid);
+        }
 
         if (account == null)
         {
@@ -245,7 +253,6 @@ public class AccountService : IHostedService, IDisposable
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
         return context.Accounts
             .Include(a => a.Settings)
-            .Include(a => a.History)
             .First(a => a.Guid == Guid.Empty);
     }
 
