@@ -1,4 +1,4 @@
-﻿namespace ReplayBrowser.Data;
+﻿namespace ReplayBrowser.Models;
 
 public static class Constants
 {

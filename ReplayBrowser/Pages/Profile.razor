@@ -3,11 +3,14 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReplayBrowser.Data
 @using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
 @using Serilog
+
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayHelper ReplayHelper
-@attribute [StreamRendering]
+@inject Ss14ApiHelper Ss14ApiHelper
+
 
 <PageTitle>Player info</PageTitle>
 
@@ -17,10 +20,12 @@
 }
 else if (IsPrivate)
 {
-    <p>This player's data is private. Either log as this player or ask them to make their data public.</p>
+    <h1>Protected data (@Username)</h1>
+    <p>@Exception.Message</p>
 }
 else if (FailedToLoad)
 {
+    <h1>Error (@Username)</h1>
     <p>Failed to load player data. Exception: @Exception.Message</p>
 }
 else
@@ -37,7 +42,7 @@ else
             <p>Watch</p>
         }
     </button>
-    
+
     <h1>@_playerData.PlayerData.Username</h1>
 
     <p><b>Total estimated playtime:</b> @_playerData.TotalEstimatedPlaytime.Humanize()</p>
@@ -93,7 +98,7 @@ else
             {
                 continue;
             }
-            
+
             <tr>
                 <td>@jobCountData.JobPrototype</td>
                 <td>@jobCountData.RoundsPlayed</td>
@@ -102,14 +107,14 @@ else
         }
         </tbody>
     </table>
-    
+
     <script>
         function Watch() {
             if ('@IsLoggedIn.ToString().ToLower()' === "false") {
                 location.href = "/account/login";
                 return
             }
-        
+
             const button = document.getElementById("watchButton");
             const guid = "@Guid";
             let url = "/api/Replay/watch/" + guid;
@@ -130,7 +135,7 @@ else
                 }
             });
         }
-    
+
     </script>
 }
 
@@ -142,6 +147,7 @@ else
     private Exception? Exception { get; set; }
     private bool IsPrivate { get; set; } = false;
     private bool IsLoggedIn { get; set; } = false;
+    private string Username { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -154,22 +160,33 @@ else
                 _playerData = new();
                 return;
             }
-            
+
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            
+
             if (authState.User.Identity?.IsAuthenticated == true)
             {
                 IsLoggedIn = true;
             }
-            
+
+            var playerData = await Ss14ApiHelper.FetchPlayerDataFromGuid(System.Guid.Parse(Guid));
+            if (playerData != null)
+            {
+                Username = playerData.Username;
+            } else
+            {
+                Username = "Unknown";
+            }
+
+            Guid = guidParsed.ToString();
             _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState);
-            _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ToList();
-            _playerData.JobCount = _playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ToList();
+            _playerData.Characters = _playerData.Characters.OrderByDescending(x => x.RoundsPlayed).ThenByDescending(x => x.LastPlayed).ToList();
+            _playerData.JobCount = _playerData.JobCount.OrderByDescending(x => x.RoundsPlayed).ThenByDescending(x => x.LastPlayed).ToList();
         }
         catch (UnauthorizedAccessException e)
         {
             FailedToLoad = true;
             IsPrivate = true;
+            Exception = e;
             _playerData = new();
         }
         catch (Exception e)

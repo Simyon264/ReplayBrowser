@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReplayBrowser.Data
+@using ReplayBrowser.Models
 @using ReplayBrowser.Services
 @using Microsoft.AspNetCore.Components.Web
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -83,7 +84,7 @@ else
         }
         </tbody>
     </table>
-    
+
     // page navigation
     @if (History.Page > 0)
     {
@@ -97,13 +98,13 @@ else
     @if (History.TotalPages + 1> History.Page + 1)
     {
         <a href="/account/logs?username=@Username&page=@(History.Page + 1)" class="btn btn-primary">Next</a>
-    } 
+    }
     else
     {
         // disable next button
         <a class="disabled btn btn-primary">Next</a>
     }
-    
+
     <p>Page @(History.Page + 1) of @History.TotalPages</p>
 }
 
@@ -119,13 +120,13 @@ else
     private string Username { get; set; } = string.Empty;
     private string StringResponse { get; set; } = string.Empty;
     private Exception? Exception { get; set; } = null;
-    
+
     protected override async Task OnInitializedAsync()
     {
         var uri = new Uri(NavigationManager.Uri);
         var query = uri.Query;
         var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
-        
+
         var username = queryDictionary["username"] ?? string.Empty;
         var page = queryDictionary["page"];
 
@@ -133,15 +134,15 @@ else
         {
             pageNumber = 0;
         }
-        
+
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var account = await AccountService.GetAccount(authState);
+        var account = await AccountService.GetAccount(authState, true);
         if (account == null || !account.IsAdmin)
         {
             Is1984 = true;
             return;
         }
-        
+
         try
         {
             History = await AccountService.GetAccountHistory(username, pageNumber);

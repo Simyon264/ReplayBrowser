@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Reflection;
+using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Data.Models.Account;
 
@@ -9,78 +10,13 @@ public class ReplayDbContext : DbContext
     public ReplayDbContext(DbContextOptions<ReplayDbContext> options) : base(options)
     {
     }
-    
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Replay>()
-            .HasKey(r => r.Id); // Using Id as primary key
-        modelBuilder.Entity<Player>()
-            .HasKey(p => p.Id); // Using Id as primary key
-        
-        modelBuilder.Entity<Replay>()
-            .HasIndex(r => r.Map);
-        modelBuilder.Entity<Replay>()
-            .HasIndex(r => r.Gamemode);
-        modelBuilder.Entity<Replay>()
-            .HasIndex(r => r.ServerId);
-        modelBuilder.Entity<Replay>();
-        modelBuilder.Entity<Replay>()
-            .HasIndex(r => r.ServerName);
-        modelBuilder.Entity<Player>()
-            .HasIndex(p => p.PlayerGuid);
-        modelBuilder.Entity<Player>()
-            .HasIndex(p => p.PlayerIcName);
-        modelBuilder.Entity<Player>()
-            .HasIndex(p => p.PlayerOocName);
-        
-        modelBuilder.Entity<Replay>().
-            HasGeneratedTsVectorColumn(
-                p => p.RoundEndTextSearchVector,
-                "english",
-                r => new { r.RoundEndText }
-                )
-            .HasIndex(r => r.RoundEndTextSearchVector)
-            .HasMethod("GIN");
-
-        modelBuilder.Entity<Account>()
-            .HasKey(a => a.Id);
-        modelBuilder.Entity<Account>()
-            .HasIndex(a => a.Guid)
-            .IsUnique();
-        
-        modelBuilder.Entity<Account>()
-            .HasIndex(a => a.Username);
-        
-        modelBuilder.Entity<GdprRequest>()
-            .HasKey(g => g.Guid);
-        
-        modelBuilder.Entity<Notice>()
-            .HasKey(n => n.Id);
-
-        modelBuilder.Entity<CollectedPlayerData>()
-            .HasKey(p => p.PlayerGuid);
-        modelBuilder.Entity<CollectedPlayerData>()
-            .HasIndex(p => p.PlayerGuid)
-            .IsUnique();
-        
-        modelBuilder.Entity<JobCountData>()
-            .HasKey(j => j.Id);
-
-        modelBuilder.Entity<CharacterData>()
-            .HasKey(c => c.Id);
-        
-        modelBuilder.Entity<PlayerData>()
-            .HasKey(p => p.Id);
-        
-        modelBuilder.Entity<Replay>().ToTable("Replays");
-        modelBuilder.Entity<Player>().ToTable("Players");
-        modelBuilder.Entity<ParsedReplay>().ToTable("ParsedReplays");
-        modelBuilder.Entity<Account>().ToTable("Accounts");
-        modelBuilder.Entity<GdprRequest>().ToTable("GdprRequests");
-        modelBuilder.Entity<Notice>().ToTable("Notices");
-        modelBuilder.Entity<CollectedPlayerData>().ToTable("PlayerProfiles");
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
-    
+
     public DbSet<Replay> Replays { get; set; }
     public DbSet<Player> Players { get; set; }
     /// <summary>
@@ -89,19 +25,19 @@ public class ReplayDbContext : DbContext
     /// leviathan-2024_02_18-08_33-round_46751.zip
     /// </summary>
     public DbSet<ParsedReplay> ParsedReplays { get; set; }
-    
+
     public DbSet<Account> Accounts { get; set; }
-    
+
     /// <summary>
     /// Contains a list of GUIDs that have requested their data to be removed. Future replays will have this player replaced with "Removed by GDPR request".
     /// </summary>
     public DbSet<GdprRequest> GdprRequests { get; set; }
-    
+
     /// <summary>
     /// Contains a list of notices that are displayed to every user if the condition is met.
     /// </summary>
     public DbSet<Notice> Notices { get; set; }
-    
+
     /// <summary>
     /// Cached player data.
     /// </summary>

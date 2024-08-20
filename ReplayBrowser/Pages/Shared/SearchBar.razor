@@ -1,15 +1,16 @@
 ﻿@using Humanizer
 @using Microsoft.Extensions.Configuration
 @using ReplayBrowser.Data
+@using ReplayBrowser.Models
 @inject IConfiguration Configuration
 
 @{
     var searchModes = Enum.GetValues(typeof(SearchMode)).Cast<SearchMode>().ToList();
     <div class="search-bar">
         <div class="d-flex ms-auto hidden prefab search-form">
-            <input 
-                type="text" 
-                class="form-control" 
+            <input
+                type="text"
+                class="form-control"
                 placeholder="Search for a replay..."
                 aria-label="Search"
                 data-filter="/api/Data/username-completion?username=#QUERY#"
@@ -36,7 +37,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="d-flex" style="margin-top: 1rem;">
         <button class="btn btn-outline-primary" style="margin-right: 1rem" type="button" id="addSearchBar">
             +
@@ -47,21 +48,21 @@
 
 <style>
     /* this is a bit stupid
-        so. the autocomplete plugin uses a div dropdown right? but that dropdown is placed directly ON the input, 
+        so. the autocomplete plugin uses a div dropdown right? but that dropdown is placed directly ON the input,
         we want to move it down, but dont want to move the no-affect dropdown, so we move EVERY dropdown down, but not the no-affect one
      */
     .dropdown-menu {
         margin-top: 2.5rem;
     }
-    
+
     .no-affect {
         margin-top: 0;
     }
-    
+
     .hidden {
         display: none !important;
     }
-    
+
     .btn {
         margin-right: 0.5rem;
     }
@@ -70,17 +71,17 @@
         margin-bottom: 1rem;
         max-height: 3rem;
     }
-    
+
     .search-container {
         display: flex;
         flex-direction: row;
     }
-    
+
     @@media (max-width: 768px) {
         .search-bar .search-form {
             flex-direction: column !important;
         }
-        
+
         .search-form {
             margin-bottom: 6rem !important;
         }
@@ -110,7 +111,7 @@
             parent.parentNode.insertBefore(parent, previousElement);
         }
     }
-    
+
     function moveDown(element) {
         const parent = element.parentElement.parentElement;
         const nextElement = parent.nextElementSibling;
@@ -137,7 +138,7 @@
                 });
             }
         });
-        
+
         // Remove duplicates
         searches = searches.filter((search, index, self) =>
             index === self.findIndex((t) => (
@@ -152,7 +153,7 @@
 
         window.location.href = `/search?${builder.toString()}`
     }
-    
+
     document.getElementById('addSearchBar').addEventListener('click', () => {
         const searchBarPrefab = document.getElementsByClassName('prefab');
         const newSearchBar = searchBarPrefab[0].cloneNode(true);
@@ -178,14 +179,14 @@
                 }
             }
         });
-        
+
 
         const dropdown = newSearchBar.querySelector('.dropdown-menu');
         dropdown.addEventListener('click', (e) => {
             const text = e.target.textContent;
             e.target.closest('.d-flex').querySelector('.dropdown-toggle').textContent = text;
         });
-        
+
         // enter key listener
         newSearchBar.querySelector('input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.defaultPrevented) {
@@ -193,7 +194,7 @@
             }
         });
     });
-    
+
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('remove-bar')) {
             e.target.parentElement.parentElement.remove();
@@ -204,7 +205,7 @@
     $('#search').on('autocomplete:selected', function (event, suggestion, dataset) {
         selectedAutocompleteOption = suggestion;
     });
-    
+
     document.addEventListener('DOMContentLoaded', e => {
         // Based on the current query, if we have anything loaded already in the query, create search bars based on that, otherwise if its empty, create a new one
         const searchParams = new URLSearchParams(window.location.search);
@@ -248,7 +249,7 @@
                         search(0);
                     }
                 });
-                
+
                 newSearchBar.querySelector('.dropdown-toggle').textContent = searchObject.searchMode;
                 newSearchBar.querySelector('input').value = searchObject.searchValue;
             });

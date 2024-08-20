@@ -2,6 +2,7 @@
 @using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
+@using ReplayBrowser.Models
 @using ReplayBrowser.Services
 @using ReplayBrowser.Services.ReplayParser
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -14,24 +15,20 @@
         <h5 class="card-title">@_nameFormatted</h5>
         @if (ReplayData.Map == null)
         {
-        <p>Maps: @string.Join(',', ReplayData.Maps)</p>
+        <p>Maps: @string.Join(", ", ReplayData.Maps)</p>
         }
         else
         {
         <p>Map: @ReplayData.Map</p>
         }
         <p class="card-text">Gamemode: @ReplayData.Gamemode</p>
-        @if (ReplayData.RoundEndPlayers == null || ReplayData.RoundEndText == null)
-        {
-            <p class="card-text text-danger">Incomplete data</p>
-        }
     </div>
     <div class="card-footer">
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#r-@ReplayData.Id" style="margin-right: 0.1rem">
             View replay
         </button>
         <a class="btn btn-secondary" style="margin-right: 0.1rem" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
-        
+
         <button class="btn btn-outline-danger" style="float: right; margin-top: 10px; margin-right: 0;" id="favorite-button-@ReplayData.Id" onclick="FavouriteReplay(@ReplayData.Id, @ReloadOnFavourite.ToString().ToLower())">
             @if (ReplayData.IsFavorite)
             {
@@ -62,14 +59,14 @@
 
 @code {
     [Parameter]
-    public required Replay ReplayData { get; set; }
-    
+    public required ReplayResult ReplayData { get; set; }
+
     [Parameter]
     public bool ReloadOnFavourite { get; set; } = false;
-    
+
     private string? _nameFormatted;
     private string ModalId => $"r-{ReplayData.Id}";
-    
+
     protected override async void OnInitialized()
     {
         await base.OnInitializedAsync();
@@ -84,7 +81,7 @@
         var matchDate = storageUrl.ReplayRegexCompiled.Match(fileName);
         if (matchName.Success && matchDate.Success)
         {
-            if (string.IsNullOrWhiteSpace(matchName.Groups[1].Value)) 
+            if (string.IsNullOrWhiteSpace(matchName.Groups[1].Value))
             {
                 // wut? Fallback to server id
                 _nameFormatted = $"{ReplayData.ServerId} - {matchDate.Groups[1].Value}";
@@ -95,7 +92,7 @@
             }
         }
         else
-        { 
+        {
             if (ReplayData.ServerName != null)
             {
                 _nameFormatted = ReplayData.ServerName;
@@ -105,14 +102,14 @@
                 _nameFormatted = ReplayData.ServerId;
             }
         }
-        
+
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var account = await AccountService.GetAccount(authState);
         if (account == null)
         {
             return;
         }
-        
+
         ReplayData.IsFavorite = account.FavoriteReplays.Contains(ReplayData.Id);
     }
 }

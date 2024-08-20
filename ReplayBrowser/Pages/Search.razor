@@ -2,6 +2,8 @@
 @using System.Diagnostics
 @using Humanizer
 @using Microsoft.AspNetCore.Components.Authorization
+@using ReplayBrowser.Data.Models
+@using ReplayBrowser.Models
 @using ReplayBrowser.Pages.Shared
 @using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Data
@@ -60,7 +62,7 @@
         {
             <p>Profile found for @ProfileFound.Username, click <a href="/player/@ProfileFound.PlayerGuid">here</a> to view</p>
         }
-        
+
         <p>Page @pageDisplay of @SearchResult.PageCount</p>
         <div class="replay-list">
             @foreach (var replay in SearchResult.Replays)
@@ -129,7 +131,7 @@
     public PlayerData? ProfileFound { get; set; }
 
     public SearchResult SearchResult { get; set; } = new SearchResult();
-    
+
     /// <summary>
     /// Search modes that you can only once in a query to save on processing time
     /// </summary>
@@ -138,7 +140,7 @@
         SearchMode.ServerId,
         SearchMode.RoundEndText,
     };
-    
+
     protected override async Task OnInitializedAsync()
     {
         stopWatch.Start();
@@ -146,96 +148,99 @@
         var uri = new Uri(NavigationManager.Uri);
         var query = uri.Query;
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (query.Length > 1)
+        if (query.Length <= 1)
         {
-            var queryDict = System.Web.HttpUtility.ParseQueryString(query.Substring(1));
-            var searches = queryDict.Get("searches");
-            var page = queryDict.Get("page") ?? "0";
-            var pageInt = int.Parse(page);
-            
-            if (searches == null)
-            {
-                ErrorMessage = "Invalid search query";
-                stopWatch.Stop();
-                NavigationManager.NavigateTo("/");
-                return;
-            }
-
-            var searchItems = new List<SearchQueryItem>();
-            // Searches is a base64 encoded json string
-            try
-            {
-                var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(searches));
-                searchItems = System.Text.Json.JsonSerializer.Deserialize<List<SearchQueryItem>>(decoded);
-            }
-            catch (Exception e)
-            {
-                ErrorMessage = "Invalid search query";
-                ErrorDetails = e.Message;
-                stopWatch.Stop();
-                NavigationManager.NavigateTo("/");
-                return;
-            }
-            
-            // If any SearchMode is invalid, we throw an error
-            try
-            {
-                searchItems.ForEach(x => _ = x.SearchModeEnum); // we dont care about the result, just need to call the getter
-            }
-            catch (ArgumentOutOfRangeException e)
-            {
-                ErrorMessage = "Invalid search mode";
-                ErrorDetails = "Search mode could not be assigned to a valid enum value\n Value: " + e.ActualValue;
-                stopWatch.Stop();
-                return;
-            }
-            
-            // If any SearchMode in the query is a LimitedSearchMode, we check if it is duplicated, if it is, we throw an error
-            var searchModes = searchItems.Select(x => x.SearchModeEnum).ToList();
-            foreach (var limitedSearchMode in LimitedSearchModes)
-            {
-                if (searchModes.Count(x => x == limitedSearchMode) > 1)
-                {
-                    ErrorMessage = "Invalid search query";
-                    ErrorDetails = "Search mode " + limitedSearchMode + " is a limited search mode and can only be used once in a query";
-                    stopWatch.Stop();
-                    return;
-                }
-            }
-            
-            if (searchItems.Count == 0)
-            {
-                ErrorMessage = "Invalid search query";
-                ErrorDetails = "No search items found";
-                stopWatch.Stop();
-                NavigationManager.NavigateTo("/");
-                return;
-            }
-            if (searchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
-            {
-                ProfileFound = await ReplayHelper.HasProfile(searchItems.Find(x => x.SearchModeEnum == SearchMode.PlayerOocName).SearchValue, authState);
-            }
-
-            try
-            {
-                SearchResult = await ReplayHelper.SearchReplays(searchItems, pageInt, authState);
-            }
-            catch (UnauthorizedAccessException e)
-            {
-                ErrorMessage = "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.";
-                ErrorDetails = e.Message;
-                stopWatch.Stop();
-                return;
-            }
-            catch (Exception e)
-            {
-                ErrorMessage = "An error occurred";
-                ErrorDetails = e.Message;
-                stopWatch.Stop();
-                return;
-            }
-            stopWatch.Stop();
-            IsLoading = false;
+            return;
         }
+
+        var queryDict = System.Web.HttpUtility.ParseQueryString(query.Substring(1));
+        var searches = queryDict.Get("searches");
+        var page = queryDict.Get("page") ?? "0";
+        var pageInt = int.Parse(page);
+
+        if (searches == null)
+        {
+            ErrorMessage = "Invalid search query";
+            stopWatch.Stop();
+            NavigationManager.NavigateTo("/");
+            return;
+        }
+
+        var searchItems = new List<SearchQueryItem>();
+        // Searches is a base64 encoded json string
+        try
+        {
+            var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(searches));
+            searchItems = System.Text.Json.JsonSerializer.Deserialize<List<SearchQueryItem>>(decoded);
+        }
+        catch (Exception e)
+        {
+            ErrorMessage = "Invalid search query";
+            ErrorDetails = e.Message;
+            stopWatch.Stop();
+            NavigationManager.NavigateTo("/");
+            return;
+        }
+
+        // If any SearchMode is invalid, we throw an error
+        try
+        {
+            searchItems.ForEach(x => _ = x.SearchModeEnum); // we dont care about the result, just need to call the getter
+        }
+        catch (ArgumentOutOfRangeException e)
+        {
+            ErrorMessage = "Invalid search mode";
+            ErrorDetails = "Search mode could not be assigned to a valid enum value\n Value: " + e.ActualValue;
+            stopWatch.Stop();
+            return;
+        }
+
+        // If any SearchMode in the query is a LimitedSearchMode, we check if it is duplicated, if it is, we throw an error
+        var searchModes = searchItems.Select(x => x.SearchModeEnum).ToList();
+        foreach (var limitedSearchMode in LimitedSearchModes)
+        {
+            if (searchModes.Count(x => x == limitedSearchMode) > 1)
+            {
+                ErrorMessage = "Invalid search query";
+                ErrorDetails = "Search mode " + limitedSearchMode + " is a limited search mode and can only be used once in a query";
+                stopWatch.Stop();
+                return;
+            }
+        }
+
+        if (searchItems.Count == 0)
+        {
+            ErrorMessage = "Invalid search query";
+            ErrorDetails = "No search items found";
+            stopWatch.Stop();
+            NavigationManager.NavigateTo("/");
+            return;
+        }
+        if (searchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
+        {
+            ProfileFound = await ReplayHelper.HasProfile(searchItems.Find(x => x.SearchModeEnum == SearchMode.PlayerOocName).SearchValue, authState);
+        }
+
+        try
+        {
+            SearchResult = await ReplayHelper.SearchReplays(searchItems, pageInt, authState);
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            ErrorMessage = "Redacted account(s).";
+            ErrorDetails = e.Message;
+            stopWatch.Stop();
+            return;
+        }
+        catch (Exception e)
+        {
+            ErrorMessage = "An error occurred";
+            ErrorDetails = e.Message;
+            stopWatch.Stop();
+            return;
+        }
+
+        stopWatch.Stop();
+        IsLoading = false;
     }
 }

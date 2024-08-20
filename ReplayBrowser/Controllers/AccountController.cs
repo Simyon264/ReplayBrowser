@@ -139,6 +139,16 @@ public class AccountController : Controller
                 Guid = (Guid) guid
             });
             
+            await _context.Database.ExecuteSqlRawAsync($"""
+                                                        DELETE FROM "CharacterData"
+                                                        WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
+                                                        """);
+            
+            await _context.Database.ExecuteSqlRawAsync($"""
+                                                        DELETE FROM "JobCountData"
+                                                        WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
+                                                        """);
+            
             _context.Replays
                 .Include(replay => replay.RoundEndPlayers)
                 .Where(r => r.RoundEndPlayers != null && r.RoundEndPlayers.Any(p => p.PlayerGuid == guid))
@@ -426,5 +436,71 @@ public class AccountController : Controller
         
         var fileName = $"account-{user.Guid}_{DateTime.Now:yyyy-MM-dd}.zip";
         return File(zipStream, "application/zip", fileName);
+    }
+    
+    [HttpPost("add-protected-account")]
+    public async Task<IActionResult> AddProtectedAccount(
+        [FromQuery] string username
+    )
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return BadRequest("Username is null or empty.");
+        }
+        
+        var playerData = await _ss14ApiHelper.FetchPlayerDataFromUsername(username);
+        
+        if (playerData == null)
+        {
+            return NotFound("Player data is null. This should not happen.");
+        }
+        
+        if (playerData.PlayerGuid == null || playerData.PlayerGuid == Guid.Empty)
+        {
+            return NotFound("Player guid is null or empty. This should not happen.");
+        }
+        
+        if (!User.Identity.IsAuthenticated)
+        {
+            return Unauthorized();
+        }
+        
+        var guidRequestor = AccountHelper.GetAccountGuid(User);
+        
+        var requestor = await _context.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .FirstOrDefaultAsync(a => a.Guid == guidRequestor);
+        
+        if (requestor == null)
+        {
+            return NotFound("Account is null. This should not happen.");
+        }
+        
+        if (!requestor.IsAdmin) 
+            return Unauthorized("You are not an admin.");
+        
+        var user = await _context.Accounts
+            .FirstOrDefaultAsync(a => a.Guid == playerData.PlayerGuid);
+
+        if (user != null)
+        {
+            return BadRequest("Account already exists.");
+        }
+        
+        user = new Account()
+        {
+            Guid = (Guid) playerData.PlayerGuid,
+            Username = playerData.Username,
+            Settings = new AccountSettings()
+            {
+                RedactInformation = true
+            },
+            Protected = true
+        };
+        
+        _context.Accounts.Add(user);
+        await _context.SaveChangesAsync();
+        return Ok();
     }
 }

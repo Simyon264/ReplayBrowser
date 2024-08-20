@@ -5,6 +5,7 @@
 @using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
+@using ReplayBrowser.Models
 @using ReplayBrowser.Pages.Shared
 @inject ReplayHelper ReplayHelper
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -35,17 +36,17 @@ else
     <div class="pagination">
         @if (_page > 0)
         {
-            <button class="btn btn-primary" onclick="pageDown()">Previous page</button>
+            <a href="/favourites?page=@(_page - 1)" class="btn btn-primary" onclick="/fav">Previous page</a>
         } else
         {
-            <button class="btn btn-primary" disabled>Previous page</button>
+            <a class="btn btn-primary" disabled>Previous page</a>
         }
         @if (_page < _totalPages - 1)
         {
-            <button class="btn btn-primary" onclick="pageUp()">Next page</button>
+            <a href="/favourites?page=@(_page + 1)" class="btn btn-primary" onclick="pageUp()">Next page</a>
         } else
         {
-            <button class="btn btn-primary" disabled>Next page</button>
+            <a class="btn btn-primary" disabled>Next page</a>
         }
     </div>
 }
@@ -69,22 +70,8 @@ else
     }
 </style>
 
-
-<script>
-    const currentPage = @_page;
-    const totalPages = @_totalPages;
-    function pageUp() {
-        if (currentPage == (totalPages - 1)) return;
-        window.location.href = `/favourites?page=${currentPage + 1}`;
-    }
-    function pageDown() {
-        if (currentPage == 0) return;
-        window.location.href = `/favourites?page=${currentPage - 1}`;
-    }
-</script>
-
 @code {
-    private List<Replay>? _replays;
+    private List<ReplayResult>? _replays;
     private int _totalPages = 0;
     private int _totalCount = 0;
     private int _page = 0;
@@ -98,14 +85,14 @@ else
         if (query.Length > 1)
         {
             var queryDict = System.Web.HttpUtility.ParseQueryString(query.Substring(1));
-        
+
             // Try to get the page number from the query string
             if (int.TryParse(queryDict["page"], out var page))
             {
                 _page = page;
             }
         }
-        
+
         // Paginate the replays
         _totalCount = replays.Count;
         _totalPages = (int)Math.Ceiling((double)_totalCount / Constants.ReplaysPerPage);

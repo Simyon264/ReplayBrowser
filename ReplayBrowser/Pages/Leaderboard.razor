@@ -1,6 +1,7 @@
 ﻿@page "/leaderboard"
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReplayBrowser.Data
+@using ReplayBrowser.Models
 @using ReplayBrowser.Services
 @using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Helpers
@@ -9,7 +10,6 @@
 @inject IConfiguration Configuration
 @inject LeaderboardService LeaderboardService
 @inject Ss14ApiHelper Ss14ApiHelper
-@attribute [StreamRendering]
 
 <PageTitle>Leaderboard</PageTitle>
 <h4>Leaderboards</h4>
@@ -37,15 +37,15 @@ else
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(4)">Last 365 days</button>
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(5)">All time</button>
     </div>
-    
+
     // Need a simple search bar to filter for own name
     <div class="search-bar">
         <div class="d-flex ms-auto">
-            <input 
-                type="text" 
-                class="form-control" 
-                placeholder="Enter username..." 
-                onsubmit="search()" 
+            <input
+                type="text"
+                class="form-control"
+                placeholder="Enter username..."
+                onsubmit="search()"
                 aria-label="Search"
                 data-filter="@Configuration["ApiUrl"]api/Data/username-completion?username=#QUERY#"
                 id="search"
@@ -54,7 +54,7 @@ else
             <button class="btn btn-outline-success" type="button" onclick="search()">Filter</button>
         </div>
     </div>
-    
+
     <hr/>
 
     @foreach (var leaderboard in LeaderboardData.Leaderboards)
@@ -84,7 +84,7 @@ else
                 {
                     continue;
                 }
-                
+
                 if (player.Value.Player?.PlayerGuid == null)
                 {
                     <tr>
@@ -94,7 +94,7 @@ else
                     </tr>
                     continue;
                 }
-                
+
                 if (!IsCurrentPlayer(player.Value.Player.Username))
                 {
                     <tr>
@@ -124,7 +124,7 @@ else
         uri.searchParams.set("username", document.getElementById("search").value);
         window.location.href = uri.toString();
     }
-    
+
     function search() {
         var search = document.getElementById("search").value;
         var uri = new URL(window.location.href);
@@ -132,7 +132,7 @@ else
         uri.searchParams.set("username",search);
         window.location.href = uri.toString();
     }
-    
+
     // on dom ready, fill the search bar with the query string
     document.addEventListener("DOMContentLoaded", function() {
         var uri = new URL(window.location.href);
@@ -170,7 +170,7 @@ else
                 timeRange = int.Parse(queryDictionary["timeRange"]);
             }
         }
-        
+
         // Need to convert the timerange number to the enum
         var timeRangeEnum = (RangeOption) timeRange;
         var username = queryDictionary["username"];
@@ -185,7 +185,7 @@ else
                 username = null;
             }
         }
-        
+
         LeaderboardData? leaderboard = null;
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         try
@@ -199,7 +199,7 @@ else
         LeaderboardData = leaderboard;
         IsLoading = false;
     }
-    
+
     public bool IsCurrentPlayer(string username)
     {
         var queryDictionary = System.Web.HttpUtility.ParseQueryString(new Uri(NavigationManager.Uri).Query);

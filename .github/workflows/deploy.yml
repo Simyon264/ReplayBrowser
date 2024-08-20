@@ -37,6 +37,10 @@ jobs:
         rsync -av --exclude='bin' --exclude='obj' --exclude='.git' --exclude='deploy' ./ ./deploy
         echo '${{ secrets.APPSETTINGS }}' > ./deploy/ReplayBrowser/appsettings.Secret.json
         
+    - name: Remove old files from server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "rm -rf /home/${{ secrets.SERVER_USERNAME }}/ReplayBrowser/*"
+    
     - name: Upload files to server
       uses: appleboy/scp-action@master
       with:

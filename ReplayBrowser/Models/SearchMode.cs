@@ -1,4 +1,4 @@
-﻿namespace ReplayBrowser.Data;
+﻿namespace ReplayBrowser.Models;
 
 public enum SearchMode
 {

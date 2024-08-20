@@ -55,6 +55,11 @@ else
     <button id="deleteAccountButton" class="btn btn-primary">Delete account (gdpr)</button>
     <button id="getAccountData" class="btn btn-primary">Download account data</button>
     <button id="deleteAccountNonGdpr" class="btn btn-primary">Delete account (non-gdpr)</button>
+    
+    // Protected account stuff
+    <p>Add a new account for protection. Put in a Username and that account will "log in" and have their redaction set to true.</p>
+    <input type="text" id="newAccountUsername" placeholder="Username" class="form-control" />
+    <button id="addProtectedAccount" class="btn btn-primary">Add protected account</button>
 }
 
 <script>
@@ -114,6 +119,26 @@ else
                 },
                 error: function() {
                     alert('Failed to delete account.');
+                }
+            });
+        });
+        
+        $('#addProtectedAccount').click(function() {
+            const username = $('#newAccountUsername').val();
+            if (username === '') {
+                alert('Username cannot be empty.');
+                return;
+            }
+
+            $.ajax({
+                url: '/account/add-protected-account?username=' + username,
+                type: 'POST',
+                contentType: 'application/json',
+                success: function() {
+                    alert('Account added.');
+                },
+                error: function() {
+                    alert('Failed to add account.');
                 }
             });
         });
