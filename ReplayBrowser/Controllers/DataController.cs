@@ -11,14 +11,12 @@ namespace ReplayBrowser.Controllers;
 public class DataController : Controller
 {
     private readonly ReplayDbContext _context;
-    private readonly ProfilePregeneratorService _profilePregeneratorService;
-    
-    public DataController(ReplayDbContext context, ProfilePregeneratorService profilePregeneratorService)
+
+    public DataController(ReplayDbContext context)
     {
         _context = context;
-        _profilePregeneratorService = profilePregeneratorService;
     }
-    
+
     [HttpGet("username-completion")]
     public async Task<List<string>> GetUsernameCompletion(
         [FromQuery] string username)
@@ -32,7 +30,7 @@ public class DataController : Controller
 
         return completions;
     }
-    
+
     /// <summary>
     /// Reports the download progress of all replays.
     /// </summary>
@@ -44,8 +42,7 @@ public class DataController : Controller
         {
             Progress = ReplayParserService.DownloadProgress.ToDictionary(x => x.Key, x => x.Value),
             Status = ReplayParserService.Status.ToFriendlyString(),
-            Details = ReplayParserService.Details,
-            PregenerationProgress = _profilePregeneratorService.PregenerationProgress
+            Details = ReplayParserService.Details
         };
     }
 }
@@ -54,7 +51,6 @@ public class DownloadProgress
 {
     public required string Status { get; set; }
     public required Dictionary<string, double> Progress { get; set; }
-    
+
     public required string Details { get; set; }
-    public required ProfilePregeneratorService.PreGenerationProgress PregenerationProgress { get; set; }
 }

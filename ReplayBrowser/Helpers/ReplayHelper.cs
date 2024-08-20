@@ -102,24 +102,6 @@ public class ReplayHelper
             });
         }
 
-        // first check for the db cache
-        if (_context.PlayerProfiles.Any(p => p.PlayerGuid == playerGuid) && !skipPermsCheck)
-        {
-            var profile = await _context.PlayerProfiles
-                .AsNoTracking()
-                .Include(p => p.Characters)
-                .Include(p => p.JobCount)
-                .Include(p => p.PlayerData)
-                .FirstOrDefaultAsync(p => p.PlayerGuid == playerGuid);
-
-            if (profile != null)
-            {
-                profile.IsWatched = accountCaller?.SavedProfiles.Contains(playerGuid) ?? false;
-
-                return profile;
-            }
-        }
-
        var replayPlayers = await _context.Players
             .AsNoTracking()
             .Where(p => p.PlayerGuid == playerGuid)
