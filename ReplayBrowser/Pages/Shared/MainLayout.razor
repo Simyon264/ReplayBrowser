@@ -191,12 +191,26 @@
                     return 1;
                 }
                 return 0;
-            });    
+            });
+
+            data.roundEndPlayers.forEach(player => {
+                let job = "Unknown";
+                if (player.jobPrototypes.length > 0) {
+                    job = player.jobPrototypes[0];
+                }
+                let playerText = `<a href="/player/${player.playerGuid}"><span style="color: gray">${player.playerOocName}</span></a> was <bold>${player.playerIcName}</bold> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
+                if (player.antagPrototypes.length > 0) {
+                    playerText = `<a href="/player/${player.playerGuid}"><span style="color: red">${player.playerOocName}</span></a> was <span style="color:red"><bold>${player.playerIcName}</bold></span> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
+                }
+                // Need to show the guid as well
+                playerText += `<br><span style="color: gray;font-size: x-small;"> ${player.playerGuid}</span>`;
+                playerList += playerText + "<br>";
+            });
+            players.innerHTML = playerList;
         }
 
         if (!data.roundEndText || data.roundEndText.trim() == "") {
             endTextElement.innerHTML = "No round end text available.";
-            return
         } else {
             const colorTagPattern = new RegExp("\\[color=(.*?)\\](.*?)\\[/color\\]", "g");
             const colorTagReplacement = "<span style=\"color:$1\">$2</span>";
@@ -209,21 +223,6 @@
                 .replaceAll("\n", "<br>")
                 .replaceAll(boldTagPattern, boldTagReplacement);
         }
-
-        data.roundEndPlayers.forEach(player => {
-            let job = "Unknown";
-            if (player.jobPrototypes.length > 0) {
-                job = player.jobPrototypes[0];
-            }
-            let playerText = `<a href="/player/${player.playerGuid}"><span style="color: gray">${player.playerOocName}</span></a> was <bold>${player.playerIcName}</bold> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
-            if (player.antagPrototypes.length > 0) {
-                playerText = `<a href="/player/${player.playerGuid}"><span style="color: red">${player.playerOocName}</span></a> was <span style="color:red"><bold>${player.playerIcName}</bold></span> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
-            }
-            // Need to show the guid as well
-            playerText += `<br><span style="color: gray;font-size: x-small;"> ${player.playerGuid}</span>`;
-            playerList += playerText + "<br>";
-        });
-        players.innerHTML = playerList;
     }
 
 </script>
