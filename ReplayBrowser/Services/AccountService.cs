@@ -270,7 +270,7 @@ public class AccountService : IHostedService, IDisposable
     }
 
     /// <summary>
-    /// Returns all accounts, their settings and history.
+    /// Returns all accounts and their settings
     /// </summary>
     public async Task<List<Account>> GetAllAccounts()
     {
@@ -278,7 +278,6 @@ public class AccountService : IHostedService, IDisposable
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
         return await context.Accounts
             .Include(a => a.Settings)
-            .Include(a => a.History)
             .ToListAsync();
     }
 
