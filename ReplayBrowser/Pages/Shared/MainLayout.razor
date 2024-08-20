@@ -43,6 +43,41 @@
 </div>
 
 <div class="page">
+    <header class="container my-5">
+        @if (_user.Identity.IsAuthenticated)
+        {
+            @if (_account is { Protected: true })
+            {
+                <div class="alert alert-warning" role="alert">
+                    <h4 class="alert-heading">NOTICE</h4>
+                    <p>Your account is set as protected. Your redaction settings were automatically set to true, in order to prevent harassment or similar. Contact the site operator to remove your protection status.</p>
+                </div>
+            }
+
+            <p id="logged-in-text">Hello <strong>@_user.Claims.Single(c => c.Type == "name").Value!</strong></p>
+
+            <a href="/account/logout" class="btn btn-primary" style="margin-right: 10px">Logout</a>
+            <a href="/account/manage" class="btn btn-primary" style="margin-right: 10px">Manage</a>
+            <a href="/favourites" class="btn btn-primary" style="margin-right: 10px">Favourites</a>
+            <a href="/favorites/profiles" class="btn btn-primary" style="margin-right: 10px">Watched profiles</a>
+
+            @if (_account?.IsAdmin ?? false)
+            {
+                <a href="/account/admin" class="btn btn-primary" style="margin-right: 10px">Admin</a>
+                <a href="/account/admin/notices" class="btn btn-primary" style="margin-right: 10px">Manage notices</a>
+            }
+        }
+        else
+        {
+            <a href="/account/login" class="btn btn-primary">Login via SS14</a>
+        }
+
+        <br/>
+        <a href="/" class="btn btn-primary" style="margin-right: 10px; margin-top: 10px">Main page</a>
+        <a href="/leaderboard" class="btn btn-primary" style="margin-right: 10px; margin-top: 10px">Leaderboard</a>
+        <a href="/downloads" class="btn btn-primary" style="margin-right: 10px; margin-top: 10px">Current downloads</a>
+        <a href="/changelog" class="btn btn-primary" style="margin-right: 10px; margin-top: 10px">Changelog</a>
+    </header>
     <main class="container my-5">
         @foreach (var activeNotice in NoticeHelper.GetActiveNotices())
         {
@@ -65,40 +100,6 @@
             </div>
         }
 
-        @if (_user.Identity.IsAuthenticated)
-        {
-            @if (_account is { Protected: true })
-            {
-                <div class="alert alert-warning" role="alert">
-                    <h4 class="alert-heading">NOTICE</h4>
-                    <p>Your account is set as protected. Your redaction settings were automatically set to true, in order to prevent harassment or similar. Contact the site operator to remove your protection status.</p>
-                </div>
-            }
-
-            <p id="logged-in-text">Hello <strong>@_user.Claims.Single(c => c.Type == "name").Value!</strong></p>
-
-            <a href="/account/logout" class="btn btn-primary" style="margin-right: 10px">Logout</a>
-            <a href="/account/manage" class="btn btn-primary" style="margin-right: 10px">Manage</a>
-            <a href="/favourites" class="btn btn-primary" style="margin-right: 10px">Favourites</a>
-            <a href="/favorites/profiles" class="btn btn-primary" style="margin-right: 10px">Watched profiles</a>
-
-            @if (_account?.IsAdmin ?? false)
-            {
-                <a href="/favourites" class="btn btn-primary" style="margin-right: 10px">Admin</a>
-                <a href="/favourites" class="btn btn-primary" style="margin-right: 10px">Manage notices</a>
-            }
-        }
-        else
-        {
-            <a href="/account/login" class="btn btn-primary">Login via SS14</a>
-        }
-
-        <br/>
-        <a href="/" class="btn btn-primary" style="margin-right: 10px; margin-top: 10px">Main page</a>
-        <a href="/leaderboard" class="btn btn-primary" style="margin-right: 10px; margin-top: 10px">Leaderboard</a>
-        <a href="/downloads" class="btn btn-primary" style="margin-right: 10px; margin-top: 10px">Current downloads</a>
-        <a href="/changelog" class="btn btn-primary" style="margin-right: 10px; margin-top: 10px">Changelog</a>
-
         <p>Warning: Replays recorded before @ReplayParserService.CutOffDateTime.ToLocalTime().ToString("yyyy-MM-dd") (yyyy-MM-dd) are not supported and are not counted</p>
 
         <hr/>
@@ -108,7 +109,7 @@
 
 <footer class="footer text-muted text-center">
     <div class="container">
-        <p>Replay Browser is a project by Simyon and YuNii. Source code available on <a href="https://github.com/Simyon264/ReplayBrowser">GitHub</a>.</p>
+        <p>Replay Browser is a project by Simyon, YuNii and Saphire. Source code available on <a href="https://github.com/Simyon264/ReplayBrowser">GitHub</a>.</p>
     </div>
 
     <div class="container">
