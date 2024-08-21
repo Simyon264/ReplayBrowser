@@ -39,6 +39,9 @@ public class Startup
             options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         });
 
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().AddSerilog());
+        services.AddSingleton<ILoggerFactory>(loggerFactory);
+        
         services.AddDbContext<ReplayDbContext>(options =>
         {
             if (Configuration.GetConnectionString("DefaultConnection") == null)
@@ -49,10 +52,8 @@ public class Startup
 
             options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"));
 
-#if DEBUG
             options.EnableSensitiveDataLogging();
-            options.UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole().AddSerilog()));   
-#endif
+            options.UseLoggerFactory(loggerFactory);
         });
 
         // Run migrations on startup.
