@@ -1,0 +1,32 @@
+﻿@inject NavigationManager NavigationManager
+
+<HeadContent>
+    <meta name="title" content="Replay Browser @Title" />
+    <meta name="description" content="@Description" />
+    <meta name="theme-color" content="#9d32a8">
+    
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="@NavigationManager.Uri" />
+    <meta property="og:title" content="Replay Browser @Title" />
+    <meta property="og:description" content="@Description" />
+    
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:url" content="@NavigationManager.Uri" />
+    <meta property="twitter:title" content="Replay Browser @Title" />
+    <meta property="twitter:description" content="@Description" />
+</HeadContent>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+    
+    [Parameter]
+    public string? Description { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Description ??= "Search and browse replays for Space Station 14.";
+        Title = Title != null ? $":: {Title}" : "";
+    }
+
+}

@@ -5,11 +5,17 @@
 @using ReplayBrowser.Services
 @using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Helpers
+@using ReplayBrowser.Pages.Shared
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IConfiguration Configuration
 @inject LeaderboardService LeaderboardService
 @inject Ss14ApiHelper Ss14ApiHelper
+
+<MetaDataSpecifer
+    Title="Leaderboards"
+    Description="View leaderboards for various tracked statistics. See how you compare to other players!"
+/>
 
 <PageTitle>Leaderboard</PageTitle>
 <h4>Leaderboards</h4>
