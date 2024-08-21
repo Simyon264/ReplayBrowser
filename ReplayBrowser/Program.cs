@@ -1,3 +1,5 @@
+using ReplayBrowser.Services;
+using ReplayBrowser.Services.ReplayParser;
 using Serilog;
 using Serilog.Events;
 
@@ -11,7 +13,7 @@ public class Program
             .WriteTo.Console()
             .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Hour, fileSizeLimitBytes: null)
             .CreateLogger();
-        
+
         try
         {
             Log.Information("Starting up");
@@ -26,7 +28,7 @@ public class Program
             Log.CloseAndFlush();
         }
     }
-    
+
     public static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((context, builder) =>
@@ -50,5 +52,11 @@ public class Program
             {
                 webBuilder.UseKestrel();
                 webBuilder.UseStartup<Startup>();
+            })
+            .ConfigureServices(s => {
+                s.AddHostedService<BackgroundServiceStarter<ReplayParserService>>();
+                s.AddHostedService<BackgroundServiceStarter<AccountService>>();
+                s.AddHostedService<BackgroundServiceStarter<LeaderboardService>>();
+                s.AddHostedService<BackgroundServiceStarter<AnalyticsService>>();
             });
 }

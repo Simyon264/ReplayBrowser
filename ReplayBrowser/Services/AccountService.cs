@@ -195,56 +195,40 @@ public class AccountService : IHostedService, IDisposable
 
     public async Task<AccountHistoryResponse?> GetAccountHistory(string username, int pageNumber)
     {
+        Account? account = null;
         // If the username is empty, we want to see logs for not logged in users.
         if (string.IsNullOrWhiteSpace(username))
         {
-            var systemAccount = GetSystemAccount();
-
-            systemAccount.History = systemAccount.History.OrderByDescending(h => h.Time).ToList();
-
-            AccountHistoryResponse response = new()
-            {
-                History = [],
-                Page = pageNumber,
-                TotalPages = 1
-            };
-
-            if (systemAccount.History.Count > 10)
-            {
-                response.TotalPages = systemAccount.History.Count / 10;
-            }
-
-            response.History = systemAccount.History.Skip(pageNumber * 10).Take(10).ToList();
-            return response;
-        } else {
+            account = GetSystemAccount();
+        }
+        else
+        {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
-            var account = context.Accounts
+            account = context.Accounts
                 .Include(a => a.History)
                 .FirstOrDefault(a => a.Username == username);
-
-            if (account == null)
-            {
-                return null;
-            }
-
-            account.History = account.History.OrderByDescending(h => h.Time).ToList();
-
-            AccountHistoryResponse response = new()
-            {
-                History = [],
-                Page = pageNumber,
-                TotalPages = 1
-            };
-
-            if (account.History.Count > 10)
-            {
-                response.TotalPages = account.History.Count / 10;
-            }
-
-            response.History = account.History.Skip(pageNumber * 10).Take(10).ToList();
-            return response;
         }
+
+        if (account is null)
+            return null;
+
+        account.History = account.History.OrderByDescending(h => h.Time).ToList();
+
+        AccountHistoryResponse response = new()
+        {
+            History = [],
+            Page = pageNumber,
+            TotalPages = 1
+        };
+
+        if (account.History.Count > 10)
+        {
+            response.TotalPages = account.History.Count / 10;
+        }
+
+        response.History = account.History.OrderByDescending(h => h.Time).Skip(pageNumber * 10).Take(10).ToList();
+        return response;
     }
 
     private Account GetSystemAccount()

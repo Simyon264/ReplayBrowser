@@ -12,8 +12,7 @@
 @inject ReplayHelper ReplayHelper
 @inject Ss14ApiHelper Ss14ApiHelper
 
-
-<PageTitle>Player info</PageTitle>
+<PageTitle>Player info - @(_playerData?.PlayerData.Username ?? "Unknown")</PageTitle>
 
 @if (_playerData is null)
 {

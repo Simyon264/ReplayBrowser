@@ -175,16 +175,25 @@
 
     // Once the modal is opened, we need to rerequest the round end players if they are null
     // This is because the modal doesn't load the data until it is opened
-    async function loadDetails(players, endTextElement, replayId) {
+    async function loadDetails(playersElemn, endTextElement, replayId) {
         let response = await fetch(`/api/Replay/${replayId}`);
         let data = await response.json();
 
         let playerList = "";
-        if (data.roundEndPlayers == null || data.roundEndPlayers.length == 0) {
-            players.innerHTML = "<p class='card-text text-danger'>Replay is incomplete. No players available.</p>";
+        if (data.roundParticipants == null || data.roundParticipants.length == 0) {
+            playersElemn.innerHTML = "<p class='card-text text-danger'>Replay is incomplete. No players available.</p>";
         } else {
+            let players = data.roundParticipants.flatMap(
+                pc => pc.players.map(
+                    pl => ({
+                        ...pl,
+                        playerGuid: pc.playerGuid,
+                        username: pc.username
+                    })
+                )
+            )
             // Sort the players so that antags are at the top
-            data.roundEndPlayers.sort((a, b) => {
+            players.sort((a, b) => {
                 if (a.antagPrototypes.length > 0 && b.antagPrototypes.length == 0) {
                     return -1;
                 } else if (a.antagPrototypes.length == 0 && b.antagPrototypes.length > 0) {
@@ -193,20 +202,19 @@
                 return 0;
             });
 
-            data.roundEndPlayers.forEach(player => {
+            playersElemn.innerHTML = players.map(player => {
                 let job = "Unknown";
                 if (player.jobPrototypes.length > 0) {
                     job = player.jobPrototypes[0];
                 }
-                let playerText = `<a href="/player/${player.playerGuid}"><span style="color: gray">${player.playerOocName}</span></a> was <bold>${player.playerIcName}</bold> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
+                let playerText = `<a href="/player/${player.playerGuid}"><span style="color: gray">${player.username}</span></a> was <bold>${player.playerIcName}</bold> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
                 if (player.antagPrototypes.length > 0) {
-                    playerText = `<a href="/player/${player.playerGuid}"><span style="color: red">${player.playerOocName}</span></a> was <span style="color:red"><bold>${player.playerIcName}</bold></span> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
+                    playerText = `<a href="/player/${player.playerGuid}"><span style="color: red">${player.username}</span></a> was <span style="color:red"><bold>${player.playerIcName}</bold></span> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
                 }
                 // Need to show the guid as well
                 playerText += `<br><span style="color: gray;font-size: x-small;"> ${player.playerGuid}</span>`;
-                playerList += playerText + "<br>";
-            });
-            players.innerHTML = playerList;
+                return playerText;
+            }).join("<br>\n");
         }
 
         if (!data.roundEndText || data.roundEndText.trim() == "") {

@@ -50,37 +50,12 @@ public class Startup
                 Environment.Exit(1);
             }
 
-            options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"));
+            // FIXME: Timeout needs to bumped down to default after the big migration finishes
+            options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), o => o.CommandTimeout(600));
 
             options.EnableSensitiveDataLogging();
             options.UseLoggerFactory(loggerFactory);
         });
-
-        // Run migrations on startup.
-        var replayContext = services.BuildServiceProvider().GetService<ReplayDbContext>();
-        replayContext.Database.Migrate();
-
-        // We need to create a "dummy" system Account to use for unauthenticated requests.
-        // This is because the Account system is used for logging and we need to have an account to log as.
-        // This is a bit of a hack but it works.
-        try
-        {
-            var systemAccount = new Account()
-            {
-                Guid = Guid.Empty,
-                Username = "[System] Unauthenticated user",
-            };
-
-            if (replayContext.Accounts.FirstOrDefault(a => a.Guid == Guid.Empty) == null) // Only add if it doesn't already exist.
-            {
-                replayContext.Accounts.Add(systemAccount);
-                replayContext.SaveChanges();
-            }
-        }
-        catch (Exception e)
-        {
-            Log.Error(e, "Failed to create system account.");
-        }
 
         services.AddSingleton<Ss14ApiHelper>();
         services.AddSingleton<AccountService>();
@@ -89,11 +64,6 @@ public class Startup
         services.AddSingleton<AnalyticsService>();
         services.AddSingleton<NoticeHelper>();
         services.AddSingleton<GitHubApiHelper>();
-
-        services.AddHostedService<BackgroundServiceStarter<ReplayParserService>>();
-        services.AddHostedService<BackgroundServiceStarter<AccountService>>();
-        services.AddHostedService<BackgroundServiceStarter<LeaderboardService>>();
-        services.AddHostedService<BackgroundServiceStarter<AnalyticsService>>();
 
         services.AddScoped<ReplayHelper>();
 
@@ -112,7 +82,7 @@ public class Startup
         {
             options.MessageTemplate = "Handled {RequestPath}";
         });
-        
+
         services.Configure<ForwardedHeadersOptions>(options =>
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -126,7 +96,7 @@ public class Startup
             Log.Information("Proxy IP: {ProxyIP}", proxyIP);
             options.KnownProxies.Add(IPAddress.Parse(proxyIP));
         });
-        
+
         services.AddOpenTelemetry().WithMetrics(providerBuilder =>
         {
             providerBuilder.AddPrometheusExporter();
@@ -233,6 +203,35 @@ public class Startup
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
+        // Run migrations on startup.
+        {
+            using var dbScope = app.ApplicationServices.CreateScope();
+            using var replayContext = dbScope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+            replayContext!.Database.Migrate();
+
+            // We need to create a "dummy" system Account to use for unauthenticated requests.
+            // This is because the Account system is used for logging and we need to have an account to log as.
+            // This is a bit of a hack but it works.
+            try
+            {
+                var systemAccount = new Account()
+                {
+                    Guid = Guid.Empty,
+                    Username = "[System] Unauthenticated user",
+                };
+
+                if (replayContext.Accounts.FirstOrDefault(a => a.Guid == Guid.Empty) == null) // Only add if it doesn't already exist.
+                {
+                    replayContext.Accounts.Add(systemAccount);
+                    replayContext.SaveChanges();
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Failed to create system account.");
+            }
+        }
+
         app.Use((context, next) =>
         {
             context.Request.Scheme = "https";
