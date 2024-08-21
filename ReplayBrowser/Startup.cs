@@ -1,10 +1,8 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Reflection;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using OpenTelemetry.Metrics;
 using ReplayBrowser.Data;
@@ -234,15 +232,12 @@ public class Startup
             return next();
         });
 
-        if (!env.IsDevelopment())
-        {
-            app.UseExceptionHandler("/Error", createScopeForErrors: true);
-            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-            app.UseHsts();
-        } else
-        {
-            app.UseDeveloperExceptionPage();
-        }
+#if RELEASE
+        app.UseExceptionHandler("/error", createScopeForErrors: true);
+        app.UseHsts();
+#else
+        app.UseDeveloperExceptionPage();
+#endif
 
         app.UseHttpsRedirection();
 
