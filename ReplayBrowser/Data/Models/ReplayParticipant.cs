@@ -15,7 +15,7 @@ public class ReplayParticipant : IEntityTypeConfiguration<ReplayParticipant>
     public Replay Replay { get; set; } = null!;
     public int ReplayId { get; set; }
 
-    public IEnumerable<Player>? Players { get; set; }
+    public List<Player>? Players { get; set; }
 
     public void Configure(EntityTypeBuilder<ReplayParticipant> builder)
     {

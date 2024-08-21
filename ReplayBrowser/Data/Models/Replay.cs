@@ -91,7 +91,7 @@ public class Replay : IEntityTypeConfiguration<Replay>
             .GroupBy(p => p.PlayerGuid)
             .Select(pg => new ReplayParticipant {
                 PlayerGuid = pg.Key,
-                Players = pg.Select(yp => Player.FromYaml(yp))
+                Players = pg.Select(yp => Player.FromYaml(yp)).ToList()
             })
             .ToList();
 
@@ -158,7 +158,7 @@ public class Replay : IEntityTypeConfiguration<Replay>
                 PlayerGuid = Guid.Empty,
                 // Collate everything into one more generic group
                 Username = "Redacted",
-                Players = empty.SelectMany(p => p.Players!)
+                Players = empty.SelectMany(p => p.Players!).ToList()
             }
         );
     }

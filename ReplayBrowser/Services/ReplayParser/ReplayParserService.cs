@@ -265,6 +265,12 @@ public class ReplayParserService : IHostedService, IDisposable
         if (yamlReplay.RoundEndPlayers == null)
             return replay;
 
+        var jobs = GetDbContext().JobDepartments.ToList();
+
+        replay.RoundParticipants!.ForEach(p => p.Players!.ForEach(
+            pl => pl.EffectiveJobId = jobs.SingleOrDefault(j => j.Job == pl.JobPrototypes[0])?.Id
+        ));
+
         // Check for GDPRed accounts
         var gdprGuids = GetDbContext().GdprRequests.Select(x => x.Guid).ToList();
 
