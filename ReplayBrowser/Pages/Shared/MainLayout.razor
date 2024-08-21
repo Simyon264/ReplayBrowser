@@ -15,26 +15,27 @@
 
 @code
 {
-    private System.Security.Claims.ClaimsPrincipal _user;
+    private System.Security.Claims.ClaimsPrincipal? _user;
     private Account? _account;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _user = authState.User;
-        if (_user.Identity.IsAuthenticated)
+        if (_user?.Identity is null || !_user.Identity.IsAuthenticated)
+            return;
+
+        var guid = (Guid)AccountHelper.GetAccountGuid(authState)!;
+        _account = DbContext.Accounts.FirstOrDefault(a => a.Guid == guid);
+        if (_account is not null)
+            return;
+
+        Log.Error("Account {Guid} is authenticated but not found in the database", guid);
+        NavigationManager.NavigateTo("account/redirect", new NavigationOptions()
         {
-            var guid = (Guid)AccountHelper.GetAccountGuid(authState)!;
-            _account = DbContext.Accounts.FirstOrDefault(a => a.Guid == guid);
-            if (_account == null)
-            {
-                Log.Error("Account {Guid} is authenticated but not found in the database", guid);
-                NavigationManager.NavigateTo("account/redirect", new NavigationOptions()
-                {
-                    ForceLoad = true
-                });
-            }
-        }
+            ForceLoad = true
+        });
+
     }
 }
 
@@ -44,7 +45,7 @@
 
 <div class="page">
     <header class="container my-5">
-        @if (_user.Identity.IsAuthenticated)
+        @if (_user?.Identity is not null && _user.Identity.IsAuthenticated)
         {
             @if (_account is { Protected: true })
             {
@@ -109,7 +110,7 @@
 
 <footer class="footer text-muted text-center">
     <div class="container">
-        <p>Replay Browser is a project by Simyon, YuNii and Saphire. Source code available on <a href="https://github.com/Simyon264/ReplayBrowser">GitHub</a>.</p>
+        <p>Replay Browser is a project by Simyon and <a href="/contributors">contributors</a>. Source code available on <a href="https://github.com/Simyon264/ReplayBrowser">GitHub</a>.</p>
     </div>
 
     <div class="container">
@@ -175,16 +176,25 @@
 
     // Once the modal is opened, we need to rerequest the round end players if they are null
     // This is because the modal doesn't load the data until it is opened
-    async function loadDetails(players, endTextElement, replayId) {
+    async function loadDetails(playersElemn, endTextElement, replayId) {
         let response = await fetch(`/api/Replay/${replayId}`);
         let data = await response.json();
 
         let playerList = "";
-        if (data.roundEndPlayers == null || data.roundEndPlayers.length == 0) {
-            players.innerHTML = "<p class='card-text text-danger'>Replay is incomplete. No players available.</p>";
+        if (data.roundParticipants == null || data.roundParticipants.length == 0) {
+            playersElemn.innerHTML = "<p class='card-text text-danger'>Replay is incomplete. No players available.</p>";
         } else {
+            let players = data.roundParticipants.flatMap(
+                pc => pc.players.map(
+                    pl => ({
+                        ...pl,
+                        playerGuid: pc.playerGuid,
+                        username: pc.username
+                    })
+                )
+            )
             // Sort the players so that antags are at the top
-            data.roundEndPlayers.sort((a, b) => {
+            players.sort((a, b) => {
                 if (a.antagPrototypes.length > 0 && b.antagPrototypes.length == 0) {
                     return -1;
                 } else if (a.antagPrototypes.length == 0 && b.antagPrototypes.length > 0) {
@@ -193,20 +203,19 @@
                 return 0;
             });
 
-            data.roundEndPlayers.forEach(player => {
+            playersElemn.innerHTML = players.map(player => {
                 let job = "Unknown";
                 if (player.jobPrototypes.length > 0) {
                     job = player.jobPrototypes[0];
                 }
-                let playerText = `<a href="/player/${player.playerGuid}"><span style="color: gray">${player.playerOocName}</span></a> was <bold>${player.playerIcName}</bold> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
+                let playerText = `<a href="/player/${player.playerGuid}"><span style="color: gray">${player.username}</span></a> was <bold>${player.playerIcName}</bold> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
                 if (player.antagPrototypes.length > 0) {
-                    playerText = `<a href="/player/${player.playerGuid}"><span style="color: red">${player.playerOocName}</span></a> was <span style="color:red"><bold>${player.playerIcName}</bold></span> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
+                    playerText = `<a href="/player/${player.playerGuid}"><span style="color: red">${player.username}</span></a> was <span style="color:red"><bold>${player.playerIcName}</bold></span> playing role of <span style="color: orange"><bold>${job}</bold></span>`;
                 }
                 // Need to show the guid as well
                 playerText += `<br><span style="color: gray;font-size: x-small;"> ${player.playerGuid}</span>`;
-                playerList += playerText + "<br>";
-            });
-            players.innerHTML = playerList;
+                return playerText;
+            }).join("<br>\n");
         }
 
         if (!data.roundEndText || data.roundEndText.trim() == "") {

@@ -10,14 +10,14 @@ public class CaddyProvider : ReplayProvider
     {
         var httpClient = GetHttpClient();
         httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
-        
+
         var responseText = await httpClient.GetStringAsync(directoryUrl, token);
         var response = JsonSerializer.Deserialize<CaddyResponse[]>(responseText);
         if (response == null)
         {
             return;
         }
-        
+
         foreach (var caddyResponse in response)
         {
             if (caddyResponse.Name.EndsWith(".zip", StringComparison.Ordinal))
@@ -26,7 +26,7 @@ public class CaddyProvider : ReplayProvider
                 {
                     continue;
                 }
-                
+
                 await ReplayParserService.AddReplayToQueue(directoryUrl + caddyResponse.Name);
             }
             else if (caddyResponse.IsDir)
@@ -36,15 +36,15 @@ public class CaddyProvider : ReplayProvider
             }
         }
     }
-    
+
     internal class CaddyResponse
     {
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public required string Name { get; set; }
         [JsonPropertyName("size")]
         public int Size { get; set; }
         [JsonPropertyName("url")]
-        public string Url { get; set; }
+        public required string Url { get; set; }
         [JsonPropertyName("mod_time")]
         public DateTime LastModified { get; set; }
         [JsonPropertyName("mode")]

@@ -54,4 +54,18 @@ public static class RangeOptionExtensions
             _ => throw new ArgumentOutOfRangeException(nameof(rangeOption), rangeOption, null)
         };
     }
+
+    public static TimeSpan GetNormalTimeSpan(this RangeOption rangeOption)
+    {
+        return rangeOption switch
+        {
+            RangeOption.Last24Hours => new TimeSpan(TimeSpan.TicksPerDay),
+            RangeOption.Last7Days => new TimeSpan(7 * TimeSpan.TicksPerDay),
+            RangeOption.Last30Days => new TimeSpan(30 * TimeSpan.TicksPerDay),
+            RangeOption.Last90Days => new TimeSpan(90 * TimeSpan.TicksPerDay),
+            RangeOption.Last365Days => new TimeSpan(365 * TimeSpan.TicksPerDay),
+            RangeOption.AllTime => new TimeSpan(DateTime.UtcNow.Ticks),
+            _ => throw new ArgumentOutOfRangeException(nameof(rangeOption), rangeOption, null)
+        };
+    }
 }

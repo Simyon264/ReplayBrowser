@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using ReplayBrowser.Data;
 namespace Server.Migrations
 {
     [DbContext(typeof(ReplayDbContext))]
-    partial class ReplayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240820232455_PlayerTrim")]
+    partial class PlayerTrim
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -296,9 +299,6 @@ namespace Server.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
-                    b.Property<int?>("EffectiveJobId")
-                        .HasColumnType("integer");
-
                     b.Property<List<string>>("JobPrototypes")
                         .IsRequired()
                         .HasColumnType("text[]");
@@ -311,8 +311,6 @@ namespace Server.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("EffectiveJobId");
 
                     b.HasIndex("ParticipantId");
 
@@ -498,17 +496,11 @@ namespace Server.Migrations
 
             modelBuilder.Entity("ReplayBrowser.Data.Models.Player", b =>
                 {
-                    b.HasOne("ReplayBrowser.Data.Models.JobDepartment", "EffectiveJob")
-                        .WithMany()
-                        .HasForeignKey("EffectiveJobId");
-
                     b.HasOne("ReplayBrowser.Data.Models.ReplayParticipant", "Participant")
                         .WithMany("Players")
                         .HasForeignKey("ParticipantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("EffectiveJob");
 
                     b.Navigation("Participant");
                 });

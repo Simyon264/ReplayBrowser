@@ -94,8 +94,8 @@ else
         }
 
         // Paginate the replays
-        _totalCount = replays.Count;
+        _totalCount = replays?.Count ?? 0;
         _totalPages = (int)Math.Ceiling((double)_totalCount / Constants.ReplaysPerPage);
-        _replays = replays.Skip(_page * Constants.ReplaysPerPage).Take(Constants.ReplaysPerPage).ToList();
+        _replays = replays?.Skip(_page * Constants.ReplaysPerPage).Take(Constants.ReplaysPerPage).ToList();
     }
 }

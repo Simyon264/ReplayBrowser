@@ -1,4 +1,5 @@
 ﻿@page "/search"
+
 @using System.Diagnostics
 @using Humanizer
 @using Microsoft.AspNetCore.Components.Authorization
@@ -8,6 +9,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Data
 @using ReplayBrowser.Helpers
+
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayHelper ReplayHelper
@@ -20,6 +22,11 @@
 <hr/>
 @if (ErrorMessage != null)
 {
+    <MetaDataSpecifer
+        Title="Search error"
+        Description="@OpenGraphDescriptionError"
+    />
+
     <p class="alert alert-danger">
         @ErrorMessage
         <br/>
@@ -40,6 +47,10 @@
         </div>
         break;
     case 0:
+            <MetaDataSpecifer
+                Title="Search results"
+                Description="@OpenGraphDescriptionNoResults"
+            />
             <p>Found 0 replays in @stopWatch.ElapsedMilliseconds ms</p>
             <div class="replay-list">
                 <p>No results... :(</p>
@@ -48,6 +59,10 @@
     default:
     {
         var pageDisplay = SearchResult.CurrentPage + 1;
+        <MetaDataSpecifer
+            Title="Search results"
+            Description="@OpenGraphDescriptionResults"
+        />
 
         if (SearchResult.IsCache)
         {
@@ -131,7 +146,23 @@
     public PlayerData? ProfileFound { get; set; }
 
     public SearchResult SearchResult { get; set; } = new SearchResult();
+    public List<SearchQueryItem> SearchItems { get; set; } = new List<SearchQueryItem>();
 
+    private string OpenGraphDescriptionError => ErrorMessage + "\n" + ErrorDetails;
+    private string OpenGraphDescriptionResults => SearchResult.TotalReplays + " found. Page: " + (SearchResult.CurrentPage + 1) + "\n" + FormatOpenGraphSpeciferDescription();
+    private string OpenGraphDescriptionNoResults => "No results found.\n" + FormatOpenGraphSpeciferDescription();
+
+    private string FormatOpenGraphSpeciferDescription()
+    {
+        var searchQuery = string.Join(", ", SearchItems.Select(x => x.SearchMode + ": " + x.SearchValue));
+
+        // Limit the length of the description to 200 characters
+        if (searchQuery.Length > 200)
+        {
+            searchQuery = searchQuery.Substring(0, 200) + "...";
+        }
+        return $"Search results for {searchQuery}";
+    }
     /// <summary>
     /// Search modes that you can only once in a query to save on processing time
     /// </summary>
@@ -166,12 +197,11 @@
             return;
         }
 
-        var searchItems = new List<SearchQueryItem>();
         // Searches is a base64 encoded json string
         try
         {
             var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(searches));
-            searchItems = System.Text.Json.JsonSerializer.Deserialize<List<SearchQueryItem>>(decoded);
+            SearchItems = System.Text.Json.JsonSerializer.Deserialize<List<SearchQueryItem>>(decoded)!;
         }
         catch (Exception e)
         {
@@ -185,7 +215,7 @@
         // If any SearchMode is invalid, we throw an error
         try
         {
-            searchItems.ForEach(x => _ = x.SearchModeEnum); // we dont care about the result, just need to call the getter
+            SearchItems.ForEach(x => _ = x.SearchModeEnum); // we dont care about the result, just need to call the getter
         }
         catch (ArgumentOutOfRangeException e)
         {
@@ -196,7 +226,7 @@
         }
 
         // If any SearchMode in the query is a LimitedSearchMode, we check if it is duplicated, if it is, we throw an error
-        var searchModes = searchItems.Select(x => x.SearchModeEnum).ToList();
+        var searchModes = SearchItems.Select(x => x.SearchModeEnum).ToList();
         foreach (var limitedSearchMode in LimitedSearchModes)
         {
             if (searchModes.Count(x => x == limitedSearchMode) > 1)
@@ -208,7 +238,7 @@
             }
         }
 
-        if (searchItems.Count == 0)
+        if (SearchItems.Count == 0)
         {
             ErrorMessage = "Invalid search query";
             ErrorDetails = "No search items found";
@@ -216,14 +246,14 @@
             NavigationManager.NavigateTo("/");
             return;
         }
-        if (searchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
+        if (SearchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
         {
-            ProfileFound = await ReplayHelper.HasProfile(searchItems.Find(x => x.SearchModeEnum == SearchMode.PlayerOocName).SearchValue, authState);
+            ProfileFound = await ReplayHelper.HasProfile(SearchItems.Find(x => x.SearchModeEnum == SearchMode.PlayerOocName)!.SearchValue, authState);
         }
 
         try
         {
-            SearchResult = await ReplayHelper.SearchReplays(searchItems, pageInt, authState);
+            SearchResult = await ReplayHelper.SearchReplays(SearchItems, pageInt, authState);
         }
         catch (UnauthorizedAccessException e)
         {

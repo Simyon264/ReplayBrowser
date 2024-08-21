@@ -1,11 +1,10 @@
 ﻿@page "/account/admin/notices"
-@using Microsoft.AspNetCore.Components.Web
 @using System.Text.Json
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Data.Models.Account
 @using ReplayBrowser.Services
-@using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -50,7 +49,7 @@ else
         }
         </tbody>
     </table>
-    
+
     <div>
         <input type="text" class="form-control" placeholder="Title" id="titleField" />
         <textarea class="form-control" placeholder="Message" id="messageField"></textarea>
@@ -59,20 +58,20 @@ else
         <button class="btn btn-primary" onclick="SaveOrAdd()">Save</button>
         <button class="btn btn-primary" onclick="SetAdd()">Start new</button>
     </div>
-    
+
     <script>
         let mode = 'add';
         let editId = 0;
-        
+
         function SetAdd() {
             document.getElementById('titleField').value = '';
             document.getElementById('messageField').value = '';
             document.getElementById('startDateField').value = '';
             document.getElementById('endDateField').value = '';
-            
+
             mode = 'add';
         }
-        
+
         function EditNotice(button) {
             const row = button.closest('tr');
             const cells = row.cells;
@@ -80,22 +79,22 @@ else
             const message = cells[2].innerText;
             const start = cells[3].innerText.split(' - ')[0];
             const end = cells[3].innerText.split(' - ')[1];
-            
+
             document.getElementById('titleField').value = title;
             document.getElementById('messageField').value = message;
             document.getElementById('startDateField').value = start;
             document.getElementById('endDateField').value = end;
-            
+
             editId = cells[0].innerText;
-            
+
             mode = 'edit';
         }
-        
+
         function DeleteNotice(button) {
             const row = button.closest('tr');
             const cells = row.cells;
             const id = cells[0].innerText;
-            
+
             $.ajax({
                 url: '/api/Notices/DeleteNotice/' + id,
                 type: 'DELETE',
@@ -109,19 +108,19 @@ else
                 }
             });
         }
-        
+
         function SaveOrAdd() {
             const title = document.getElementById('titleField').value;
             const message = document.getElementById('messageField').value;
             let start = document.getElementById('startDateField').value;
             let end = document.getElementById('endDateField').value;
-            
+
             // Make sure the start and end are in UTC
             const startUtc = new Date(start);
             startUtc.setMinutes(startUtc.getMinutes() + startUtc.getTimezoneOffset());
             const endUtc = new Date(end);
             endUtc.setMinutes(endUtc.getMinutes() + endUtc.getTimezoneOffset());
-            
+
             if (mode === 'add') {
                 $.ajax({
                     url: '/api/Notices/CreateNotice',
@@ -163,7 +162,7 @@ else
                 });
             }
         }
-    
+
     </script>
 }
 

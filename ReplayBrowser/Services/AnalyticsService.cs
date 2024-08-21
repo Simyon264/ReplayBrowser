@@ -108,12 +108,12 @@ public class AnalyticsService : IHostedService, IDisposable
 
     public AnalyticsData GetAnalytics()
     {
-        if (!_cache.TryGetValue(CacheKey, out AnalyticsData data))
+        if (!_cache.TryGetValue(CacheKey, out AnalyticsData? data))
         {
             throw new InvalidOperationException("The analytics data has not been generated yet.");
         }
 
-        return data;
+        return data!;
     }
 
     private class DurationResponse

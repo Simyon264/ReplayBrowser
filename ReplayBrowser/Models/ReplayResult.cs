@@ -6,15 +6,15 @@ namespace ReplayBrowser.Models;
 public class ReplayResult
 {
     public int Id { get; set; }
-    public string? Link { get; set; }
-    public string ServerId { get; set; } = null!;
+    public required string Link { get; set; }
+    public required string ServerId { get; set; }
     public string? ServerName { get; set; }
-    public string Gamemode { get; set; } = null!;
+    public required string Gamemode { get; set; }
     public string? Map { get; set; }
     public List<string>? Maps { get; set; }
 
     // These properties are only used by the details display
-    public string Duration { get; set; } = null!;
+    public required string Duration { get; set; }
     public DateTime? Date { get; set; }
     public int? RoundId { get; set; }
     public int Size { get; set; }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NpgsqlTypes;
 using ReplayBrowser.Models;
+using ReplayBrowser.Models.Ingested;
 using YamlDotNet.Serialization;
 
 namespace ReplayBrowser.Data.Models;
@@ -12,43 +13,29 @@ public class Replay : IEntityTypeConfiguration<Replay>
 {
     public int Id { get; set; }
 
-    public string? Link { get; set; }
+    public required string Link { get; set; }
 
-    [YamlMember(Alias = "roundId")]
     public int? RoundId { get; set; }
 
-    [YamlMember(Alias = "server_name")]
     public string? ServerName { get; set; }
     public DateTime? Date { get; set; }
 
-    [YamlMember(Alias = "map")]
     public string? Map { get; set; }
 
-    [YamlMember(Alias = "maps")]
     public List<string>? Maps { get; set; }
-    [YamlMember(Alias = "gamemode")]
-    public string Gamemode { get; set; }
-    [YamlMember(Alias = "roundEndPlayers")]
-    public List<Player>? RoundEndPlayers { get; set; }
-    [YamlMember(Alias = "roundEndText")]
+    public required string Gamemode { get; set; }
+    public List<ReplayParticipant>? RoundParticipants { get; set; }
     public string? RoundEndText { get; set; }
-    [YamlMember(Alias = "server_id")]
-    public string ServerId { get; set; }
-    [YamlMember(Alias = "endTick")]
+    public required string ServerId { get; set; }
     public int EndTick { get; set; }
-    [YamlMember(Alias = "duration")]
-    public string Duration { get; set; }
-    [YamlMember(Alias = "fileCount")]
+    public required string Duration { get; set; }
     public int FileCount { get; set; }
-    [YamlMember(Alias = "size")]
     public int Size { get; set; }
-    [YamlMember(Alias = "uncompressedSize")]
     public int UncompressedSize { get; set; }
-    [YamlMember(Alias = "endTime")]
-    public string EndTime { get; set; }
+    public required string EndTime { get; set; }
 
     [JsonIgnore]
-    public NpgsqlTsVector RoundEndTextSearchVector { get; set; }
+    public NpgsqlTsVector RoundEndTextSearchVector { get; set; } = null!;
 
     /// <summary>
     /// Determines if a replay is marked as a favorite.
@@ -98,23 +85,84 @@ public class Replay : IEntityTypeConfiguration<Replay>
         };
     }
 
-    public void RedactInformation(Guid? accountGuid)
+    public static Replay FromYaml(YamlReplay replay, string link)
+    {
+        var participants = replay.RoundEndPlayers?
+            .GroupBy(p => p.PlayerGuid)
+            .Select(pg => new ReplayParticipant {
+                PlayerGuid = pg.Key,
+                Players = pg.Select(yp => Player.FromYaml(yp)).ToList(),
+                Username = pg.First().PlayerOocName
+            })
+            .ToList();
+
+        return new Replay {
+            Link = link,
+            ServerId = replay.ServerId,
+            ServerName = replay.ServerName,
+            RoundId = replay.RoundId,
+            Gamemode = replay.Gamemode,
+            Map = replay.Map,
+            Maps = replay.Maps,
+
+            RoundParticipants = participants,
+            RoundEndText = replay.RoundEndText,
+
+            EndTick = replay.EndTick,
+            Duration = replay.Duration,
+            FileCount = replay.FileCount,
+            Size = replay.Size,
+            UncompressedSize = replay.UncompressedSize,
+            EndTime = replay.EndTime
+        };
+    }
+
+    public void RedactInformation(Guid? accountGuid, bool wasGdpr)
     {
         if (accountGuid == null)
-        {
             return;
-        }
+        if (RoundParticipants == null)
+            return;
 
-        if (RoundEndPlayers != null)
+        foreach (var participant in RoundParticipants)
         {
-            foreach (var player in RoundEndPlayers)
+            if (participant.PlayerGuid != accountGuid)
+                continue;
+
+            // FIXME: This can cause unique constraint failure! Take care when redacting
+            participant.PlayerGuid = Guid.Empty;
+            if (wasGdpr)
             {
-                if (player.PlayerGuid == accountGuid)
-                {
-                    player.PlayerOocName = "Redacted by user request";
-                    player.PlayerGuid = Guid.Empty;
-                }
+                participant.Username = "Removed by GDPR request";
+            }
+            else
+            {
+                participant.Username = "Redacted";
+            }
+
+            if (participant.Players is null)
+                return;
+
+            // Note that the above might be null if entries were not .Included!
+            foreach (var character in participant.Players)
+            {
+                character.RedactInformation();
             }
         }
+    }
+
+    public void RedactCleanup()
+    {
+        if (RoundParticipants is null) return;
+        var empty = RoundParticipants.Where(p => p.PlayerGuid == Guid.Empty).ToList();
+        RoundParticipants!.RemoveAll(p => p.PlayerGuid == Guid.Empty);
+        RoundParticipants.Add(
+            new ReplayParticipant {
+                PlayerGuid = Guid.Empty,
+                // Collate everything into one more generic group
+                Username = "Redacted",
+                Players = empty.SelectMany(p => p.Players!).ToList()
+            }
+        );
     }
 }

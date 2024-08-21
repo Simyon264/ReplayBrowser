@@ -43,4 +43,8 @@ public class ReplayDbContext : DbContext
     /// </summary>
     /// <returns></returns>
     public DbSet<CollectedPlayerData> PlayerProfiles { get; set; }
+
+    public DbSet<JobDepartment> JobDepartments { get; set; }
+
+    public DbSet<ReplayParticipant> ReplayParticipants { get; set; }
 }

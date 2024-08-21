@@ -9,7 +9,7 @@ public class Account : IEntityTypeConfiguration<Account>
     public int Id { get; set; }
 
     public Guid Guid { get; set; }
-    public string Username { get; set; }
+    public required string Username { get; set; }
     public bool IsAdmin { get; set; } = false;
     public AccountSettings Settings { get; set; } = new();
 

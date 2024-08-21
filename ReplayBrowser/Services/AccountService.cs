@@ -195,56 +195,30 @@ public class AccountService : IHostedService, IDisposable
 
     public async Task<AccountHistoryResponse?> GetAccountHistory(string username, int pageNumber)
     {
-        // If the username is empty, we want to see logs for not logged in users.
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+
+        var historyQuery = context.Set<HistoryEntry>().AsQueryable();
+
         if (string.IsNullOrWhiteSpace(username))
+            historyQuery = historyQuery.Where(h => h.Account.Guid == Guid.Empty);
+        else
+            historyQuery = historyQuery.Where(h => h.Account.Username == username);
+
+        var totalCount = await historyQuery.CountAsync();
+
+        var history = await historyQuery
+            .OrderByDescending(h => h.Time)
+            .Skip(pageNumber * 10)
+            .Take(10)
+            .ToListAsync();
+
+        return new AccountHistoryResponse
         {
-            var systemAccount = GetSystemAccount();
-
-            systemAccount.History = systemAccount.History.OrderByDescending(h => h.Time).ToList();
-
-            AccountHistoryResponse response = new()
-            {
-                History = [],
-                Page = pageNumber,
-                TotalPages = 1
-            };
-
-            if (systemAccount.History.Count > 10)
-            {
-                response.TotalPages = systemAccount.History.Count / 10;
-            }
-
-            response.History = systemAccount.History.Skip(pageNumber * 10).Take(10).ToList();
-            return response;
-        } else {
-            using var scope = _scopeFactory.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
-            var account = context.Accounts
-                .Include(a => a.History)
-                .FirstOrDefault(a => a.Username == username);
-
-            if (account == null)
-            {
-                return null;
-            }
-
-            account.History = account.History.OrderByDescending(h => h.Time).ToList();
-
-            AccountHistoryResponse response = new()
-            {
-                History = [],
-                Page = pageNumber,
-                TotalPages = 1
-            };
-
-            if (account.History.Count > 10)
-            {
-                response.TotalPages = account.History.Count / 10;
-            }
-
-            response.History = account.History.Skip(pageNumber * 10).Take(10).ToList();
-            return response;
-        }
+            History = history,
+            Page = pageNumber,
+            TotalPages = totalCount / 10
+        };
     }
 
     private Account GetSystemAccount()
@@ -258,15 +232,10 @@ public class AccountService : IHostedService, IDisposable
 
     public async Task AddHistory(Account? callerAccount, HistoryEntry historyEntry)
     {
-        if (callerAccount == null)
-        {
-            var systemAccount = GetSystemAccount();
-            systemAccount.History.Add(historyEntry);
-            await UpdateAccount(systemAccount);
-        } else {
-            callerAccount.History.Add(historyEntry);
-            await UpdateAccount(callerAccount);
-        }
+        callerAccount ??= GetSystemAccount();
+
+        callerAccount.History.Add(historyEntry);
+        await UpdateAccount(callerAccount);
     }
 
     /// <summary>
@@ -304,14 +273,6 @@ public class AccountService : IHostedService, IDisposable
 
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
-        var account = context.Accounts
-            .Include(a => a.Settings)
-            .Include(a => a.History)
-            .FirstOrDefault(a => a.Guid == guid);
-
-        if (account == null)
-            return false;
-
-        return account.IsAdmin;
+        return context.Accounts.SingleOrDefault(a => a.Guid == guid)?.IsAdmin ?? false;
     }
 }

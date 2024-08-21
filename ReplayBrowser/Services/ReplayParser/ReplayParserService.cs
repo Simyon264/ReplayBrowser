@@ -7,9 +7,11 @@ using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
 using ReplayBrowser.Models;
+using ReplayBrowser.Models.Ingested;
 using ReplayBrowser.Services.ReplayParser.Providers;
 using Serilog;
 using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace ReplayBrowser.Services.ReplayParser;
 
@@ -27,11 +29,6 @@ public class ReplayParserService : IHostedService, IDisposable
     public static DateTime CutOffDateTime = new(2024, 2, 17);
 
     public CancellationTokenSource TokenSource = new();
-
-    /// <summary>
-    /// Event that is fired when all replays have been parsed.
-    /// </summary>
-    public event EventHandler<List<Replay>> OnReplaysFinishedParsing;
 
     private readonly IConfiguration _configuration;
     private readonly IServiceScopeFactory _factory;
@@ -178,7 +175,7 @@ public class ReplayParserService : IHostedService, IDisposable
                                 // Need to mark it as UTC, since the server is in UTC.
                                 parsedReplay.Date = date.ToUniversalTime();
                             }
-                            catch (FormatException e)
+                            catch (FormatException)
                             {
                                 var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
                                 parsedReplay.Date = date.ToUniversalTime();
@@ -215,8 +212,6 @@ public class ReplayParserService : IHostedService, IDisposable
                 Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
             }
         }
-
-        OnReplaysFinishedParsing?.Invoke(this, parsedReplays);
     }
 
     /// <summary>
@@ -238,14 +233,16 @@ public class ReplayParserService : IHostedService, IDisposable
 
         var deserializer = new DeserializerBuilder()
             .IgnoreUnmatchedProperties()
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
-        var replay = deserializer.Deserialize<Replay>(reader);
-        if (replay.Map == null && replay.Maps == null)
+
+        var yamlReplay = deserializer.Deserialize<YamlReplay>(reader);
+        if (yamlReplay.Map == null && yamlReplay.Maps == null)
         {
             throw new Exception("Replay is not valid.");
         }
 
-        replay.Link = replayLink;
+        var replay = Replay.FromYaml(yamlReplay, replayLink);
 
         var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
         if (replay.ServerId == Constants.UnsetServerId)
@@ -258,18 +255,31 @@ public class ReplayParserService : IHostedService, IDisposable
             replay.ServerName = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerName;
         }
 
+        if (yamlReplay.RoundEndPlayers == null)
+            return replay;
+
+        var jobs = GetDbContext().JobDepartments.ToList();
+
+        replay.RoundParticipants!.ForEach(
+            p => p.Players!
+                .Where(pl => pl.JobPrototypes.Count != 0)
+                .ToList()
+                .ForEach(
+                    pl => pl.EffectiveJobId = jobs.SingleOrDefault(j => j.Job == pl.JobPrototypes[0])?.Id
+                )
+        );
+
         // Check for GDPRed accounts
         var gdprGuids = GetDbContext().GdprRequests.Select(x => x.Guid).ToList();
-        if (replay.RoundEndPlayers != null)
+
+        foreach (var redact in gdprGuids)
         {
-            foreach (var player in replay.RoundEndPlayers)
-            {
-                if (gdprGuids.Contains(player.PlayerGuid))
-                {
-                    player.RedactInformation(true);
-                }
-            }
+            replay.RedactInformation(redact, true);
         }
+
+        var redacted = replay.RoundParticipants!.Where(p => p.PlayerGuid == Guid.Empty);
+        if (redacted.Any())
+            replay.RedactCleanup();
 
         return replay;
     }
@@ -298,7 +308,7 @@ public class ReplayParserService : IHostedService, IDisposable
                     return;
                 }
             }
-            catch (FormatException e)
+            catch (FormatException)
             {
                 var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
                 if (date < CutOffDateTime)

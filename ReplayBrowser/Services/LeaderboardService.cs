@@ -17,77 +17,9 @@ namespace ReplayBrowser.Services;
 
 public class LeaderboardService : IHostedService, IDisposable
 {
-    private static readonly Dictionary<string, string[]> JobLeaderboards = new Dictionary<string, string[]>()
-    {
-        {"Command", new []
-        {
-            "Captain",
-            "HeadOfPersonnel",
-            "ChiefMedicalOfficer",
-            "ResearchDirector",
-            "HeadOfSecurity",
-            "ChiefEngineer",
-            "Quartermaster"
-        }},
-        {"Science", new []
-        {
-            "ResearchDirector",
-            "Borg",
-            "Scientist",
-            "ResearchAssistant"
-        }},
-        {"Security", new []
-        {
-            "HeadOfSecurity",
-            "Warden",
-            "Detective",
-            "SecurityOfficer",
-            "SecurityCadet"
-        }},
-        {"Medical", new []
-        {
-            "ChiefMedicalOfficer",
-            "MedicalDoctor",
-            "Chemist",
-            "Paramedic",
-            "Psychologist",
-            "MedicalIntern"
-        }},
-        {"Engineering", new []
-        {
-            "ChiefEngineer",
-            "StationEngineer",
-            "AtmosphericTechnician",
-            "TechnicalAssistant",
-        }},
-        {"Service", new []
-        {
-            "HeadOfPersonnel",
-            "Janitor",
-            "Chef",
-            "Botanist",
-            "Bartender",
-            "Chaplain",
-            "Lawyer",
-            "Musician",
-            "Reporter",
-            "Zookeeper",
-            "Librarian",
-            "ServiceWorker",
-            "Clown",
-            "Mime"
-        }},
-        {"Cargo", new []
-        {
-            "Quartermaster",
-            "CargoTechnician",
-            "SalvageSpecialist",
-        }},
-        {"The tide", new []
-        {
-            "Passenger",
-        }}
-    };
+    private static readonly List<string> DepartmentsOrdering = [
+        "Command", "Science", "Security", "Medical", "Engineering", "Service", "Cargo", "The tide"
+    ];
 
     private Timer? _timer = null;
     private readonly IMemoryCache _cache;
@@ -180,23 +112,23 @@ public class LeaderboardService : IHostedService, IDisposable
             .Replace(".", "-")
             .Replace("_", "-");
         var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey;
-        if (_cache.TryGetValue(cacheKey, out LeaderboardData leaderboardData))
+        if (_cache.TryGetValue(cacheKey, out LeaderboardData? leaderboardData))
         {
-            return leaderboardData;
+            return leaderboardData!;
         }
 
-        var isUsernameProvided = !string.IsNullOrWhiteSpace(username);
         var usernameGuid = Guid.Empty;
-        if (isUsernameProvided)
+        if (!string.IsNullOrWhiteSpace(username))
         {
             // Fetch the GUID for the username
-            var player = await context.Players
-                .FirstOrDefaultAsync(p => p.PlayerOocName.ToLower() == username.ToLower());
+            var player = await context.ReplayParticipants
+                .FirstOrDefaultAsync(p => p.Username.ToLower() == username.ToLower());
             if (player != null) usernameGuid = player.PlayerGuid;
         }
 
 
         var stopwatch = new Stopwatch();
+        long stopwatchPrevious = 0;
         stopwatch.Start();
         var rangeTimespan = rangeOption.GetTimeSpan();
         var leaderboards = new Dictionary<string, Leaderboard>()
@@ -239,28 +171,42 @@ public class LeaderboardService : IHostedService, IDisposable
 
         #region FUNNY SQL QUERIES
 
-        // Running just linq queries is too slow, so we need to run raw SQL queries.
-        var mostplayed = await context.Database.SqlQueryRaw<SqlResponse>(
-            $"SELECT p.\"PlayerGuid\", COUNT(DISTINCT p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
-                                                 ).ToListAsync();
+        var mostplayed = await context.ReplayParticipants
+            .Where(p => p.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
+            .GroupBy(p => p.PlayerGuid)
+            .Select(pg => new {
+                PlayerGuid = pg.Key,
+                Count = pg.Select(p => p.ReplayId).Count(),
+            })
+            .ToListAsync();
 
-        leaderboards["MostSeenPlayers"].Data = mostplayed.ToDictionary(x => x.PlayerGuid.ToString(), x => new PlayerCount()
-        {
-            Count = x.UniqueReplaysCount,
+        leaderboards["MostSeenPlayers"].Data = mostplayed.ToDictionary(p => p.PlayerGuid.ToString(), p => new PlayerCount {
+            Count = p.Count,
             Player = new PlayerData()
             {
-                PlayerGuid = x.PlayerGuid,
+                PlayerGuid = p.PlayerGuid,
                 Username = string.Empty
             }
         });
 
-        var mostplayednoghost = await context.Database.SqlQueryRaw<SqlResponse>(
-            $"SELECT p.\"PlayerGuid\", COUNT(DISTINCT p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE p.\"PlayerIcName\" != 'Unknown' AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
-        ).ToListAsync();
+        stopwatch.Stop();
+        Log.Information("Leaderboard - Most Played done at {TimeTotal}ms (took {Time}ms)", stopwatch.ElapsedMilliseconds, stopwatch.ElapsedMilliseconds - stopwatchPrevious);
+        stopwatchPrevious = stopwatch.ElapsedMilliseconds;
+        stopwatch.Start();
+
+        var mostplayednoghost = await context.ReplayParticipants
+            .Where(p => p.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
+            .Where(p => p.Players!.Any(p => p.PlayerIcName != "Unknown"))
+            .GroupBy(p => p.PlayerGuid)
+            .Select(pg => new {
+                PlayerGuid = pg.Key,
+                Count = pg.Select(p => p.ReplayId).Count(),
+            })
+            .ToListAsync();
 
         leaderboards["MostSeenNoGhost"].Data = mostplayednoghost.ToDictionary(x => x.PlayerGuid.ToString(), x => new PlayerCount()
         {
-            Count = x.UniqueReplaysCount,
+            Count = x.Count,
             Player = new PlayerData()
             {
                 PlayerGuid = x.PlayerGuid,
@@ -268,13 +214,24 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         });
 
-        var mostantag = await context.Database.SqlQueryRaw<SqlResponse>(
-           $"SELECT p.\"PlayerGuid\", COUNT(p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE array_length(p.\"AntagPrototypes\", 1) > 0 AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
-        ).ToListAsync();
+        stopwatch.Stop();
+        Log.Information("Leaderboard - Most Played No Ghost done at {TimeTotal}ms (took {Time}ms)", stopwatch.ElapsedMilliseconds, stopwatch.ElapsedMilliseconds - stopwatchPrevious);
+        stopwatchPrevious = stopwatch.ElapsedMilliseconds;
+        stopwatch.Start();
+
+        var mostantag = await context.ReplayParticipants
+            .Where(p => p.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
+            .Where(p => p.Players!.Any(p => p.AntagPrototypes.Count > 0))
+            .GroupBy(p => p.PlayerGuid)
+            .Select(pg => new {
+                PlayerGuid = pg.Key,
+                Count = pg.Select(p => p.ReplayId).Count(),
+            })
+            .ToListAsync();
 
         leaderboards["MostAntagPlayers"].Data = mostantag.ToDictionary(x => x.PlayerGuid.ToString(), x => new PlayerCount()
         {
-            Count = x.UniqueReplaysCount,
+            Count = x.Count,
             Player = new PlayerData()
             {
                 PlayerGuid = x.PlayerGuid,
@@ -282,13 +239,24 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         });
 
-        var mostPlayedDepartments = await context.Database.SqlQueryRaw<DepartmentSqlResponse>(
-            $"WITH role_to_department AS( SELECT * FROM (VALUES ('Captain', 'Command'), ('HeadOfPersonnel', 'Command'), ('ChiefMedicalOfficer', 'Command'), ('ResearchDirector', 'Command'), ('HeadOfSecurity', 'Command'), ('ChiefEngineer', 'Command'), ('Quartermaster', 'Command'), ('Borg', 'Science'), ('Scientist', 'Science'), ('ResearchAssistant', 'Science'), ('Warden', 'Security'), ('Detective', 'Security'), ('SecurityOfficer', 'Security'), ('SecurityCadet', 'Security'), ('MedicalDoctor', 'Medical'), ('Chemist', 'Medical'), ('Paramedic', 'Medical'), ('Psychologist', 'Medical'), ('MedicalIntern', 'Medical'), ('StationEngineer', 'Engineering'), ('AtmosphericTechnician', 'Engineering'), ('TechnicalAssistant', 'Engineering'), ('Janitor', 'Service'), ('Chef', 'Service'), ('Botanist', 'Service'), ('Bartender', 'Service'), ('Chaplain', 'Service'), ('Lawyer', 'Service'), ('Musician', 'Service'), ('Reporter', 'Service'), ('Zookeeper', 'Service'), ('Librarian', 'Service'), ('ServiceWorker', 'Service'), ('Clown', 'Service'), ('Mime', 'Service'), ('CargoTechnician', 'Cargo'), ('SalvageSpecialist', 'Cargo'), ('Passenger', 'The tide')) AS mapping(role, department) ) SELECT mapping.department, COUNT(*) AS department_count FROM \"Players\" p JOIN role_to_department mapping ON mapping.role = ANY(p.\"JobPrototypes\") JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY mapping.department ORDER BY department_count DESC; "
-        ).ToListAsync();
+        stopwatch.Stop();
+        Log.Information("Leaderboard - Most Antag done at {TimeTotal}ms (took {Time}ms)", stopwatch.ElapsedMilliseconds, stopwatch.ElapsedMilliseconds - stopwatchPrevious);
+        stopwatchPrevious = stopwatch.ElapsedMilliseconds;
+        stopwatch.Start();
+
+        var mostPlayedDepartments = await context.Players
+            .Where(p => p.EffectiveJobId != null)
+            .Where(p => p.Participant.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
+            .GroupBy(p => p.EffectiveJob!.Department)
+            .Select(pg => new {
+                Department = pg.Key,
+                Count = pg.Count(),
+            })
+            .ToListAsync();
 
         leaderboards["MostPlayedDepartments"].Data = mostPlayedDepartments.ToDictionary(x => x.Department, x => new PlayerCount()
         {
-            Count = x.DepartmentCount,
+            Count = x.Count,
             Player = new PlayerData()
             {
                 PlayerGuid = null,
@@ -296,13 +264,26 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         });
 
-        var mostPlayedJobs = await context.Database.SqlQueryRaw<JobLeaderboardSqlResponse>(
-            $"SELECT job, COUNT(*) AS job_count FROM( SELECT UNNEST(p.\"JobPrototypes\") AS job FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}') AS jobs GROUP BY job ORDER BY job_count DESC; "
-        ).ToListAsync();
+        stopwatch.Stop();
+        Log.Information("Leaderboard - Most Played Department done at {TimeTotal}ms (took {Time}ms)", stopwatch.ElapsedMilliseconds, stopwatch.ElapsedMilliseconds - stopwatchPrevious);
+        stopwatchPrevious = stopwatch.ElapsedMilliseconds;
+        stopwatch.Start();
+
+
+        var mostPlayedJobs = await context.Players
+            .Where(p => p.JobPrototypes.Count > 0)
+            .Where(p => p.Participant.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
+            .Select(p => p.JobPrototypes[0])
+            .GroupBy(p => p)
+            .Select(pg => new {
+                Job = pg.Key,
+                Count = pg.Count(),
+            })
+            .ToListAsync();
 
         leaderboards["MostPlayedJobs"].Data = mostPlayedJobs.ToDictionary(x => x.Job, x => new PlayerCount()
         {
-            Count = x.JobCount,
+            Count = x.Count,
             Player = new PlayerData()
             {
                 PlayerGuid = null,
@@ -310,80 +291,81 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         });
 
-        // Need to get the top for every department using the job leaderboards
-        foreach (var department in JobLeaderboards)
-        {
-            var departmentPlayers = new List<SqlResponse>();
-            foreach (var job in department.Value)
-            {
-                var jobPlayers = await context.Database.SqlQueryRaw<SqlResponse>(
-                    $"SELECT p.\"PlayerGuid\", COUNT(p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE '{job}' = ANY(p.\"JobPrototypes\") AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
-                ).ToListAsync();
-                departmentPlayers.AddRange(jobPlayers);
-            }
+        stopwatch.Stop();
+        Log.Information("Leaderboard - Most Played Job done at {TimeTotal}ms (took {Time}ms)", stopwatch.ElapsedMilliseconds, stopwatch.ElapsedMilliseconds - stopwatchPrevious);
+        stopwatchPrevious = stopwatch.ElapsedMilliseconds;
+        stopwatch.Start();
 
-            departmentPlayers.Sort((a, b) => b.UniqueReplaysCount.CompareTo(a.UniqueReplaysCount));
-            // Count together duplicates
-            var departmentPlayersDict = new Dictionary<Guid, int>();
-            foreach (var player in departmentPlayers)
-            {
-                if (departmentPlayersDict.ContainsKey(player.PlayerGuid))
-                {
-                    departmentPlayersDict[player.PlayerGuid] += player.UniqueReplaysCount;
-                }
-                else
-                {
-                    departmentPlayersDict[player.PlayerGuid] = player.UniqueReplaysCount;
-                }
-            }
 
-            leaderboards.Add(department.Key, new Leaderboard()
-            {
-                Name = department.Key,
+        var perDepartmentPlayers = await context.Players
+            .Where(p => p.EffectiveJobId != null)
+            .Where(p => p.Participant.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
+            .GroupBy(p => new {
+                p.EffectiveJob!.Department,
+                p.Participant.PlayerGuid
+            })
+            .Select(pg => new {
+                pg.Key,
+                Count = pg.Count()
+            })
+            .ToListAsync();
+
+        perDepartmentPlayers
+            .GroupBy(g => g.Key.Department, pc => new { pc.Key.PlayerGuid, pc.Count })
+            .OrderBy(g => DepartmentsOrdering.IndexOf(g.Key) is var index && index == -1 ? DepartmentsOrdering.Count : index)
+            .Select(j => new Leaderboard() {
+                Name = j.Key,
                 TrackedData = "Times played",
-                Data = departmentPlayersDict.ToDictionary(x => x.Key.ToString(), x => new PlayerCount()
-                {
-                    Count = x.Value,
-                    Player = new PlayerData()
-                    {
-                        PlayerGuid = x.Key,
-                        Username = string.Empty
-                    }
-                }),
-                ExtraInfo = $"Jobs: {string.Join(", ", department.Value)}"
-            });
-        }
-
-        // For each role found in the job leaderboards, we add another leaderboard for that role, showing the players who played it the most
-        var jobs = mostPlayedJobs.Select(job => job.Job).ToList();
-        jobs.Sort();
-
-        foreach (var jobName in jobs)
-        {
-            var jobPlayers = await context.Database.SqlQueryRaw<SqlResponse>(
-                $"SELECT p.\"PlayerGuid\", COUNT(p.\"ReplayId\") AS unique_replays_count FROM \"Players\" p JOIN \"Replays\" r ON p.\"ReplayId\" = r.\"Id\" WHERE '{jobName}' = ANY(p.\"JobPrototypes\") AND r.\"Date\" >= CURRENT_DATE - INTERVAL '{rangeTimespan}' GROUP BY p.\"PlayerGuid\" ORDER BY unique_replays_count DESC;"
-            ).ToListAsync();
-
-            leaderboards[jobName] = new Leaderboard()
-            {
-                Name = jobName,
-                TrackedData = "Times played",
-                Data = jobPlayers.ToDictionary(x => x.PlayerGuid.ToString(), x => new PlayerCount()
-                {
-                    Count = x.UniqueReplaysCount,
-                    Player = new PlayerData()
-                    {
-                        PlayerGuid = x.PlayerGuid,
+                Data = j.ToDictionary(pc => pc.PlayerGuid.ToString(), pc => new PlayerCount {
+                    Count = pc.Count,
+                    Player = new PlayerData {
+                        PlayerGuid = pc.PlayerGuid,
                         Username = string.Empty
                     }
                 })
-            };
-        }
+            })
+            .ToList()
+            .ForEach(j => leaderboards.Add(j.Name, j));
+
+
+        stopwatch.Stop();
+        Log.Information("Leaderboard - Department done at {TimeTotal}ms (took {Time}ms)", stopwatch.ElapsedMilliseconds, stopwatch.ElapsedMilliseconds - stopwatchPrevious);
+        stopwatchPrevious = stopwatch.ElapsedMilliseconds;
+        stopwatch.Start();
+
+        var perJobPlayers = await context.Players
+            .Where(p => p.JobPrototypes.Count > 0)
+            .Where(p => p.Participant.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
+            .GroupBy(p => new {
+                Job = p.JobPrototypes[0],
+                p.Participant.PlayerGuid
+            })
+            .Select(pg => new {
+                pg.Key,
+                Count = pg.Count()
+            })
+            .ToListAsync();
+
+        perJobPlayers
+            .GroupBy(g => g.Key.Job, pc => new { pc.Key.PlayerGuid, pc.Count })
+            .Select(j => new Leaderboard() {
+                Name = j.Key,
+                TrackedData = "Times played",
+                Data = j.ToDictionary(pc => pc.PlayerGuid.ToString(), pc => new PlayerCount {
+                    Count = pc.Count,
+                    Player = new PlayerData {
+                        PlayerGuid = pc.PlayerGuid,
+                        Username = string.Empty
+                    }
+                })
+            })
+            .ToList()
+            .ForEach(j => leaderboards.Add(j.Name, j));
 
         #endregion
 
         stopwatch.Stop();
-        Log.Information("SQL queries took {Time}ms", stopwatch.ElapsedMilliseconds);
+        Log.Information("SQL queries took {TimeTotal}ms", stopwatch.ElapsedMilliseconds);
         stopwatch.Restart();
 
         // Need to calculate the position of every player in the leaderboard.
@@ -445,13 +427,13 @@ public class LeaderboardService : IHostedService, IDisposable
             {
                 returnValue.Data.Add(targetPlayer.ToString(), new PlayerCount()
                 {
-                    Count = players.FirstOrDefault(x => x.Player.PlayerGuid == targetPlayer)?.Count ?? -1,
+                    Count = players.FirstOrDefault(x => x.Player?.PlayerGuid == targetPlayer)?.Count ?? -1,
                     Player = new PlayerData()
                     {
                         PlayerGuid = targetPlayer,
                         Username = string.Empty
                     },
-                    Position = players.FirstOrDefault(x => x.Player.PlayerGuid == targetPlayer)?.Position ?? -1
+                    Position = players.FirstOrDefault(x => x.Player?.PlayerGuid == targetPlayer)?.Position ?? -1
                 });
             }
         }
@@ -465,7 +447,7 @@ public class LeaderboardService : IHostedService, IDisposable
                 continue;
 
             // get the latest name from the db
-            var playerData = await context.Players
+            var playerData = await context.ReplayParticipants
                 .Where(p => p.PlayerGuid == player.Value.Player.PlayerGuid)
                 .OrderByDescending(p => p.Id)
                 .FirstOrDefaultAsync();
@@ -474,14 +456,11 @@ public class LeaderboardService : IHostedService, IDisposable
             {
                 // ??? try to get using api
                 var playerDataApi = await _apiHelper.FetchPlayerDataFromGuid((Guid)player.Value.Player.PlayerGuid);
-                if (playerDataApi != null)
-                {
-                    player.Value.Player.Username = playerDataApi.Username;
-                }
+                player.Value.Player.Username = playerDataApi.Username;
             }
             else
             {
-                player.Value.Player.Username = playerData.PlayerOocName;
+                player.Value.Player.Username = playerData.Username;
             }
         }
         stopwatch.Stop();
@@ -495,29 +474,5 @@ public class LeaderboardService : IHostedService, IDisposable
         var guidBytes = new byte[16];
         new Random().NextBytes(guidBytes);
         return new Guid(guidBytes);
-    }
-
-    private class SqlResponse
-    {
-        [Column("PlayerGuid")]
-        public Guid PlayerGuid { get; set; }
-        [Column("unique_replays_count")]
-        public int UniqueReplaysCount { get; set; }
-    }
-
-    private class DepartmentSqlResponse
-    {
-        [Column("department")]
-        public string Department { get; set; }
-        [Column("department_count")]
-        public int DepartmentCount { get; set; }
-    }
-
-    private class JobLeaderboardSqlResponse
-    {
-        [Column("job")]
-        public string Job { get; set; }
-        [Column("job_count")]
-        public int JobCount { get; set; }
     }
 }

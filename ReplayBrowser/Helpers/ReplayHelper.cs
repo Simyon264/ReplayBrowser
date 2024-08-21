@@ -39,6 +39,8 @@ public class ReplayHelper
         var account = await _accountService.GetAccount(state);
 
         // Log the action in a separate task to not block the request.
+        // "Execution of the current method continues before the call is completed" is a desired outcome here
+        #pragma warning disable CS4014
         Task.Run(async () =>
         {
             await _accountService.AddHistory(account, new HistoryEntry()
@@ -48,6 +50,7 @@ public class ReplayHelper
                 Details = string.Empty
             });
         });
+        #pragma warning restore CS4014
 
         return replays;
     }
@@ -56,7 +59,7 @@ public class ReplayHelper
     /// Fetches a player profile from the database.
     /// </summary>
     /// <exception cref="UnauthorizedAccessException">Thrown when the account is private and the requestor is not the account owner or an admin.</exception>
-    public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, bool skipPermsCheck = false)
+    public async Task<CollectedPlayerData> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, bool skipPermsCheck = false)
     {
         var accountCaller = await _accountService.GetAccount(authenticationState);
 
@@ -104,14 +107,13 @@ public class ReplayHelper
 
        var replayPlayers = await _context.Players
             .AsNoTracking()
-            .Where(p => p.PlayerGuid == playerGuid)
-            .Where(p => p.Replay!.Date != null)
-            .Include(p => p.Replay)
+            .Where(p => p.Participant.PlayerGuid == playerGuid)
+            .Where(p => p.Participant.Replay!.Date != null)
             .Select(p => new {
                 p.Id,
-                p.ReplayId,
-                Date = (DateTime) p.Replay!.Date,
-                p.Replay!.Duration,
+                p.Participant.ReplayId,
+                Date = (DateTime) p.Participant.Replay!.Date!,
+                p.Participant.Replay!.Duration,
                 p.JobPrototypes,
                 // .Antag becomes unnecessary because this always has at least an empty string,
                 p.AntagPrototypes,
@@ -122,7 +124,7 @@ public class ReplayHelper
         var replayPlayerGroup = replayPlayers.GroupBy(rp => rp.ReplayId);
 
         var totalRoundsPlayed = replayPlayerGroup.Count();
-        var totalAntagRoundsPlayed = replayPlayerGroup.Select(rpg => rpg.Any(rp => rp.AntagPrototypes.Count > 0)).Count();
+        var totalAntagRoundsPlayed = replayPlayerGroup.Count(rpg => rpg.Any(rp => rp.AntagPrototypes.Count > 0));
 
         // Estimated
         var totalPlaytime = new TimeSpan(replayPlayerGroup.Sum(rpg => (TimeSpan.TryParse(rpg.First().Duration, out var durationSpan) ? durationSpan : TimeSpan.Zero).Ticks));
@@ -148,7 +150,7 @@ public class ReplayHelper
             PlayerData = new PlayerData()
             {
                 PlayerGuid = playerGuid,
-                Username = (await _apiHelper.FetchPlayerDataFromGuid(playerGuid))?.Username ??
+                Username = (await _apiHelper.FetchPlayerDataFromGuid(playerGuid)).Username ??
                            "Unable to fetch username (API error)"
             },
             PlayerGuid = playerGuid,
@@ -181,7 +183,8 @@ public class ReplayHelper
     {
         var replay = await _context.Replays
             .AsNoTracking()
-            .Include(r => r.RoundEndPlayers)
+            .Include(r => r.RoundParticipants!)
+            .ThenInclude(p => p.Players)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (replay == null)
@@ -194,40 +197,26 @@ public class ReplayHelper
 
     private Replay FilterReplay(Replay replay, Account? caller = null)
     {
-        if (replay.RoundEndPlayers == null)
+        if (replay.RoundParticipants == null)
             return replay;
 
-        var accountDictionary = new Dictionary<Guid, AccountSettings>();
-        foreach (var replayRoundEndPlayer in replay.RoundEndPlayers)
-        {
-            if (!accountDictionary.ContainsKey(replayRoundEndPlayer.PlayerGuid))
-            {
-                var accountForPlayerTemp = _accountService.GetAccountSettings(replayRoundEndPlayer.PlayerGuid);
-                if (accountForPlayerTemp == null)
-                {
-                    continue;
-                }
+        if (caller is not null && caller.IsAdmin)
+            return replay;
 
-                accountDictionary.Add(replayRoundEndPlayer.PlayerGuid, accountForPlayerTemp);
-            }
-            var accountForPlayer = accountDictionary[replayRoundEndPlayer.PlayerGuid];
+        var redactFor = replay.RoundParticipants!
+            .Where(p => p.PlayerGuid != Guid.Empty)
+            .Select(p => new { p.PlayerGuid, Redact = _accountService.GetAccountSettings(p.PlayerGuid)?.RedactInformation ?? false })
+            .Where(p => p.Redact)
+            .Select(p => p.PlayerGuid)
+            .ToList();
 
-            if (!accountForPlayer.RedactInformation) continue;
+        if (caller is not null)
+            redactFor.Remove(caller.Guid);
 
-            if (caller == null)
-            {
-                replayRoundEndPlayer.RedactInformation();
-                continue;
-            }
+        foreach (var redact in redactFor)
+            replay.RedactInformation(redact, false);
 
-            if (replayRoundEndPlayer.PlayerGuid == caller.Guid) continue;
-
-            // If the caller is an admin, we can show the information.
-            if (!caller.IsAdmin)
-            {
-                replayRoundEndPlayer.RedactInformation();
-            }
-        }
+        replay.RedactCleanup();
 
         return replay;
     }
@@ -331,6 +320,8 @@ public class ReplayHelper
             }
         }
 
+        // "Execution of the current method continues before the call is completed" is a desired outcome here
+        #pragma warning disable CS4014
         Task.Run(async () =>
         {
             await _accountService.AddHistory(callerAccount, new HistoryEntry()
@@ -340,6 +331,7 @@ public class ReplayHelper
                 Details = string.Join(", ", searchItems.Select(x => $"{x.SearchMode}={x.SearchValue}"))
             });
         });
+        #pragma warning restore CS4014
 
         var (replays, results, wasCache) = SearchReplays(searchItems, page, Constants.ReplaysPerPage);
 
@@ -358,8 +350,8 @@ public class ReplayHelper
     {
         var accountGuid = AccountHelper.GetAccountGuid(state);
 
-        var player = await _context.Players
-            .FirstOrDefaultAsync(p => p.PlayerOocName.ToLower() == username.ToLower());
+        var player = await _context.ReplayParticipants
+            .FirstOrDefaultAsync(p => p.Username.ToLower() == username.ToLower());
         if (player == null)
         {
             return null;
@@ -383,7 +375,7 @@ public class ReplayHelper
         return new PlayerData()
         {
             PlayerGuid = player.PlayerGuid,
-            Username = player.PlayerOocName
+            Username = player.Username
         };
     }
 
@@ -405,7 +397,7 @@ public class ReplayHelper
 
         var queryable = _context.Replays
             .AsNoTracking()
-            .Include(r => r.RoundEndPlayers).AsQueryable();
+            .AsQueryable();
 
         foreach (var searchItem in searchItems)
         {
@@ -414,25 +406,21 @@ public class ReplayHelper
             queryable = searchItem.SearchModeEnum switch
             {
                 SearchMode.Map => queryable.Where(
-                    x => x.Map.ToLower().Contains(searchItem.SearchValue.ToLower())
-                    || x.Maps.Any(map => map.ToLower().Contains(searchItem.SearchValue.ToLower()))
+                    x => x.Map!.ToLower().Contains(searchItem.SearchValue.ToLower())
+                    || x.Maps!.Any(map => map.ToLower().Contains(searchItem.SearchValue.ToLower()))
                 ),
                 SearchMode.Gamemode => queryable.Where(x => x.Gamemode.ToLower().Contains(searchItem.SearchValue.ToLower())),
                 SearchMode.ServerId => queryable.Where(x => x.ServerId.ToLower().Contains(searchItem.SearchValue.ToLower())),
-                SearchMode.Guid => queryable.Where(r => r.RoundEndPlayers.Any(p => p.PlayerGuid.ToString().ToLower().Contains(searchItem.SearchValue.ToLower()))),
-                SearchMode.PlayerIcName => queryable.Where(r => r.RoundEndPlayers.Any(p => p.PlayerIcName.ToLower().Contains(searchItem.SearchValue.ToLower()))),
-                SearchMode.PlayerOocName => queryable.Where(r => r.RoundEndPlayers.Any(p => p.PlayerOocName.ToLower().Contains(searchItem.SearchValue.ToLower()))),
+                SearchMode.Guid => queryable.Where(r => r.RoundParticipants!.Any(p => p.PlayerGuid.ToString().ToLower().Contains(searchItem.SearchValue.ToLower()))),
+                SearchMode.PlayerIcName => queryable.Where(r => r.RoundParticipants!.Any(p => p.Players!.Any(pl => pl.PlayerIcName.ToLower().Contains(searchItem.SearchValue.ToLower())))),
+                SearchMode.PlayerOocName => queryable.Where(r => r.RoundParticipants!.Any(p => p.Username.ToLower().Contains(searchItem.SearchValue.ToLower()))),
                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall (its lying, this works)
                 SearchMode.RoundEndText => queryable.Where(x => x.RoundEndTextSearchVector.Matches(searchItem.SearchValue)),
                 SearchMode.ServerName => queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(searchItem.SearchValue.ToLower())),
-                SearchMode.RoundId => queryable.Where(x => x.RoundId != null && x.RoundId.ToString().ToLower().Contains(searchItem.SearchValue.ToLower())),
+                SearchMode.RoundId => queryable.Where(x => x.RoundId != null && x.RoundId!.ToString()!.ToLower().Contains(searchItem.SearchValue.ToLower())),
                 _ => throw new NotImplementedException(),
             };
         }
-
-        queryable = queryable
-            .OrderByDescending(r => r.Date ?? DateTime.MinValue);
-
 
         // Technically it might be inaccurate. In practice nobody will care much?
         int totalItems = _cache.GetOrCreate(cacheKey, e =>
@@ -444,6 +432,7 @@ public class ReplayHelper
 
         // Get all results and store them in the cache
         var allResults = queryable
+            .OrderByDescending(r => r.Date ?? DateTime.MinValue)
             .Skip(page * pageSize)
             .Take(pageSize)
             .Select(r => r.ToResult())
@@ -464,7 +453,6 @@ public class ReplayHelper
         }
 
         var replays = await _context.Replays
-            .Include(r => r.RoundEndPlayers)
             .Where(r => account.FavoriteReplays.Contains(r.Id))
             .Select(r => r.ToResult())
             .ToListAsync();

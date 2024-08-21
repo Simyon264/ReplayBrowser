@@ -11,7 +11,7 @@
     <h2>@NameFormatted</h2>
     @if (Replay.Map == null)
     {
-        <p>Maps: @string.Join(", ", Replay.Maps)</p>
+        <p>Maps: @string.Join(", ", Replay.Maps!)</p>
     }
     else
     {
@@ -86,7 +86,7 @@
                      }
                 </div>
                 <div class="modal-body">
-                    @if (FullReplay is not null && FullReplay.RoundEndPlayers is not null)
+                    @if (FullReplay is not null && FullReplay.RoundParticipants is not null)
                     {
                         <p id="players-@Replay.Id">@ReplayPlayersFormatted</p>
                     } else
@@ -116,7 +116,7 @@
     <a href="@Replay.Link" target="_blank" class="btn btn-primary">Download</a>
 
 
-    @if (FullReplay is null || FullReplay.RoundEndPlayers is null || FullReplay.RoundEndText is null) {
+    @if (FullReplay is null || FullReplay.RoundParticipants is null || FullReplay.RoundEndText is null) {
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const modalPlayers = document.getElementById("buttonPlayers-@Replay.Id")
@@ -201,15 +201,18 @@
         }
 
         // Format the player list
-        if (FullReplay is not null && FullReplay.RoundEndPlayers is not null)
+        if (FullReplay is not null && FullReplay.RoundParticipants is not null)
         {
-            var players = FullReplay.RoundEndPlayers;
+            var players = FullReplay.RoundParticipants.SelectMany(p => p.Players!.Select(c => new {
+                    Player = c, p.PlayerGuid, p.Username
+                })).ToList();
+
             players.Sort((a, b) =>
             {
-                if (a.AntagPrototypes.Count > 0 && b.AntagPrototypes.Count == 0)
+                if (a.Player.AntagPrototypes.Count > 0 && b.Player.AntagPrototypes.Count == 0)
                 {
                     return -1;
-                } else if (a.AntagPrototypes.Count == 0 && b.AntagPrototypes.Count > 0)
+                } else if (a.Player.AntagPrototypes.Count == 0 && b.Player.AntagPrototypes.Count > 0)
                 {
                     return 1;
                 }
@@ -219,15 +222,15 @@
             // Antags are placed at the top
             var playerList = players.Select(player => {
                 var job = "Unknown";
-                if (player.JobPrototypes.Count > 0)
+                if (player.Player.JobPrototypes.Count > 0)
                 {
-                    job = player.JobPrototypes[0];
+                    job = player.Player.JobPrototypes[0];
                 }
 
-                var playerText = $"<a href=\"/player/{player.PlayerGuid}\"><span style=\"color: gray\">{player.PlayerOocName}</span></a> was <bold>{player.PlayerIcName}</bold> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
-                if (player.AntagPrototypes.Count > 0)
+                var playerText = $"<a href=\"/player/{player.PlayerGuid}\"><span style=\"color: gray\">{player.Username}</span></a> was <bold>{player.Player.PlayerIcName}</bold> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
+                if (player.Player.AntagPrototypes.Count > 0)
                 {
-                    playerText = $"<a href=\"/player/{player.PlayerGuid}\"><span style=\"color: red\">{player.PlayerOocName}</span></a> was <span style=\"color:red\"><bold>{player.PlayerIcName}</bold></span> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
+                    playerText = $"<a href=\"/player/{player.PlayerGuid}\"><span style=\"color: red\">{player.Username}</span></a> was <span style=\"color:red\"><bold>{player.Player.PlayerIcName}</bold></span> playing role of <span style=\"color: orange\"><bold>{job}</bold></span>";
                 }
                 // Need to show the guid as well
                 playerText += $"<br><span style=\"color: gray;font-size: x-small;\"> {{{player.PlayerGuid}}}</span>";
