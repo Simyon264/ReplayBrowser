@@ -47,7 +47,8 @@ public class Startup
                 Environment.Exit(1);
             }
 
-            options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"));
+            // FIXME: Timeout needs to bumped down to default after the big migration finishes
+            options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), o => o.CommandTimeout(600));
 
             options.EnableSensitiveDataLogging();
             options.UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole().AddSerilog()));

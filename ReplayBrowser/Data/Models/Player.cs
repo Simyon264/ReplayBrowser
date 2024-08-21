@@ -16,6 +16,9 @@ public class Player : IEntityTypeConfiguration<Player>
     public ReplayParticipant Participant { get; set; } = null!;
     public int ParticipantId { get; set; }
 
+    public JobDepartment? EffectiveJob { get; set; }
+    public int? EffectiveJobId { get; set; }
+
     public void Configure(EntityTypeBuilder<Player> builder)
     {
         builder.HasIndex(p => p.PlayerIcName);
