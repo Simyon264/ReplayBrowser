@@ -49,8 +49,10 @@ public class Startup
 
             options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"));
 
+#if DEBUG
             options.EnableSensitiveDataLogging();
-            options.UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole().AddSerilog()));
+            options.UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole().AddSerilog()));   
+#endif
         });
 
         // Run migrations on startup.
