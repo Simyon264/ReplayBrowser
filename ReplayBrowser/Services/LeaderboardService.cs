@@ -112,14 +112,13 @@ public class LeaderboardService : IHostedService, IDisposable
             .Replace(".", "-")
             .Replace("_", "-");
         var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey;
-        if (_cache.TryGetValue(cacheKey, out LeaderboardData leaderboardData))
+        if (_cache.TryGetValue(cacheKey, out LeaderboardData? leaderboardData))
         {
-            return leaderboardData;
+            return leaderboardData!;
         }
 
-        var isUsernameProvided = !string.IsNullOrWhiteSpace(username);
         var usernameGuid = Guid.Empty;
-        if (isUsernameProvided)
+        if (!string.IsNullOrWhiteSpace(username))
         {
             // Fetch the GUID for the username
             var player = await context.ReplayParticipants
@@ -428,13 +427,13 @@ public class LeaderboardService : IHostedService, IDisposable
             {
                 returnValue.Data.Add(targetPlayer.ToString(), new PlayerCount()
                 {
-                    Count = players.FirstOrDefault(x => x.Player.PlayerGuid == targetPlayer)?.Count ?? -1,
+                    Count = players.FirstOrDefault(x => x.Player?.PlayerGuid == targetPlayer)?.Count ?? -1,
                     Player = new PlayerData()
                     {
                         PlayerGuid = targetPlayer,
                         Username = string.Empty
                     },
-                    Position = players.FirstOrDefault(x => x.Player.PlayerGuid == targetPlayer)?.Position ?? -1
+                    Position = players.FirstOrDefault(x => x.Player?.PlayerGuid == targetPlayer)?.Position ?? -1
                 });
             }
         }
@@ -457,10 +456,7 @@ public class LeaderboardService : IHostedService, IDisposable
             {
                 // ??? try to get using api
                 var playerDataApi = await _apiHelper.FetchPlayerDataFromGuid((Guid)player.Value.Player.PlayerGuid);
-                if (playerDataApi != null)
-                {
-                    player.Value.Player.Username = playerDataApi.Username;
-                }
+                player.Value.Player.Username = playerDataApi.Username;
             }
             else
             {
@@ -478,29 +474,5 @@ public class LeaderboardService : IHostedService, IDisposable
         var guidBytes = new byte[16];
         new Random().NextBytes(guidBytes);
         return new Guid(guidBytes);
-    }
-
-    private class SqlResponse
-    {
-        [Column("PlayerGuid")]
-        public Guid PlayerGuid { get; set; }
-        [Column("unique_replays_count")]
-        public int UniqueReplaysCount { get; set; }
-    }
-
-    private class DepartmentSqlResponse
-    {
-        [Column("department")]
-        public string Department { get; set; }
-        [Column("department_count")]
-        public int DepartmentCount { get; set; }
-    }
-
-    private class JobLeaderboardSqlResponse
-    {
-        [Column("job")]
-        public string Job { get; set; }
-        [Column("job_count")]
-        public int JobCount { get; set; }
     }
 }

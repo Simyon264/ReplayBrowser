@@ -73,7 +73,7 @@ public class CollectedPlayerData : IEntityTypeConfiguration<CollectedPlayerData>
 public class CharacterData
 {
     public int Id { get; set; }
-    public string CharacterName { get; set; }
+    public required string CharacterName { get; set; }
     public DateTime LastPlayed { get; set; } = DateTime.MinValue;
     public int RoundsPlayed { get; set; }
 }
@@ -82,7 +82,7 @@ public class JobCountData
 {
     public int Id { get; set; }
 
-    public string JobPrototype { get; set; }
+    public required string JobPrototype { get; set; }
     public int RoundsPlayed { get; set; }
     public DateTime LastPlayed { get; set; } = DateTime.MinValue;
 }

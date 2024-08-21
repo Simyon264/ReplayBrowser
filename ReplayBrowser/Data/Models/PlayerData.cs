@@ -13,7 +13,7 @@ public class PlayerData
 
     public Guid? PlayerGuid { get; set; }
 
-    public string Username { get; set; }
+    public string Username { get; set; } = null!;
 
 
     public override bool Equals(object? obj)

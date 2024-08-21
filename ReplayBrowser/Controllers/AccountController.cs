@@ -56,7 +56,7 @@ public class AccountController : Controller
     [Route("redirect")]
     public async Task<IActionResult> RedirectFromLogin()
     {
-        if (!User.Identity.IsAuthenticated)
+        if (User.Identity is null || !User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
@@ -115,12 +115,12 @@ public class AccountController : Controller
         [FromQuery] bool permanently = false
         )
     {
-        if (!User.Identity.IsAuthenticated)
+        if (User.Identity is null || !User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
 
-        var guid = AccountHelper.GetAccountGuid(User);
+        var guid = AccountHelper.GetAccountGuid(User)!;
 
         var user = await _context.Accounts
             .Include(a => a.Settings)
@@ -139,15 +139,19 @@ public class AccountController : Controller
                 Guid = (Guid) guid
             });
 
-            await _context.Database.ExecuteSqlRawAsync($"""
-                                                        DELETE FROM "CharacterData"
-                                                        WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
-                                                        """);
+            await _context.Database.ExecuteSqlAsync(
+                $"""
+                DELETE FROM "CharacterData"
+                WHERE "CollectedPlayerDataPlayerGuid" = {guid};
+                """
+            );
 
-            await _context.Database.ExecuteSqlRawAsync($"""
-                                                        DELETE FROM "JobCountData"
-                                                        WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
-                                                        """);
+            await _context.Database.ExecuteSqlAsync(
+                $"""
+                DELETE FROM "JobCountData"
+                WHERE "CollectedPlayerDataPlayerGuid" = {guid};
+                """
+            );
 
             _context.Replays
                 .Include(r => r.RoundParticipants!)
@@ -192,7 +196,7 @@ public class AccountController : Controller
             return BadRequest("Guid is not a valid guid.");
         }
 
-        if (!User.Identity.IsAuthenticated)
+        if (!User.Identity!.IsAuthenticated)
         {
             return Unauthorized();
         }
@@ -213,6 +217,7 @@ public class AccountController : Controller
             return Unauthorized("You are not an admin.");
 
         var user = await _context.Accounts
+            .AsNoTracking()
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == parsedGuid);
@@ -228,7 +233,7 @@ public class AccountController : Controller
                     await JsonSerializer.SerializeAsync(entryStream, user.History);
                 }
 
-                user.History = null;
+                user.History = [];
 
                 var baseEntry = archive.CreateEntry("user.json");
                 using (var entryStream = baseEntry.Open())
@@ -284,7 +289,7 @@ public class AccountController : Controller
             return BadRequest("Guid is not a valid guid.");
         }
 
-        if (!User.Identity.IsAuthenticated)
+        if (!User.Identity!.IsAuthenticated)
         {
             return Unauthorized();
         }
@@ -338,7 +343,7 @@ public class AccountController : Controller
             return BadRequest("Guid is not a valid guid.");
         }
 
-        if (!User.Identity.IsAuthenticated)
+        if (!User.Identity!.IsAuthenticated)
         {
             return Unauthorized();
         }
@@ -395,7 +400,7 @@ public class AccountController : Controller
     [HttpGet("download")]
     public async Task<IActionResult> DownloadAccount()
     {
-        if (!User.Identity.IsAuthenticated)
+        if (User.Identity is null || !User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
@@ -403,6 +408,7 @@ public class AccountController : Controller
         var guid = AccountHelper.GetAccountGuid(User);
 
         var user = await _context.Accounts
+            .AsNoTracking()
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == guid);
@@ -421,7 +427,7 @@ public class AccountController : Controller
                 await JsonSerializer.SerializeAsync(entryStream, user.History);
             }
 
-            user.History = null;
+            user.History = [];
 
             var baseEntry = archive.CreateEntry("user.json");
             using (var entryStream = baseEntry.Open())
@@ -440,10 +446,16 @@ public class AccountController : Controller
     }
 
     [HttpPost("add-protected-account")]
+    [Authorize]
     public async Task<IActionResult> AddProtectedAccount(
         [FromQuery] string username
     )
     {
+        if (User.Identity is null || !User.Identity.IsAuthenticated)
+        {
+            return Unauthorized();
+        }
+
         if (string.IsNullOrWhiteSpace(username))
         {
             return BadRequest("Username is null or empty.");
@@ -459,11 +471,6 @@ public class AccountController : Controller
         if (playerData.PlayerGuid == null || playerData.PlayerGuid == Guid.Empty)
         {
             return NotFound("Player guid is null or empty. This should not happen.");
-        }
-
-        if (!User.Identity.IsAuthenticated)
-        {
-            return Unauthorized();
         }
 
         var guidRequestor = AccountHelper.GetAccountGuid(User);

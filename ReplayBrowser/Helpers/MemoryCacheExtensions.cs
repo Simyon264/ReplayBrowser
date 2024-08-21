@@ -8,20 +8,12 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace ReplayBrowser.Helpers;
 
+// Just gonna shush these... what is even this code?
+#pragma warning disable CS8602 // Possible null reference return.
+#pragma warning disable CS8604 // Possible null reference return.
+
 public static class MemoryCacheExtensions
 {
-#region Microsoft.Extensions.Caching.Memory_6_OR_OLDER
-
-    private static readonly Lazy<Func<MemoryCache, object>> GetEntries6 =
-        new Lazy<Func<MemoryCache, object>>(() => (Func<MemoryCache, object>)Delegate.CreateDelegate(
-            typeof(Func<MemoryCache, object>),
-            typeof(MemoryCache).GetProperty("EntriesCollection", BindingFlags.NonPublic | BindingFlags.Instance).GetGetMethod(true),
-            throwOnBindFailure: true));
-
-#endregion
-
-#region Microsoft.Extensions.Caching.Memory_7_OR_NEWER
-
     private static readonly Lazy<Func<MemoryCache, object>> GetCoherentState =
         new Lazy<Func<MemoryCache, object>>(() =>
             CreateGetter<MemoryCache, object>(typeof(MemoryCache)
@@ -44,11 +36,9 @@ public static class MemoryCacheExtensions
         return (Func<TParam, TReturn>)method.CreateDelegate(typeof(Func<TParam, TReturn>));
     }
 
-#endregion
-
     private static readonly Func<MemoryCache, IDictionary> GetEntries =
         Assembly.GetAssembly(typeof(MemoryCache)).GetName().Version.Major < 7
-            ? (Func<MemoryCache, IDictionary>)(cache => (IDictionary)GetEntries6.Value(cache))
+            ? throw new NotImplementedException("This project is set up to run on .NET Framework 8+")
             : cache => GetEntries7.Value(GetCoherentState.Value(cache));
 
     public static ICollection GetKeys(this IMemoryCache memoryCache) =>

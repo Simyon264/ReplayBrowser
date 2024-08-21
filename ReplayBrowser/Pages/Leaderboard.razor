@@ -173,7 +173,7 @@ else
         {
             if (queryDictionary.AllKeys.Contains("timeRange"))
             {
-                timeRange = int.Parse(queryDictionary["timeRange"]);
+                timeRange = int.Parse(queryDictionary["timeRange"] ?? "5");
             }
         }
 
@@ -198,7 +198,7 @@ else
         {
             leaderboard = await LeaderboardService.GetLeaderboard(timeRangeEnum, username, authState);
         }
-        catch (UnauthorizedAccessException e)
+        catch (UnauthorizedAccessException)
         {
             RequestedPrivate = true;
         }

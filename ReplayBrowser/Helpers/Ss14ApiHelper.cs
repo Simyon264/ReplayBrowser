@@ -17,14 +17,17 @@ public class Ss14ApiHelper
 
     public async Task<PlayerData?> FetchPlayerDataFromUsername(string username)
     {
-        HttpResponseMessage response = null;
+        if (string.IsNullOrEmpty(username))
+            return null;
+
+        HttpResponseMessage? response = null;
         try
         {
             var httpClient = new HttpClient();
             response = await httpClient.GetAsync($"https://central.spacestation14.io/auth/api/query/name?name={username}");
             response.EnsureSuccessStatusCode();
             var responseString = await response.Content.ReadAsStringAsync();
-            var data = JsonSerializer.Deserialize<UsernameResponse>(responseString);
+            var data = JsonSerializer.Deserialize<UsernameResponse>(responseString)!;
             return new PlayerData()
             {
                 PlayerGuid = Guid.Parse(data.userId),
@@ -44,43 +47,43 @@ public class Ss14ApiHelper
         }
     }
 
-    public async Task<PlayerData?> FetchPlayerDataFromGuid(Guid guid)
+    public async Task<PlayerData> FetchPlayerDataFromGuid(Guid guid)
     {
-        if (_cache.TryGetValue(guid.ToString(), out PlayerData? playerKey))
-            return playerKey;
+        if (_cache.TryGetValue(guid.ToString(), out PlayerData? player) && player is not null)
+            return player!;
 
-        playerKey = new PlayerData()
+        player = new PlayerData()
         {
             PlayerGuid = guid
         };
 
-        HttpResponseMessage response = null;
+        HttpResponseMessage? response = null;
         try
         {
             var httpClient = new HttpClient();
-            response = await httpClient.GetAsync($"https://central.spacestation14.io/auth/api/query/userid?userid={playerKey.PlayerGuid}");
+            response = await httpClient.GetAsync($"https://central.spacestation14.io/auth/api/query/userid?userid={player.PlayerGuid}");
             response.EnsureSuccessStatusCode();
             var responseString = await response.Content.ReadAsStringAsync();
-            var username = JsonSerializer.Deserialize<UsernameResponse>(responseString).userName;
-            playerKey.Username = username;
+            var username = JsonSerializer.Deserialize<UsernameResponse>(responseString)!.userName;
+            player.Username = username;
         }
         catch (Exception e)
         {
-            Log.Error("Unable to fetch username for player with GUID {PlayerGuid}: {Error}", playerKey.PlayerGuid, e.Message);
+            Log.Error("Unable to fetch username for player with GUID {PlayerGuid}: {Error}", player.PlayerGuid, e.Message);
             if (e.Message.Contains("'<' is an")) // This is a hacky way to check if we got sent a website.
             {
                 // Probably got sent a website? Log full response.
                 Log.Error("Website might have been sent: {Response}", response?.Content.ReadAsStringAsync().Result);
             }
 
-            playerKey.Username = "Unable to fetch username (API error)";
+            player.Username = "Unable to fetch username (API error)";
         }
 
         var cacheEntryOptions = new MemoryCacheEntryOptions()
             .SetAbsoluteExpiration(TimeSpan.FromMinutes(60));
 
-        _cache.Set(guid.ToString(), playerKey, cacheEntryOptions);
+        _cache.Set(guid.ToString(), player, cacheEntryOptions);
 
-        return playerKey;
+        return player;
     }
 }

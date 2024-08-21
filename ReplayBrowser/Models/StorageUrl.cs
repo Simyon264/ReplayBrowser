@@ -13,8 +13,10 @@ public class StorageUrl
     public required string ReplayRegex { get; set; }
     public required string ServerNameRegex { get; set; }
 
-    public Regex ReplayRegexCompiled { get; set; }
-    public Regex ServerNameRegexCompiled { get; set; }
+
+    // Gets set via CompileRegex in GetStorageUrlFromReplayLink, the "only" way to access this class
+    public Regex ReplayRegexCompiled { get; set; } = null!;
+    public Regex ServerNameRegexCompiled { get; set; } = null!;
 
     public void CompileRegex()
     {

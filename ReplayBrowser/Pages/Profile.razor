@@ -21,12 +21,12 @@
 else if (IsPrivate)
 {
     <h1>Protected data (@Username)</h1>
-    <p>@Exception.Message</p>
+    <p>@(Exception?.Message ?? "No info")</p>
 }
 else if (FailedToLoad)
 {
     <h1>Error (@Username)</h1>
-    <p>Failed to load player data. Exception: @Exception.Message</p>
+    <p>Failed to load player data. Exception: @(Exception?.Message ?? "No info")</p>
 }
 else
 {
@@ -152,9 +152,16 @@ else
     private bool IsPrivate { get; set; } = false;
     private bool IsLoggedIn { get; set; } = false;
     private string Username { get; set; } = string.Empty;
-    
+
     private string OpenGraphTitle => $"Player info :: {Username}";
-    private string OpenGraphDescription => $"Player info for {Username}\nTotal estimated playtime: {_playerData.TotalEstimatedPlaytime.Humanize()}\nTotal rounds played: {_playerData.TotalRoundsPlayed}\nTotal antag rounds played: {_playerData.TotalAntagRoundsPlayed}\nLast seen: {_playerData.LastSeen.Humanize()}";
+    private string OpenGraphDescription => _playerData is null ? (Exception?.Message ?? "Unknown error") :
+            $@"
+            Player info for {Username}
+            Total estimated playtime: {_playerData.TotalEstimatedPlaytime.Humanize()}
+            Total rounds played: {_playerData.TotalRoundsPlayed}
+            Total antag rounds played: {_playerData.TotalAntagRoundsPlayed}
+            Last seen: {_playerData.LastSeen.Humanize()}
+            ";
 
     protected override async Task OnInitializedAsync()
     {
@@ -176,13 +183,7 @@ else
             }
 
             var playerData = await Ss14ApiHelper.FetchPlayerDataFromGuid(System.Guid.Parse(Guid));
-            if (playerData != null)
-            {
-                Username = playerData.Username;
-            } else
-            {
-                Username = "Unknown";
-            }
+            Username = playerData.Username;
 
             Guid = guidParsed.ToString();
             _playerData = await ReplayHelper.GetPlayerProfile(guidParsed, authState);
