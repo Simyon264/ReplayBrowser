@@ -122,7 +122,7 @@ public class ReplayHelper
         var replayPlayerGroup = replayPlayers.GroupBy(rp => rp.ReplayId);
 
         var totalRoundsPlayed = replayPlayerGroup.Count();
-        var totalAntagRoundsPlayed = replayPlayerGroup.Select(rpg => rpg.Any(rp => rp.AntagPrototypes.Count > 0)).Count();
+        var totalAntagRoundsPlayed = replayPlayerGroup.Count(rpg => rpg.Any(rp => rp.AntagPrototypes.Count > 0));
 
         // Estimated
         var totalPlaytime = new TimeSpan(replayPlayerGroup.Sum(rpg => (TimeSpan.TryParse(rpg.First().Duration, out var durationSpan) ? durationSpan : TimeSpan.Zero).Ticks));
