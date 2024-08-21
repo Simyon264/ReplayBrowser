@@ -1,0 +1,27 @@
+@page "/contributors"
+
+@inject GitHubApiHelper GitHubApiHelper
+
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Pages.Shared
+@using ReplayBrowser.Helpers
+
+<PageTitle>Contributors</PageTitle>
+
+<h3>Contributors</h3>
+
+@foreach (var contrib in _contributors)
+{
+    <ContributorCard ContributorName="" />
+}
+
+
+
+@code {
+    private GitHubAccount[]? _contributors = [];
+    
+    protected async override Task OnInitializedAsync()
+    {
+        _contributors = await GitHubApiHelper.GetContributors();
+    }
+}
