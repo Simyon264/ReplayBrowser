@@ -27,7 +27,7 @@ public class GitHubApiHelper
 
     public async Task<List<GitHubAccount>> GetContributors()
     {
-        if (!_memoryCache.TryGetValue("GitHubContributors", out List<GitHubAccount>? contributors))
+        if (_memoryCache.TryGetValue("GitHubContributors", out List<GitHubAccount>? contributors))
             return contributors!;
 
         try
