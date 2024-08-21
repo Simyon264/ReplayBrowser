@@ -2,9 +2,9 @@
 
 public class UsernameResponse
 {
-    public string userName { get; set; }
+    public required string userName { get; set; }
 
-    public string userId { get; set; }
+    public required string userId { get; set; }
 
     public string? patronTier { get; set; }
 

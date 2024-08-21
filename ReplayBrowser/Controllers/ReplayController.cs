@@ -46,7 +46,7 @@ public class ReplayController : Controller
     [HttpDelete("profile/delete/{serverId}")]
     public async Task<IActionResult> DeleteProfile(string serverId)
     {
-        if (!User.Identity.IsAuthenticated)
+        if (User.Identity is null || !User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
@@ -70,22 +70,26 @@ public class ReplayController : Controller
             .Where(r => r.ServerId == serverId)
             .Include(r => r.RoundParticipants)
             .Where(r => r.RoundParticipants != null)
-            .SelectMany(r => r.RoundParticipants)
+            .SelectMany(r => r.RoundParticipants!)
             .Select(p => p.PlayerGuid)
             .Distinct()
             .ToListAsync();
 
         foreach (var player in players)
         {
-            await _dbContext.Database.ExecuteSqlRawAsync($"""
-                                                      DELETE FROM "CharacterData"
-                                                      WHERE "CollectedPlayerDataPlayerGuid" = '{player}';
-                                                      """);
+            await _dbContext.Database.ExecuteSqlAsync(
+                $"""
+                DELETE FROM "CharacterData"
+                WHERE "CollectedPlayerDataPlayerGuid" = {player};
+                """
+            );
 
-            await _dbContext.Database.ExecuteSqlRawAsync($"""
-                                                          DELETE FROM "JobCountData"
-                                                          WHERE "CollectedPlayerDataPlayerGuid" = '{player}';
-                                                          """);
+            await _dbContext.Database.ExecuteSqlAsync(
+                $"""
+                DELETE FROM "JobCountData"
+                WHERE "CollectedPlayerDataPlayerGuid" = {player};
+                """
+            );
         }
 
         await _dbContext.PlayerProfiles

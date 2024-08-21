@@ -13,7 +13,7 @@ public class Replay : IEntityTypeConfiguration<Replay>
 {
     public int Id { get; set; }
 
-    public string Link { get; set; }
+    public required string Link { get; set; }
 
     public int? RoundId { get; set; }
 
@@ -23,19 +23,19 @@ public class Replay : IEntityTypeConfiguration<Replay>
     public string? Map { get; set; }
 
     public List<string>? Maps { get; set; }
-    public string Gamemode { get; set; }
+    public required string Gamemode { get; set; }
     public List<ReplayParticipant>? RoundParticipants { get; set; }
     public string? RoundEndText { get; set; }
-    public string ServerId { get; set; }
+    public required string ServerId { get; set; }
     public int EndTick { get; set; }
-    public string Duration { get; set; }
+    public required string Duration { get; set; }
     public int FileCount { get; set; }
     public int Size { get; set; }
     public int UncompressedSize { get; set; }
-    public string EndTime { get; set; }
+    public required string EndTime { get; set; }
 
     [JsonIgnore]
-    public NpgsqlTsVector RoundEndTextSearchVector { get; set; }
+    public NpgsqlTsVector RoundEndTextSearchVector { get; set; } = null!;
 
     /// <summary>
     /// Determines if a replay is marked as a favorite.

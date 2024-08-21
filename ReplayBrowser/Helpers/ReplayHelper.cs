@@ -39,6 +39,8 @@ public class ReplayHelper
         var account = await _accountService.GetAccount(state);
 
         // Log the action in a separate task to not block the request.
+        // "Execution of the current method continues before the call is completed" is a desired outcome here
+        #pragma warning disable CS4014
         Task.Run(async () =>
         {
             await _accountService.AddHistory(account, new HistoryEntry()
@@ -48,6 +50,7 @@ public class ReplayHelper
                 Details = string.Empty
             });
         });
+        #pragma warning restore CS4014
 
         return replays;
     }
@@ -56,7 +59,7 @@ public class ReplayHelper
     /// Fetches a player profile from the database.
     /// </summary>
     /// <exception cref="UnauthorizedAccessException">Thrown when the account is private and the requestor is not the account owner or an admin.</exception>
-    public async Task<CollectedPlayerData?> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, bool skipPermsCheck = false)
+    public async Task<CollectedPlayerData> GetPlayerProfile(Guid playerGuid, AuthenticationState authenticationState, bool skipPermsCheck = false)
     {
         var accountCaller = await _accountService.GetAccount(authenticationState);
 
@@ -147,7 +150,7 @@ public class ReplayHelper
             PlayerData = new PlayerData()
             {
                 PlayerGuid = playerGuid,
-                Username = (await _apiHelper.FetchPlayerDataFromGuid(playerGuid))?.Username ??
+                Username = (await _apiHelper.FetchPlayerDataFromGuid(playerGuid)).Username ??
                            "Unable to fetch username (API error)"
             },
             PlayerGuid = playerGuid,
@@ -317,6 +320,8 @@ public class ReplayHelper
             }
         }
 
+        // "Execution of the current method continues before the call is completed" is a desired outcome here
+        #pragma warning disable CS4014
         Task.Run(async () =>
         {
             await _accountService.AddHistory(callerAccount, new HistoryEntry()
@@ -326,6 +331,7 @@ public class ReplayHelper
                 Details = string.Join(", ", searchItems.Select(x => $"{x.SearchMode}={x.SearchValue}"))
             });
         });
+        #pragma warning restore CS4014
 
         var (replays, results, wasCache) = SearchReplays(searchItems, page, Constants.ReplaysPerPage);
 
@@ -400,18 +406,18 @@ public class ReplayHelper
             queryable = searchItem.SearchModeEnum switch
             {
                 SearchMode.Map => queryable.Where(
-                    x => x.Map.ToLower().Contains(searchItem.SearchValue.ToLower())
-                    || x.Maps.Any(map => map.ToLower().Contains(searchItem.SearchValue.ToLower()))
+                    x => x.Map!.ToLower().Contains(searchItem.SearchValue.ToLower())
+                    || x.Maps!.Any(map => map.ToLower().Contains(searchItem.SearchValue.ToLower()))
                 ),
                 SearchMode.Gamemode => queryable.Where(x => x.Gamemode.ToLower().Contains(searchItem.SearchValue.ToLower())),
                 SearchMode.ServerId => queryable.Where(x => x.ServerId.ToLower().Contains(searchItem.SearchValue.ToLower())),
-                SearchMode.Guid => queryable.Where(r => r.RoundParticipants.Any(p => p.PlayerGuid.ToString().ToLower().Contains(searchItem.SearchValue.ToLower()))),
-                SearchMode.PlayerIcName => queryable.Where(r => r.RoundParticipants.Any(p => p.Players.Any(pl => pl.PlayerIcName.ToLower().Contains(searchItem.SearchValue.ToLower())))),
-                SearchMode.PlayerOocName => queryable.Where(r => r.RoundParticipants.Any(p => p.Username.ToLower().Contains(searchItem.SearchValue.ToLower()))),
+                SearchMode.Guid => queryable.Where(r => r.RoundParticipants!.Any(p => p.PlayerGuid.ToString().ToLower().Contains(searchItem.SearchValue.ToLower()))),
+                SearchMode.PlayerIcName => queryable.Where(r => r.RoundParticipants!.Any(p => p.Players!.Any(pl => pl.PlayerIcName.ToLower().Contains(searchItem.SearchValue.ToLower())))),
+                SearchMode.PlayerOocName => queryable.Where(r => r.RoundParticipants!.Any(p => p.Username.ToLower().Contains(searchItem.SearchValue.ToLower()))),
                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall (its lying, this works)
                 SearchMode.RoundEndText => queryable.Where(x => x.RoundEndTextSearchVector.Matches(searchItem.SearchValue)),
                 SearchMode.ServerName => queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(searchItem.SearchValue.ToLower())),
-                SearchMode.RoundId => queryable.Where(x => x.RoundId != null && x.RoundId.ToString().ToLower().Contains(searchItem.SearchValue.ToLower())),
+                SearchMode.RoundId => queryable.Where(x => x.RoundId != null && x.RoundId!.ToString()!.ToLower().Contains(searchItem.SearchValue.ToLower())),
                 _ => throw new NotImplementedException(),
             };
         }

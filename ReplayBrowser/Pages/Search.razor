@@ -26,7 +26,7 @@
         Title="Search error"
         Description="@OpenGraphDescriptionError"
     />
-    
+
     <p class="alert alert-danger">
         @ErrorMessage
         <br/>
@@ -147,15 +147,15 @@
 
     public SearchResult SearchResult { get; set; } = new SearchResult();
     public List<SearchQueryItem> SearchItems { get; set; } = new List<SearchQueryItem>();
-    
+
     private string OpenGraphDescriptionError => ErrorMessage + "\n" + ErrorDetails;
     private string OpenGraphDescriptionResults => SearchResult.TotalReplays + " found. Page: " + (SearchResult.CurrentPage + 1) + "\n" + FormatOpenGraphSpeciferDescription();
     private string OpenGraphDescriptionNoResults => "No results found.\n" + FormatOpenGraphSpeciferDescription();
-    
+
     private string FormatOpenGraphSpeciferDescription()
     {
         var searchQuery = string.Join(", ", SearchItems.Select(x => x.SearchMode + ": " + x.SearchValue));
-        
+
         // Limit the length of the description to 200 characters
         if (searchQuery.Length > 200)
         {
@@ -196,12 +196,12 @@
             NavigationManager.NavigateTo("/");
             return;
         }
-        
+
         // Searches is a base64 encoded json string
         try
         {
             var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(searches));
-            SearchItems = System.Text.Json.JsonSerializer.Deserialize<List<SearchQueryItem>>(decoded);
+            SearchItems = System.Text.Json.JsonSerializer.Deserialize<List<SearchQueryItem>>(decoded)!;
         }
         catch (Exception e)
         {
@@ -248,7 +248,7 @@
         }
         if (SearchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
         {
-            ProfileFound = await ReplayHelper.HasProfile(SearchItems.Find(x => x.SearchModeEnum == SearchMode.PlayerOocName).SearchValue, authState);
+            ProfileFound = await ReplayHelper.HasProfile(SearchItems.Find(x => x.SearchModeEnum == SearchMode.PlayerOocName)!.SearchValue, authState);
         }
 
         try

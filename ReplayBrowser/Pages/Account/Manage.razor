@@ -30,12 +30,12 @@ else if (account != null)
             Changes saved
         </div>
     }
-    
+
     <p>Username: @account.Username</p>
     <p>Guid: @account.Guid</p>
-    
+
     <h4>Settings</h4>
-    
+
     // Toggle for redacting account
     <em>Redacting an account will mean, that only you will be able to see and search for you in replays.</em>
     <p>Redact Account: @if (account.Settings.RedactInformation)
@@ -46,26 +46,26 @@ else if (account != null)
                        {
                            <input type="checkbox" id="redact"/>
                        }</p>
-    
+
     <button class="btn btn-primary" id="save">Save</button>
-    
+
     // Collapse for deleting account
     <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#deleteAccount" aria-expanded="false" aria-controls="deleteAccount">
         Delete Account
     </button>
-    
+
     <div class="collapse" id="deleteAccount">
         <div class="card card-body">
             <p>Are you sure you want to delete your account? This action is irreversible and will delete all your settings and all other data related to your account.</p>
             <button class="btn btn-danger" id="deleteAccount">Delete Account</button>
         </div>
     </div>
-    
+
     // Collapse for permanently deleting account
     <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#deleteAccountPermanently" aria-expanded="false" aria-controls="deleteAccountPermanently">
         Delete Account Permanently And Remove All Data From Replays
     </button>
-    
+
     <div class="collapse" id="deleteAccountPermanently">
         <div class="card card-body">
             <p>Are you sure you want to delete your account? This action is <b>irreversible</b> and will delete all your settings and all other data related to your account.</p>
@@ -73,7 +73,7 @@ else if (account != null)
             <button class="btn btn-danger" id="deleteAccountPermanently">Delete Account Permanently</button>
         </div>
     </div>
-    
+
     // Download data
     <a class="btn btn-primary" href="/account/download" target="_blank">Download Account Data</a>
 }
@@ -90,14 +90,14 @@ else
             uri.searchParams.set("redact", redact);
             window.location.href = uri;
         });
-        
+
         $("#deleteAccount").click(function() {
             if (confirm("Are you sure you want to delete your account? This action is irreversible and will delete all your settings and all other data related to your account."))
             {
                 window.location.href = "/account/delete";
             }
         });
-        
+
         $("#deleteAccountPermanently").click(function() {
             if (confirm("This will remove you permanently from all replays. Are you sure? Even you will not be able to search for yourself in replays anymore. This action is irreversible and will delete all your settings and all other data related to your account."))
             {
@@ -108,7 +108,7 @@ else
 </script>
 
 @code {
-    private Account account;
+    private Account? account;
     private bool ChangeSaved = false;
     private string? ErrorMessage;
 
@@ -116,53 +116,53 @@ else
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         account = await AccountService.GetAccount(authState);
-        
+
         if (account == null)
         {
             ErrorMessage = "Account not found, please go to the home page and then try again. How did you get here?";
             return;
         }
-        
+
         var uri = new Uri(NavigationManager.Uri);
         var query = uri.Query;
         var queryDictionary = System.Web.HttpUtility.ParseQueryString(query);
         var oldAccountSettings = account.Settings.Clone();
-        
+
         // Basically, clicking on "save" will redirect to the same page with the current account settings put into the query string
         // these will then be compared to the current account settings and if they are different, the account will be updated
-        if (queryDictionary.Count > 0)
-        {
-            var redact = queryDictionary["redact"];
-            var changes = 0;
-            if (redact != null)
-            {
-                var valueRedact = bool.Parse(redact);
-                if (account.Settings.RedactInformation != valueRedact)
-                {
-                    account.Settings.RedactInformation = valueRedact;
-                    changes++;
-                }
-            }
+        if (queryDictionary.Count == 0)
+            return;
 
-            if (changes > 0)
+        var redact = queryDictionary["redact"];
+        var changes = 0;
+        if (redact != null)
+        {
+            var valueRedact = bool.Parse(redact);
+            if (account.Settings.RedactInformation != valueRedact)
             {
-                try
-                {
-                    await AccountService.AddHistory(account, new HistoryEntry()
-                    {
-                        Action = Enum.GetName(typeof(Action), Action.AccountSettingsChanged) ?? "Unknown",
-                        Time = DateTime.UtcNow,
-                        Details = $"Old settings: {JsonSerializer.Serialize(oldAccountSettings)} New settings: {JsonSerializer.Serialize(account.Settings)}",
-                    });
-                    
-                    await AccountService.UpdateAccount(account);
-                    ChangeSaved = true;
-                }
-                catch (Exception e)
-                {
-                    ErrorMessage = e.Message + "\n " + e.StackTrace;
-                }
+                account.Settings.RedactInformation = valueRedact;
+                changes++;
             }
+        }
+
+        if (changes == 0)
+            return;
+
+        try
+        {
+            await AccountService.AddHistory(account, new HistoryEntry()
+            {
+                Action = Enum.GetName(typeof(Action), Action.AccountSettingsChanged) ?? "Unknown",
+                Time = DateTime.UtcNow,
+                Details = $"Old settings: {JsonSerializer.Serialize(oldAccountSettings)} New settings: {JsonSerializer.Serialize(account.Settings)}",
+            });
+
+            await AccountService.UpdateAccount(account);
+            ChangeSaved = true;
+        }
+        catch (Exception e)
+        {
+            ErrorMessage = e.Message + "\n " + e.StackTrace;
         }
     }
 }

@@ -15,26 +15,27 @@
 
 @code
 {
-    private System.Security.Claims.ClaimsPrincipal _user;
+    private System.Security.Claims.ClaimsPrincipal? _user;
     private Account? _account;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _user = authState.User;
-        if (_user.Identity.IsAuthenticated)
+        if (_user?.Identity is null || !_user.Identity.IsAuthenticated)
+            return;
+
+        var guid = (Guid)AccountHelper.GetAccountGuid(authState)!;
+        _account = DbContext.Accounts.FirstOrDefault(a => a.Guid == guid);
+        if (_account is not null)
+            return;
+
+        Log.Error("Account {Guid} is authenticated but not found in the database", guid);
+        NavigationManager.NavigateTo("account/redirect", new NavigationOptions()
         {
-            var guid = (Guid)AccountHelper.GetAccountGuid(authState)!;
-            _account = DbContext.Accounts.FirstOrDefault(a => a.Guid == guid);
-            if (_account == null)
-            {
-                Log.Error("Account {Guid} is authenticated but not found in the database", guid);
-                NavigationManager.NavigateTo("account/redirect", new NavigationOptions()
-                {
-                    ForceLoad = true
-                });
-            }
-        }
+            ForceLoad = true
+        });
+
     }
 }
 
@@ -44,7 +45,7 @@
 
 <div class="page">
     <header class="container my-5">
-        @if (_user.Identity.IsAuthenticated)
+        @if (_user?.Identity is not null && _user.Identity.IsAuthenticated)
         {
             @if (_account is { Protected: true })
             {

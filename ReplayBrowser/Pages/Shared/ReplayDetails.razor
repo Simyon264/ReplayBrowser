@@ -11,7 +11,7 @@
     <h2>@NameFormatted</h2>
     @if (Replay.Map == null)
     {
-        <p>Maps: @string.Join(", ", Replay.Maps)</p>
+        <p>Maps: @string.Join(", ", Replay.Maps!)</p>
     }
     else
     {
@@ -203,7 +203,7 @@
         // Format the player list
         if (FullReplay is not null && FullReplay.RoundParticipants is not null)
         {
-            var players = FullReplay.RoundParticipants.SelectMany(p => p.Players.Select(c => new {
+            var players = FullReplay.RoundParticipants.SelectMany(p => p.Players!.Select(c => new {
                     Player = c, p.PlayerGuid, p.Username
                 })).ToList();
 

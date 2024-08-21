@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 
@@ -18,7 +19,7 @@ public class GitHubApiHelper
         {
             _apiToken = configuration["GitHubAPIToken"];
         }
-        catch (Exception e)
+        catch (Exception)
         {
             Log.Error("GitHubAPIToken not set, contributors cannot be fetched.");
         }
@@ -26,91 +27,50 @@ public class GitHubApiHelper
 
     public async Task<List<GitHubAccount>> GetContributors()
     {
-        if (!_memoryCache.TryGetValue("GitHubContributors", out List<GitHubAccount> contributors))
+        if (!_memoryCache.TryGetValue("GitHubContributors", out List<GitHubAccount>? contributors))
+            return contributors!;
+
+        try
         {
-            try
-            {
-                using (var httpClient = new HttpClient())
-                {
-                    using (var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/Simyon264/ReplayBrowser/contributors"))
-                    {
-                        request.Headers.TryAddWithoutValidation("Accept", "application/vnd.github+json");
-                        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_apiToken}");
-                        request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
-                        request.Headers.TryAddWithoutValidation("User-Agent", "YourAppNameHere");
+            using var httpClient = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/Simyon264/ReplayBrowser/contributors");
 
-                        var response = await httpClient.SendAsync(request);
-                        response.EnsureSuccessStatusCode();
+            request.Headers.TryAddWithoutValidation("Accept", "application/vnd.github+json");
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_apiToken}");
+            request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
+            request.Headers.TryAddWithoutValidation("User-Agent", "YourAppNameHere");
 
-                        var responseBody = await response.Content.ReadAsStringAsync();
+            var response = await httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
 
-                        var responseJson = JsonSerializer.Deserialize<List<JsonElement>>(responseBody);
-                        contributors = new List<GitHubAccount>();
+            contributors = await response.Content.ReadFromJsonAsync<List<GitHubAccount>>();
 
-                        foreach (var obj in responseJson)
-                        {
-                            string accountName = null;
-                            string accountImageURL = null;
-                            string accountLink = null;
+            Log.Information("Successfully fetched project contributor list.");
 
-                            if (obj.TryGetProperty("login", out var loginProperty))
-                            {
-                                accountName = loginProperty.GetString();
-                            }
+            // Set cache options and cache the contributors list
+            var cacheEntryOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(30)); // Adjust expiration as needed
 
-                            if (obj.TryGetProperty("avatar_url", out var avatarUrlProperty))
-                            {
-                                accountImageURL = avatarUrlProperty.GetString();
-                            }
+            _memoryCache.Set("GitHubContributors", contributors, cacheEntryOptions);
+        }
+        catch (Exception e)
+        {
+            Log.Error($"Exception when querying GitHub: {e.Message} - {e.StackTrace}");
 
-                            if (obj.TryGetProperty("html_url", out var htmlUrlProperty))
-                            {
-                                accountLink = htmlUrlProperty.GetString();
-                            }
-
-                            if (accountName != null && accountImageURL != null && accountLink != null)
-                            {
-                                var account = new GitHubAccount
-                                {
-                                    AccountName = accountName,
-                                    AccountImageUrl = accountImageURL,
-                                    AccountLink = accountLink
-                                };
-
-                                contributors.Add(account);
-                            }
-                            else
-                            {
-                                Log.Warning("A required property was missing in the JSON response while attempting to fetch project contributors.");
-                            }
-                        }
-
-                        Log.Information("Successfully fetched project contributor list.");
-
-                        // Set cache options and cache the contributors list
-                        var cacheEntryOptions = new MemoryCacheEntryOptions()
-                            .SetAbsoluteExpiration(TimeSpan.FromMinutes(30)); // Adjust expiration as needed
-
-                        _memoryCache.Set("GitHubContributors", contributors, cacheEntryOptions);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error($"Exception when querying GitHub: {e.Message} - {e.StackTrace}");
-
-                // return empty list
-                return new List<GitHubAccount>();
-            }
+            // return empty list
+            return [];
         }
 
-        return contributors;
+        return contributors!;
     }
 }
 
-public struct GitHubAccount
+public readonly struct GitHubAccount
 {
-    public string AccountName { get; init; }
-    public string AccountImageUrl { get; init; }
-    public string AccountLink { get; init; }
+    [JsonPropertyName("login")]
+    public required string AccountName { get; init; }
+    [JsonPropertyName("avatar_url")]
+    public required string AccountImageUrl { get; init; }
+    [JsonPropertyName("html_url")]
+    public required string AccountLink { get; init; }
 }
