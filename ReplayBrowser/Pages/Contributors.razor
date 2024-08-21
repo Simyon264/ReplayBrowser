@@ -1,0 +1,34 @@
+@page "/contributors"
+
+@inject GitHubApiHelper GitHubApiHelper
+
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Pages.Shared
+@using ReplayBrowser.Helpers
+
+<PageTitle>Contributors</PageTitle>
+
+<h3>Contributors</h3>
+
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: center; padding: 20px;">
+    @if (_contributors.Count == 0)
+    {
+        <h4 style="color: red">Error fetching contributors from the GitHub API</h4>
+    }
+    else
+    {
+        @foreach (var contrib in _contributors)
+        {
+            <ContributorCard ContributorName="@contrib.AccountName" ContributorImage="@contrib.AccountImageUrl" ContributorLink="@contrib.AccountLink" />
+        }
+    }
+</div>
+
+@code {
+    private List<GitHubAccount> _contributors = new List<GitHubAccount>();
+    
+    protected async override Task OnInitializedAsync()
+    {
+        _contributors = await GitHubApiHelper.GetContributors();
+    }
+}
