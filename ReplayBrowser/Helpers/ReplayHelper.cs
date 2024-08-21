@@ -104,14 +104,15 @@ public class ReplayHelper
 
        var replayPlayers = await _context.Players
             .AsNoTracking()
-            .Where(p => p.PlayerGuid == playerGuid)
-            .Where(p => p.Replay!.Date != null)
-            .Include(p => p.Replay)
+            .Where(p => p.Participant.PlayerGuid == playerGuid)
+            .Where(p => p.Participant.Replay!.Date != null)
+            .Include(p => p.Participant)
+            .ThenInclude(p => p.Replay)
             .Select(p => new {
                 p.Id,
-                p.ReplayId,
-                Date = (DateTime) p.Replay!.Date,
-                p.Replay!.Duration,
+                p.Participant.ReplayId,
+                Date = (DateTime) p.Participant.Replay!.Date!,
+                p.Participant.Replay!.Duration,
                 p.JobPrototypes,
                 // .Antag becomes unnecessary because this always has at least an empty string,
                 p.AntagPrototypes,
@@ -181,7 +182,8 @@ public class ReplayHelper
     {
         var replay = await _context.Replays
             .AsNoTracking()
-            .Include(r => r.RoundEndPlayers)
+            .Include(r => r.RoundParticipants!)
+            .ThenInclude(p => p.Players)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (replay == null)
@@ -194,40 +196,26 @@ public class ReplayHelper
 
     private Replay FilterReplay(Replay replay, Account? caller = null)
     {
-        if (replay.RoundEndPlayers == null)
+        if (replay.RoundParticipants == null)
             return replay;
 
-        var accountDictionary = new Dictionary<Guid, AccountSettings>();
-        foreach (var replayRoundEndPlayer in replay.RoundEndPlayers)
-        {
-            if (!accountDictionary.ContainsKey(replayRoundEndPlayer.PlayerGuid))
-            {
-                var accountForPlayerTemp = _accountService.GetAccountSettings(replayRoundEndPlayer.PlayerGuid);
-                if (accountForPlayerTemp == null)
-                {
-                    continue;
-                }
+        if (caller is not null && caller.IsAdmin)
+            return replay;
 
-                accountDictionary.Add(replayRoundEndPlayer.PlayerGuid, accountForPlayerTemp);
-            }
-            var accountForPlayer = accountDictionary[replayRoundEndPlayer.PlayerGuid];
+        var redactFor = replay.RoundParticipants!
+            .Where(p => p.PlayerGuid != Guid.Empty)
+            .Select(p => new { p.PlayerGuid, Redact = _accountService.GetAccountSettings(p.PlayerGuid)?.RedactInformation ?? false })
+            .Where(p => p.Redact)
+            .Select(p => p.PlayerGuid)
+            .ToList();
 
-            if (!accountForPlayer.RedactInformation) continue;
+        if (caller is not null)
+            redactFor.Remove(caller.Guid);
 
-            if (caller == null)
-            {
-                replayRoundEndPlayer.RedactInformation();
-                continue;
-            }
+        foreach (var redact in redactFor)
+            replay.RedactInformation(redact, false);
 
-            if (replayRoundEndPlayer.PlayerGuid == caller.Guid) continue;
-
-            // If the caller is an admin, we can show the information.
-            if (!caller.IsAdmin)
-            {
-                replayRoundEndPlayer.RedactInformation();
-            }
-        }
+        replay.RedactCleanup();
 
         return replay;
     }
@@ -358,8 +346,8 @@ public class ReplayHelper
     {
         var accountGuid = AccountHelper.GetAccountGuid(state);
 
-        var player = await _context.Players
-            .FirstOrDefaultAsync(p => p.PlayerOocName.ToLower() == username.ToLower());
+        var player = await _context.ReplayParticipants
+            .FirstOrDefaultAsync(p => p.Username.ToLower() == username.ToLower());
         if (player == null)
         {
             return null;
@@ -383,7 +371,7 @@ public class ReplayHelper
         return new PlayerData()
         {
             PlayerGuid = player.PlayerGuid,
-            Username = player.PlayerOocName
+            Username = player.Username
         };
     }
 
@@ -405,7 +393,9 @@ public class ReplayHelper
 
         var queryable = _context.Replays
             .AsNoTracking()
-            .Include(r => r.RoundEndPlayers).AsQueryable();
+            .Include(r => r.RoundParticipants!)
+            .ThenInclude(r => r.Players)
+            .AsQueryable();
 
         foreach (var searchItem in searchItems)
         {
@@ -419,9 +409,9 @@ public class ReplayHelper
                 ),
                 SearchMode.Gamemode => queryable.Where(x => x.Gamemode.ToLower().Contains(searchItem.SearchValue.ToLower())),
                 SearchMode.ServerId => queryable.Where(x => x.ServerId.ToLower().Contains(searchItem.SearchValue.ToLower())),
-                SearchMode.Guid => queryable.Where(r => r.RoundEndPlayers.Any(p => p.PlayerGuid.ToString().ToLower().Contains(searchItem.SearchValue.ToLower()))),
-                SearchMode.PlayerIcName => queryable.Where(r => r.RoundEndPlayers.Any(p => p.PlayerIcName.ToLower().Contains(searchItem.SearchValue.ToLower()))),
-                SearchMode.PlayerOocName => queryable.Where(r => r.RoundEndPlayers.Any(p => p.PlayerOocName.ToLower().Contains(searchItem.SearchValue.ToLower()))),
+                SearchMode.Guid => queryable.Where(r => r.RoundParticipants.Any(p => p.PlayerGuid.ToString().ToLower().Contains(searchItem.SearchValue.ToLower()))),
+                SearchMode.PlayerIcName => queryable.Where(r => r.RoundParticipants.Any(p => p.Players.Any(pl => pl.PlayerIcName.ToLower().Contains(searchItem.SearchValue.ToLower())))),
+                SearchMode.PlayerOocName => queryable.Where(r => r.RoundParticipants.Any(p => p.Username.ToLower().Contains(searchItem.SearchValue.ToLower()))),
                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall (its lying, this works)
                 SearchMode.RoundEndText => queryable.Where(x => x.RoundEndTextSearchVector.Matches(searchItem.SearchValue)),
                 SearchMode.ServerName => queryable.Where(x => x.ServerName != null && x.ServerName.ToLower().Contains(searchItem.SearchValue.ToLower())),
@@ -464,7 +454,6 @@ public class ReplayHelper
         }
 
         var replays = await _context.Replays
-            .Include(r => r.RoundEndPlayers)
             .Where(r => account.FavoriteReplays.Contains(r.Id))
             .Select(r => r.ToResult())
             .ToListAsync();

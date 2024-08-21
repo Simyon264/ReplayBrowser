@@ -7,9 +7,11 @@ using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
 using ReplayBrowser.Models;
+using ReplayBrowser.Models.Ingested;
 using ReplayBrowser.Services.ReplayParser.Providers;
 using Serilog;
 using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace ReplayBrowser.Services.ReplayParser;
 
@@ -238,14 +240,16 @@ public class ReplayParserService : IHostedService, IDisposable
 
         var deserializer = new DeserializerBuilder()
             .IgnoreUnmatchedProperties()
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
-        var replay = deserializer.Deserialize<Replay>(reader);
-        if (replay.Map == null && replay.Maps == null)
+
+        var yamlReplay = deserializer.Deserialize<YamlReplay>(reader);
+        if (yamlReplay.Map == null && yamlReplay.Maps == null)
         {
             throw new Exception("Replay is not valid.");
         }
 
-        replay.Link = replayLink;
+        var replay = Replay.FromYaml(yamlReplay, replayLink);
 
         var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
         if (replay.ServerId == Constants.UnsetServerId)
@@ -258,18 +262,20 @@ public class ReplayParserService : IHostedService, IDisposable
             replay.ServerName = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerName;
         }
 
+        if (yamlReplay.RoundEndPlayers == null)
+            return replay;
+
         // Check for GDPRed accounts
         var gdprGuids = GetDbContext().GdprRequests.Select(x => x.Guid).ToList();
-        if (replay.RoundEndPlayers != null)
+
+        foreach (var redact in gdprGuids)
         {
-            foreach (var player in replay.RoundEndPlayers)
-            {
-                if (gdprGuids.Contains(player.PlayerGuid))
-                {
-                    player.RedactInformation(true);
-                }
-            }
+            replay.RedactInformation(redact, true);
         }
+
+        var redacted = replay.RoundParticipants!.Where(p => p.PlayerGuid == Guid.Empty);
+        if (redacted.Any())
+            replay.RedactCleanup();
 
         return replay;
     }

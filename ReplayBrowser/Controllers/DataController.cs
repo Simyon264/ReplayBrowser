@@ -21,9 +21,9 @@ public class DataController : Controller
     public async Task<List<string>> GetUsernameCompletion(
         [FromQuery] string username)
     {
-        var completions = await _context.Players
-            .Where(p => p.PlayerOocName.ToLower().StartsWith(username.ToLower()))
-            .Select(p => p.PlayerOocName)
+        var completions = await _context.ReplayParticipants
+            .Where(p => p.Username.ToLower().StartsWith(username.ToLower()))
+            .Select(p => p.Username)
             .Distinct() // Remove duplicates
             .Take(10)
             .ToListAsync();

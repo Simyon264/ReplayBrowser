@@ -24,7 +24,7 @@ public class AccountController : Controller
     private readonly ReplayDbContext _context;
     private readonly Ss14ApiHelper _ss14ApiHelper;
     private readonly AccountService _accountService;
-    
+
     public AccountController(IConfiguration configuration, ReplayDbContext context, Ss14ApiHelper ss14ApiHelper, AccountService accountService)
     {
         _configuration = configuration;
@@ -32,7 +32,7 @@ public class AccountController : Controller
         _ss14ApiHelper = ss14ApiHelper;
         _accountService = accountService;
     }
-    
+
     [Route("login")]
     public IActionResult Login()
     {
@@ -41,7 +41,7 @@ public class AccountController : Controller
             RedirectUri = _configuration["RedirectUri"]
         });
     }
-    
+
     [Route("logout")]
     public async Task<IActionResult> Logout()
     {
@@ -60,19 +60,19 @@ public class AccountController : Controller
         {
             return Unauthorized();
         }
-        
+
         var guid = AccountHelper.GetAccountGuid(User);
-        
-        if (guid == null) 
+
+        if (guid == null)
             return BadRequest("Guid is null. This should not happen.");
-        
+
         var gdprRequest = await _context.GdprRequests.FirstOrDefaultAsync(g => g.Guid == guid);
         if (gdprRequest != null)
         {
             await HttpContext.SignOutAsync("Cookies");
             return BadRequest("You have requested to be deleted from the database. You cannot create an account.");
         }
-        
+
         var user = _context.Accounts.FirstOrDefault(a => a.Guid == guid);
         var data = await _ss14ApiHelper.FetchPlayerDataFromGuid((Guid)guid);
         if (user == null)
@@ -88,14 +88,14 @@ public class AccountController : Controller
         }
         else
         {
-            if (data?.Username != user.Username) 
+            if (data?.Username != user.Username)
             {
                 user.Username = data?.Username ?? "API Error";
                 await _context.SaveChangesAsync();
                 Log.Information("Updated username for {Guid} to {Username}", guid, data?.Username);
             }
         }
-        
+
         // Add login to history
         await _accountService.AddHistory(user, new HistoryEntry()
         {
@@ -103,7 +103,7 @@ public class AccountController : Controller
             Time = DateTime.UtcNow,
             Details = null
         });
-        
+
         return Redirect("/");
     }
 
@@ -119,52 +119,52 @@ public class AccountController : Controller
         {
             return Unauthorized();
         }
-        
+
         var guid = AccountHelper.GetAccountGuid(User);
-        
+
         var user = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == guid);
-        
+
         if (user == null)
         {
             return NotFound("Account is null. This should not happen.");
         }
-        
+
         if (permanently)
         {
             _context.GdprRequests.Add(new GdprRequest
             {
                 Guid = (Guid) guid
             });
-            
+
             await _context.Database.ExecuteSqlRawAsync($"""
                                                         DELETE FROM "CharacterData"
                                                         WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
                                                         """);
-            
+
             await _context.Database.ExecuteSqlRawAsync($"""
                                                         DELETE FROM "JobCountData"
                                                         WHERE "CollectedPlayerDataPlayerGuid" = '{guid}';
                                                         """);
-            
+
             _context.Replays
-                .Include(replay => replay.RoundEndPlayers)
-                .Where(r => r.RoundEndPlayers != null && r.RoundEndPlayers.Any(p => p.PlayerGuid == guid))
+                .Include(r => r.RoundParticipants!)
+                .ThenInclude(r => r.Players)
+                .Where(r => r.RoundParticipants != null && r.RoundParticipants.Any(p => p.PlayerGuid == guid))
                 .ToList()
                 .ForEach(r =>
                 {
-                    r.RoundEndPlayers!
-                        .Where(p => p.PlayerGuid == guid)
-                        .ToList()
-                        .ForEach(p => p.RedactInformation(true));
+                    r.RedactInformation(guid, true);
+                    // FIXME: Might not work
+                    r.RedactCleanup();
                 });
         }
-        
+
         _context.Accounts.Remove(user);
         await _context.SaveChangesAsync();
-        
+
         await HttpContext.SignOutAsync("Cookies");
         // Redirect to the home page
         return Redirect("/");
@@ -186,37 +186,37 @@ public class AccountController : Controller
         {
             return BadRequest("Guid is null or empty.");
         }
-        
+
         if (!Guid.TryParse(guid, out var parsedGuid))
         {
             return BadRequest("Guid is not a valid guid.");
         }
-        
+
         if (!User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
-        
+
         var guidRequestor = AccountHelper.GetAccountGuid(User);
-        
+
         var requestor = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == guidRequestor);
-        
+
         if (requestor == null)
         {
             return NotFound("Account is null. This should not happen.");
         }
-        
-        if (!requestor.IsAdmin) 
+
+        if (!requestor.IsAdmin)
             return Unauthorized("You are not an admin.");
-        
+
         var user = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == parsedGuid);
-        
+
         var zipStream = new MemoryStream();
         using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
         {
@@ -241,8 +241,9 @@ public class AccountController : Controller
             }
 
             var replays = await _context.Replays
-                .Include(r => r.RoundEndPlayers)
-                .Where(r => r.RoundEndPlayers != null && r.RoundEndPlayers.Any(p => p.PlayerGuid == parsedGuid))
+                .Include(r => r.RoundParticipants!)
+                .ThenInclude(r => r.Players)
+                .Where(r => r.RoundParticipants != null && r.RoundParticipants.Any(p => p.PlayerGuid == parsedGuid))
                 .ToListAsync();
 
             foreach (var replay in replays)
@@ -258,7 +259,7 @@ public class AccountController : Controller
                 }
             }
         }
-        
+
         zipStream.Seek(0, SeekOrigin.Begin);
         var fileName = $"account-gdpr-{guid}_{DateTime.Now:yyyy-MM-dd}.zip";
         return File(zipStream, "application/zip", fileName);
@@ -277,46 +278,46 @@ public class AccountController : Controller
         {
             return BadRequest("Guid is null or empty.");
         }
-        
+
         if (!Guid.TryParse(guid, out var parsedGuid))
         {
             return BadRequest("Guid is not a valid guid.");
         }
-        
+
         if (!User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
-        
+
         var guidRequestor = AccountHelper.GetAccountGuid(User);
-        
+
         var requestor = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == guidRequestor);
-        
+
         if (requestor == null)
         {
             return NotFound("Account is null. This should not happen.");
         }
-        
-        if (!requestor.IsAdmin) 
+
+        if (!requestor.IsAdmin)
             return Unauthorized("You are not an admin.");
-        
+
         var user = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == parsedGuid);
-        
-        if (user != null) 
+
+        if (user != null)
         {
             _context.Accounts.Remove(user);
             await _context.SaveChangesAsync();
         }
-        
-        return Ok();        
+
+        return Ok();
     }
-    
+
     /// <summary>
     /// Removed a specific guid permanently from the database. Future replays will have this player replaced with "Removed by GDPR request".
     /// </summary>
@@ -331,38 +332,38 @@ public class AccountController : Controller
         {
             return BadRequest("Guid is null or empty.");
         }
-        
+
         if (!Guid.TryParse(guid, out var parsedGuid))
         {
             return BadRequest("Guid is not a valid guid.");
         }
-        
+
         if (!User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
-        
+
         var guidRequestor = AccountHelper.GetAccountGuid(User);
-        
+
         var requestor = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == guidRequestor);
-        
+
         if (requestor == null)
         {
             return NotFound("Account is null. This should not happen.");
         }
-        
-        if (!requestor.IsAdmin) 
+
+        if (!requestor.IsAdmin)
             return Unauthorized("You are not an admin.");
-        
+
         var user = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == parsedGuid);
-        
-        if (user != null) 
+
+        if (user != null)
         {
             _context.Accounts.Remove(user);
         }
@@ -373,21 +374,21 @@ public class AccountController : Controller
         });
 
         _context.Replays
-            .Include(replay => replay.RoundEndPlayers)
-            .Where(r => r.RoundEndPlayers != null && r.RoundEndPlayers.Any(p => p.PlayerGuid == parsedGuid))
+            .Include(replay => replay.RoundParticipants!)
+            .ThenInclude(replay => replay.Players)
+            .Where(r => r.RoundParticipants != null && r.RoundParticipants.Any(p => p.PlayerGuid == parsedGuid))
             .ToList()
             .ForEach(r =>
             {
-                r.RoundEndPlayers!
-                    .Where(p => p.PlayerGuid == parsedGuid)
-                    .ToList()
-                    .ForEach(p => p.RedactInformation(true));
+                r.RedactInformation(parsedGuid, true);
+                // FIXME: Might not work
+                r.RedactCleanup();
             });
-        
+
         await _context.SaveChangesAsync();
         return Ok();
     }
-    
+
     /// <summary>
     /// Returns a zip of the current users stored data.
     /// </summary>
@@ -398,19 +399,19 @@ public class AccountController : Controller
         {
             return Unauthorized();
         }
-        
+
         var guid = AccountHelper.GetAccountGuid(User);
-        
+
         var user = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == guid);
-        
+
         if (user == null)
         {
             return NotFound("Account is null. This should not happen.");
         }
-        
+
         var zipStream = new MemoryStream();
         using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
         {
@@ -419,7 +420,7 @@ public class AccountController : Controller
             {
                 await JsonSerializer.SerializeAsync(entryStream, user.History);
             }
-            
+
             user.History = null;
 
             var baseEntry = archive.CreateEntry("user.json");
@@ -431,13 +432,13 @@ public class AccountController : Controller
                 });
             }
         }
-        
+
         zipStream.Seek(0, SeekOrigin.Begin);
-        
+
         var fileName = $"account-{user.Guid}_{DateTime.Now:yyyy-MM-dd}.zip";
         return File(zipStream, "application/zip", fileName);
     }
-    
+
     [HttpPost("add-protected-account")]
     public async Task<IActionResult> AddProtectedAccount(
         [FromQuery] string username
@@ -447,39 +448,39 @@ public class AccountController : Controller
         {
             return BadRequest("Username is null or empty.");
         }
-        
+
         var playerData = await _ss14ApiHelper.FetchPlayerDataFromUsername(username);
-        
+
         if (playerData == null)
         {
             return NotFound("Player data is null. This should not happen.");
         }
-        
+
         if (playerData.PlayerGuid == null || playerData.PlayerGuid == Guid.Empty)
         {
             return NotFound("Player guid is null or empty. This should not happen.");
         }
-        
+
         if (!User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
-        
+
         var guidRequestor = AccountHelper.GetAccountGuid(User);
-        
+
         var requestor = await _context.Accounts
             .Include(a => a.Settings)
             .Include(a => a.History)
             .FirstOrDefaultAsync(a => a.Guid == guidRequestor);
-        
+
         if (requestor == null)
         {
             return NotFound("Account is null. This should not happen.");
         }
-        
-        if (!requestor.IsAdmin) 
+
+        if (!requestor.IsAdmin)
             return Unauthorized("You are not an admin.");
-        
+
         var user = await _context.Accounts
             .FirstOrDefaultAsync(a => a.Guid == playerData.PlayerGuid);
 
@@ -487,7 +488,7 @@ public class AccountController : Controller
         {
             return BadRequest("Account already exists.");
         }
-        
+
         user = new Account()
         {
             Guid = (Guid) playerData.PlayerGuid,
@@ -498,7 +499,7 @@ public class AccountController : Controller
             },
             Protected = true
         };
-        
+
         _context.Accounts.Add(user);
         await _context.SaveChangesAsync();
         return Ok();

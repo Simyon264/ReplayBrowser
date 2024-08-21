@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using ReplayBrowser.Data;
 namespace Server.Migrations
 {
     [DbContext(typeof(ReplayDbContext))]
-    partial class ReplayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240820195835_JobDepartmentMap")]
+    partial class JobDepartmentMap
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -300,18 +303,29 @@ namespace Server.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
-                    b.Property<int>("ParticipantId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PlayerGuid")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("PlayerIcName")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("PlayerOocName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("ReplayId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ParticipantId");
+                    b.HasIndex("PlayerGuid");
 
                     b.HasIndex("PlayerIcName");
+
+                    b.HasIndex("PlayerOocName");
+
+                    b.HasIndex("ReplayId");
 
                     b.ToTable("Players");
                 });
@@ -366,7 +380,6 @@ namespace Server.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Link")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Map")
@@ -418,36 +431,6 @@ namespace Server.Migrations
                     b.ToTable("Replays");
                 });
 
-            modelBuilder.Entity("ReplayBrowser.Data.Models.ReplayParticipant", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<Guid>("PlayerGuid")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ReplayId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReplayId");
-
-                    b.HasIndex("Username");
-
-                    b.HasIndex("PlayerGuid", "ReplayId")
-                        .IsUnique();
-
-                    b.ToTable("ReplayParticipants");
-                });
-
             modelBuilder.Entity("ReplayBrowser.Data.Models.Account.Account", b =>
                 {
                     b.HasOne("ReplayBrowser.Data.Models.Account.AccountSettings", "Settings")
@@ -493,22 +476,9 @@ namespace Server.Migrations
 
             modelBuilder.Entity("ReplayBrowser.Data.Models.Player", b =>
                 {
-                    b.HasOne("ReplayBrowser.Data.Models.ReplayParticipant", "Participant")
-                        .WithMany("Players")
-                        .HasForeignKey("ParticipantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Participant");
-                });
-
-            modelBuilder.Entity("ReplayBrowser.Data.Models.ReplayParticipant", b =>
-                {
                     b.HasOne("ReplayBrowser.Data.Models.Replay", "Replay")
-                        .WithMany("RoundParticipants")
-                        .HasForeignKey("ReplayId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .WithMany("RoundEndPlayers")
+                        .HasForeignKey("ReplayId");
 
                     b.Navigation("Replay");
                 });
@@ -527,12 +497,7 @@ namespace Server.Migrations
 
             modelBuilder.Entity("ReplayBrowser.Data.Models.Replay", b =>
                 {
-                    b.Navigation("RoundParticipants");
-                });
-
-            modelBuilder.Entity("ReplayBrowser.Data.Models.ReplayParticipant", b =>
-                {
-                    b.Navigation("Players");
+                    b.Navigation("RoundEndPlayers");
                 });
 #pragma warning restore 612, 618
         }
