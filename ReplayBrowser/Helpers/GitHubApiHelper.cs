@@ -1,19 +1,19 @@
 using System.Net.Http;
-using System.Net.Mime;
-using System.Text.Json; // Add this for JSON deserialization
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 
 namespace ReplayBrowser.Helpers;
 
 public class GitHubApiHelper
 {
-    public List<GitHubAccount> Contributors;
+    private readonly IMemoryCache _memoryCache;
     private readonly string? _apiToken;
 
-    public GitHubApiHelper(IConfiguration configuration)
+    public GitHubApiHelper(IConfiguration configuration, IMemoryCache memoryCache)
     {
-        Contributors = new List<GitHubAccount>();
-        
+        _memoryCache = memoryCache;
+
         try
         {
             _apiToken = configuration["GitHubAPIToken"];
@@ -26,88 +26,91 @@ public class GitHubApiHelper
 
     public async Task<List<GitHubAccount>> GetContributors()
     {
-        try
+        if (!_memoryCache.TryGetValue("GitHubContributors", out List<GitHubAccount> contributors))
         {
-            using (var httpClient = new HttpClient())
+            try
             {
-                using (var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/Simyon264/ReplayBrowser/contributors"))
+                using (var httpClient = new HttpClient())
                 {
-                    // lesson learned: don't forget the user agent
-                    request.Headers.TryAddWithoutValidation("Accept", "application/vnd.github+json");
-                    request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_apiToken}");
-                    request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
-                    request.Headers.TryAddWithoutValidation("User-Agent", "YourAppNameHere");
-
-                    var response = await httpClient.SendAsync(request);
-                    response.EnsureSuccessStatusCode();
-
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    
-                    // Deserialize JSON into GitHubAccount list
-                    var responseJson = JsonSerializer.Deserialize<List<JsonElement>>(responseBody);
-
-                    foreach (var obj in responseJson)
+                    using (var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/Simyon264/ReplayBrowser/contributors"))
                     {
+                        request.Headers.TryAddWithoutValidation("Accept", "application/vnd.github+json");
+                        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_apiToken}");
+                        request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
+                        request.Headers.TryAddWithoutValidation("User-Agent", "YourAppNameHere");
 
-                        // Initialize variables with default values
-                        // Doing this to 100% make sure that respinse errors / null responses don't crash anything
-                        string accountName = null;
-                        string accountImageURL = null;
-                        string accountLink = null;
+                        var response = await httpClient.SendAsync(request);
+                        response.EnsureSuccessStatusCode();
 
-                        // Safely retrieve properties
-                        if (obj.TryGetProperty("login", out var loginProperty))
+                        var responseBody = await response.Content.ReadAsStringAsync();
+
+                        var responseJson = JsonSerializer.Deserialize<List<JsonElement>>(responseBody);
+                        contributors = new List<GitHubAccount>();
+
+                        foreach (var obj in responseJson)
                         {
-                            accountName = loginProperty.GetString();
-                        }
+                            string accountName = null;
+                            string accountImageURL = null;
+                            string accountLink = null;
 
-                        if (obj.TryGetProperty("avatar_url", out var avatarUrlProperty))
-                        {
-                            accountImageURL = avatarUrlProperty.GetString();
-                        }
-
-                        if (obj.TryGetProperty("html_url", out var htmlUrlProperty))
-                        {
-                            accountLink = htmlUrlProperty.GetString();
-                        }
-
-                        // Check for nulls before adding to the list
-                        if (accountName != null && accountImageURL != null && accountLink != null)
-                        {
-                            var account = new GitHubAccount
+                            if (obj.TryGetProperty("login", out var loginProperty))
                             {
-                                AccountName = accountName,
-                                AccountImageURL = accountImageURL,
-                                AccountLink = accountLink
-                            };
+                                accountName = loginProperty.GetString();
+                            }
 
-                            Contributors.Add(account);
+                            if (obj.TryGetProperty("avatar_url", out var avatarUrlProperty))
+                            {
+                                accountImageURL = avatarUrlProperty.GetString();
+                            }
+
+                            if (obj.TryGetProperty("html_url", out var htmlUrlProperty))
+                            {
+                                accountLink = htmlUrlProperty.GetString();
+                            }
+
+                            if (accountName != null && accountImageURL != null && accountLink != null)
+                            {
+                                var account = new GitHubAccount
+                                {
+                                    AccountName = accountName,
+                                    AccountImageUrl = accountImageURL,
+                                    AccountLink = accountLink
+                                };
+
+                                contributors.Add(account);
+                            }
+                            else
+                            {
+                                Log.Warning("A required property was missing in the JSON response while attempting to fetch project contributors.");
+                            }
                         }
-                        else
-                        {
-                            Log.Warning("A required property was missing in the JSON response while attempting to fetch project contributors.");
-                        }
+
+                        Log.Information("Successfully fetched project contributor list.");
+
+                        // Set cache options and cache the contributors list
+                        var cacheEntryOptions = new MemoryCacheEntryOptions()
+                            .SetAbsoluteExpiration(TimeSpan.FromMinutes(30)); // Adjust expiration as needed
+
+                        _memoryCache.Set("GitHubContributors", contributors, cacheEntryOptions);
                     }
-
-                    Log.Information("Successfully fetched project contributor list.");
-                    return Contributors;
                 }
             }
+            catch (Exception e)
+            {
+                Log.Error($"Exception when querying GitHub: {e.Message} - {e.StackTrace}");
+
+                // return empty list
+                return new List<GitHubAccount>();
+            }
         }
-        catch (Exception e)
-        {
-            Log.Error($"Exception when querying GitHub: {e.Message} - {e.StackTrace.ToString()}");
-            
-            // return empty list
-            // TODO - Proper handling
-            return new List<GitHubAccount>();
-        }
+
+        return contributors;
     }
 }
 
 public struct GitHubAccount
 {
-    public string AccountName { get; set; }
-    public string AccountImageURL { get; set; }
-    public string AccountLink { get; set; }
+    public string AccountName { get; init; }
+    public string AccountImageUrl { get; init; }
+    public string AccountLink { get; init; }
 }

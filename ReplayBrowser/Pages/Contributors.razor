@@ -13,19 +13,19 @@
 <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: center; padding: 20px;">
     @if (_contributors.Count == 0)
     {
-        <h4>Error fetching contributors from the GitHub API</h4>
+        <h4 style="color: red">Error fetching contributors from the GitHub API</h4>
     }
     else
     {
         @foreach (var contrib in _contributors)
         {
-            <ContributorCard ContributorName="@contrib.AccountName" ContributorImage="@contrib.AccountImageURL" ContributorLink="@contrib.AccountLink" />
+            <ContributorCard ContributorName="@contrib.AccountName" ContributorImage="@contrib.AccountImageUrl" ContributorLink="@contrib.AccountLink" />
         }
     }
 </div>
 
 @code {
-    private List<GitHubAccount>? _contributors = new List<GitHubAccount>();
+    private List<GitHubAccount> _contributors = new List<GitHubAccount>();
     
     protected async override Task OnInitializedAsync()
     {

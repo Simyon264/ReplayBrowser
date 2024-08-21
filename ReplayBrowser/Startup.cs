@@ -86,6 +86,8 @@ public class Startup
         services.AddSingleton<AnalyticsService>();
         services.AddSingleton<NoticeHelper>();
         services.AddSingleton<GitHubApiHelper>();
+        
+        services.AddMemoryCache();
 
         services.AddHostedService<BackgroundServiceStarter<ReplayParserService>>();
         services.AddHostedService<BackgroundServiceStarter<AccountService>>();
