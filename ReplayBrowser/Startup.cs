@@ -39,9 +39,6 @@ public class Startup
             options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         });
 
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().AddSerilog());
-        services.AddSingleton<ILoggerFactory>(loggerFactory);
-        
         services.AddDbContext<ReplayDbContext>(options =>
         {
             if (Configuration.GetConnectionString("DefaultConnection") == null)
@@ -54,7 +51,6 @@ public class Startup
             options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), o => o.CommandTimeout(600));
 
             options.EnableSensitiveDataLogging();
-            options.UseLoggerFactory(loggerFactory);
         });
 
         services.AddSingleton<Ss14ApiHelper>();
