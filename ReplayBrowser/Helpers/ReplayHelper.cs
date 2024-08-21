@@ -106,8 +106,6 @@ public class ReplayHelper
             .AsNoTracking()
             .Where(p => p.Participant.PlayerGuid == playerGuid)
             .Where(p => p.Participant.Replay!.Date != null)
-            .Include(p => p.Participant)
-            .ThenInclude(p => p.Replay)
             .Select(p => new {
                 p.Id,
                 p.Participant.ReplayId,
@@ -418,10 +416,6 @@ public class ReplayHelper
             };
         }
 
-        queryable = queryable
-            .OrderByDescending(r => r.Date ?? DateTime.MinValue);
-
-
         // Technically it might be inaccurate. In practice nobody will care much?
         int totalItems = _cache.GetOrCreate(cacheKey, e =>
         {
@@ -432,6 +426,7 @@ public class ReplayHelper
 
         // Get all results and store them in the cache
         var allResults = queryable
+            .OrderByDescending(r => r.Date ?? DateTime.MinValue)
             .Skip(page * pageSize)
             .Take(pageSize)
             .Select(r => r.ToResult())
