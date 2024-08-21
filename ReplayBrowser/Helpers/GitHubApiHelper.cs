@@ -82,9 +82,6 @@ public class GitHubApiHelper
                             };
 
                             Contributors.Add(account);
-                            Contributors.Add(account);
-                            Contributors.Add(account);
-                            Contributors.Add(account);
                         }
                         else
                         {
