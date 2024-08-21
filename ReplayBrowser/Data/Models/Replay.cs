@@ -99,11 +99,13 @@ public class Replay : IEntityTypeConfiguration<Replay>
             Link = link,
             ServerId = replay.ServerId,
             ServerName = replay.ServerName,
+            RoundId = replay.RoundId,
             Gamemode = replay.Gamemode,
             Map = replay.Map,
             Maps = replay.Maps,
 
             RoundParticipants = participants,
+            RoundEndText = replay.RoundEndText,
 
             EndTick = replay.EndTick,
             Duration = replay.Duration,
