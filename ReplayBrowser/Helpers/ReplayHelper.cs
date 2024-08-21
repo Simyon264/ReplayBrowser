@@ -393,8 +393,6 @@ public class ReplayHelper
 
         var queryable = _context.Replays
             .AsNoTracking()
-            .Include(r => r.RoundParticipants!)
-            .ThenInclude(r => r.Players)
             .AsQueryable();
 
         foreach (var searchItem in searchItems)
