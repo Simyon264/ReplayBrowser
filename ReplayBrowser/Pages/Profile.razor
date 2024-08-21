@@ -6,6 +6,7 @@
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
 @using Serilog
+@using ReplayBrowser.Pages.Shared
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayHelper ReplayHelper
@@ -30,6 +31,10 @@ else if (FailedToLoad)
 }
 else
 {
+    <MetaDataSpecifer
+        Title="@OpenGraphTitle"
+        Description="@OpenGraphDescription"
+    />
     <button class="btn btn-outline-danger" id="watchButton" onclick="Watch()">
         @if (_playerData.IsWatched)
         {
@@ -148,6 +153,9 @@ else
     private bool IsPrivate { get; set; } = false;
     private bool IsLoggedIn { get; set; } = false;
     private string Username { get; set; } = string.Empty;
+    
+    private string OpenGraphTitle => $"Player info :: {Username}";
+    private string OpenGraphDescription => $"Player info for {Username}\nTotal estimated playtime: {_playerData.TotalEstimatedPlaytime.Humanize()}\nTotal rounds played: {_playerData.TotalRoundsPlayed}\nTotal antag rounds played: {_playerData.TotalAntagRoundsPlayed}\nLast seen: {_playerData.LastSeen.Humanize()}";
 
     protected override async Task OnInitializedAsync()
     {

@@ -1,7 +1,14 @@
 ﻿@page "/contact"
 @using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Pages.Shared
 
 @inject IConfiguration Configuration
+
+<MetaDataSpecifer
+    Title="Contact"
+    Path="contact"
+    Description="@OpenGraphDescription"
+/>
 
 <PageTitle>Contact</PageTitle>
 
@@ -11,6 +18,12 @@
 <ul>
     <li>Email: <a href="mailto:@Configuration["Contact:Email"]">@Configuration["Contact:Email"]</a></li>
     <li>Discord: @Configuration["Contact:Discord"]</li>
+    <li>Discord Server: @Configuration["Contact:Server"]</li>
 </ul>
 
 You can also raise an issue on the <a href="https://github.com/Simyon264/ReplayBrowser/issues/new">GitHub repository</a> if you have any questions or suggestions.
+
+@code
+{
+    private string OpenGraphDescription => $"Contact information\nEmail: {Configuration["Contact:Email"]}\nDiscord: {Configuration["Contact:Discord"]}\nDiscord Server: {Configuration["Contact:Server"]}";
+}

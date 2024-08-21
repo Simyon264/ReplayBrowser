@@ -4,9 +4,11 @@
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Helpers
 @using ReplayBrowser.Pages.Shared
+@using ReplayBrowser.Services.ReplayParser
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayHelper ReplayHelper
+@inject ReplayParserService ReplayParserService
 
 <PageTitle>Replay viewer</PageTitle>
 @if (Replay == null && !IsLoading)
@@ -20,6 +22,11 @@ else if (IsLoading)
 else
 {
     <ReplayDetails FullReplay="Replay" />
+    
+    <MetaDataSpecifer
+        Title="@GetTitle()"
+        Description="@GetDescription()"
+    />
 }
 
 @code {
@@ -27,6 +34,42 @@ else
     public Replay? Replay { get; set; }
     public bool IsLoading { get; set; } = true;
 
+    private string GetTitle()
+    {
+        var fileName = Path.GetFileName(Replay.Link);
+        var storageUrl = ReplayParserService.GetStorageUrlFromReplayLink(Replay.Link);
+        var matchName = storageUrl.ServerNameRegexCompiled.Match(fileName);
+        var matchDate = storageUrl.ReplayRegexCompiled.Match(fileName);
+        
+        var nameFormatted = "";
+        var dateFormatted = "";
+        
+        if (matchName.Success && matchDate.Success)
+        {
+            nameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value.Replace("_","-")}";
+            dateFormatted = matchDate.Groups[1].Value.Replace("_", "-");
+            if (string.IsNullOrWhiteSpace(matchName.Groups[1].Value))
+            {
+                nameFormatted = $"{Replay.ServerId} - {matchDate.Groups[1].Value}";
+            }
+            else
+            {
+                nameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value}";
+            }
+        }
+        else
+        {
+            nameFormatted = Replay.ServerName ?? Replay.ServerId;
+        }
+        
+        return $"Round {Replay.RoundId} - {nameFormatted}";
+    }
+    
+    private string GetDescription()
+    {
+        return "Round " + Replay.RoundId + " played on " + Replay.Map + " on " + Replay.Date?.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+    
     protected override async Task OnInitializedAsync()
     {
         var authstate = await AuthenticationStateProvider.GetAuthenticationStateAsync();
