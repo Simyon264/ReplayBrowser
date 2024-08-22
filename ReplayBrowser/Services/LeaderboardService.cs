@@ -80,7 +80,7 @@ public class LeaderboardService : IHostedService, IDisposable
             {
                 Action = Enum.GetName(typeof(Action), Action.LeaderboardViewed) ?? "Unknown",
                 Time = DateTime.UtcNow,
-                Details = $"Range: {rangeOption}, Username: {username}"
+                Details = $"Range: {rangeOption}, Username: {username}, Servers: {string.Join(", ", servers)}"
             });
         }
 
