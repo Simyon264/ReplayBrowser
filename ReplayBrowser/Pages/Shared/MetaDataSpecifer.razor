@@ -4,24 +4,37 @@
     <meta name="title" content="Replay Browser @Title" />
     <meta name="description" content="@Description" />
     <meta name="theme-color" content="#9d32a8">
-    
+
     <meta property="og:type" content="website" />
     <meta property="og:url" content="@NavigationManager.Uri" />
     <meta property="og:title" content="Replay Browser @Title" />
     <meta property="og:description" content="@Description" />
-    
+    <meta property="og:locale" content="en_GB">
+
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:url" content="@NavigationManager.Uri" />
     <meta property="twitter:title" content="Replay Browser @Title" />
     <meta property="twitter:description" content="@Description" />
+
+    @if (IncludeImage)
+    {
+        <meta property="og:image" content="@ImageUrl" />
+        <meta property="twitter:image" content="@ImageUrl" />
+    }
+
 </HeadContent>
 
 @code {
     [Parameter]
     public string? Title { get; set; }
-    
+
     [Parameter]
     public string? Description { get; set; }
+
+    [Parameter]
+    public bool IncludeImage { get; set; } = false;
+
+    private string ImageUrl => $"{NavigationManager.BaseUri}assets/img/replaybrowser-white.png";
 
     protected override void OnInitialized()
     {
