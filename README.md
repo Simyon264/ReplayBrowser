@@ -12,7 +12,40 @@ These instructions assume that you have a postgres database set up.
 2. Set up the appsettings file.
    Create a file named `appsettings.Secret.json` in the server project.
    This is where you can put your connection string for the postgres DB.
+   Look at the example appsettings file below.
 3. Run both the server and client using `dotnet`. The server will now download a lot of replays. This will take some time and it will use about 50 Mbps. You can keep using your computer during this time.
+
+### Example appsettings.Secret.json
+
+```json lines
+// Note: You cannot use comments in JSON files, this is just for readability.
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=ReplayBrowser;Username=postgres;Password=<Password>"
+  },
+  "ProxyIP": "127.0.10.1",
+   
+   // You do not need to set these, but you must have them set if you need to test something with OAuth.
+   "ClientId": "<ClientId>", // You can get this from https://account.spacestation14.com/Identity/Account/Manage/Developer
+   "ClientSecret": "<ClientSecret>", // You can get this from https://account.spacestation14.com/Identity/Account/Manage/Developer
+  
+   "Kestrel": { // This is the port the server will run on, you can change this to whatever you want
+    "EndPoints": {
+      "Http": {
+        "Url": "http://localhost:12500"
+      },
+      "Https": {
+        "Url": "https://localhost:12501"
+      }
+    }
+  },
+  "Contact": { // These need to be set, but the value is never checked, so they can be anything
+    "Email": "local",
+    "Discord": "local",
+    "Server": "local"
+  },
+}
+```
 
 ## Screenshots
 <details>
