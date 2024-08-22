@@ -1,11 +1,11 @@
 ﻿@page "/leaderboard"
 @using Microsoft.AspNetCore.Components.Authorization
-@using ReplayBrowser.Data
 @using ReplayBrowser.Models
 @using ReplayBrowser.Services
 @using Microsoft.AspNetCore.Components.Web
 @using ReplayBrowser.Helpers
 @using ReplayBrowser.Pages.Shared
+
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IConfiguration Configuration
@@ -58,8 +58,40 @@ else
                 id="search"
                 value="@username"
             >
-            <button class="btn btn-outline-success" type="button" onclick="search()">Filter</button>
         </div>
+        <br/>
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#serverSelectionCollapse" aria-expanded="false" aria-controls="serverSelectionCollapse">
+            Toggle server selection
+        </button>
+
+        <div class="collapse" id="serverSelectionCollapse">
+            <div style="flex-direction: column; display: flex">
+                @{
+                    var urls = Configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
+                    var selectedServersQuery = queryDictionary["selectedServers"];
+                    if (selectedServersQuery == null)
+                    {
+                        selectedServersQuery = urls.Select(x => x.FallBackServerName).Aggregate((x, y) => $"{x},{y}");
+                    }
+
+                    var selectedServers = selectedServersQuery.Split(',');
+                    foreach (var storage in urls)
+                    {
+                    // Server selection
+                    <input
+                        type="checkbox"
+                        class="server-checkbox"
+                        id="@storage.FallBackServerName.Replace(' ', '_')"
+                        name="@storage.FallBackServerName.Replace(' ', '_')"
+                        value="@storage.FallBackServerName"
+                        checked="@selectedServers.Contains(storage.FallBackServerName)"
+                    >
+                    <label for="@storage.FallBackServerName.Replace(' ', '_')">@storage.FallBackServerName (@storage.FallBackServerId)</label>
+                    }
+                }
+            </div>
+        </div>
+        <button class="btn btn-outline-success" type="button" onclick="search()">Filter</button>
     </div>
 
     <hr/>
@@ -125,10 +157,22 @@ else
 }
 
 <script>
+    const allServersCount = document.getElementsByClassName("server-checkbox").length;
+
     function changeTimeRange(timeRange) {
         var uri = new URL(window.location.href);
         uri.searchParams.set("timeRange", timeRange);
         uri.searchParams.set("username", document.getElementById("search").value);
+        // Get the selected servers
+        let selectedServers = Array.from(document.getElementsByClassName("server-checkbox"))
+            .filter(x => x.checked)
+            .map(x => x.value)
+            .join(",");
+        // If we have all servers selected, we don't need to add the query parameter
+        if (selectedServers.split(',').length !== allServersCount)
+        {
+            uri.searchParams.set("selectedServers", selectedServers);
+        }
         window.location.href = uri.toString();
     }
 
@@ -137,6 +181,14 @@ else
         var uri = new URL(window.location.href);
         uri.searchParams.set("timeRange", uri.searchParams.get("timeRange") || 5);
         uri.searchParams.set("username",search);
+        let selectedServers = Array.from(document.getElementsByClassName("server-checkbox"))
+            .filter(x => x.checked)
+            .map(x => x.value)
+            .join(",");
+        if (selectedServers.split(',').length !== allServersCount)
+        {
+            uri.searchParams.set("selectedServers", selectedServers);
+        }
         window.location.href = uri.toString();
     }
 
@@ -150,6 +202,7 @@ else
 
         $('#search').autocomplete()
     });
+
 </script>
 
 <style>
@@ -197,7 +250,15 @@ else
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         try
         {
-            leaderboard = await LeaderboardService.GetLeaderboard(timeRangeEnum, username, authState);
+            var selectedServers = queryDictionary["selectedServers"];
+            if (selectedServers == null)
+            {
+                var urls = Configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
+                selectedServers = urls.Select(x => x.FallBackServerName).Aggregate((x, y) => $"{x},{y}");
+            }
+
+            var selectedServersArray = selectedServers.Split(',');
+            leaderboard = await LeaderboardService.GetLeaderboard(timeRangeEnum, username, selectedServersArray, authState);
         }
         catch (UnauthorizedAccessException)
         {

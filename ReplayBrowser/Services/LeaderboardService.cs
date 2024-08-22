@@ -26,13 +26,15 @@ public class LeaderboardService : IHostedService, IDisposable
     private readonly Ss14ApiHelper _apiHelper;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly AccountService _accountService;
+    private readonly IConfiguration _configuration;
 
-    public LeaderboardService(IMemoryCache cache, Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService)
+    public LeaderboardService(IMemoryCache cache, Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService, IConfiguration configuration)
     {
         _cache = cache;
         _apiHelper = apiHelper;
         _scopeFactory = factory;
         _accountService = accountService;
+        _configuration = configuration;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -50,7 +52,7 @@ public class LeaderboardService : IHostedService, IDisposable
         foreach (var rangeOption in Enum.GetValues<RangeOption>())
         {
             var anonymousAuth = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-            GetLeaderboard(rangeOption, null, anonymousAuth, false).Wait();
+            GetLeaderboard(rangeOption, null, [], anonymousAuth, false).Wait();
         }
 
         sw.Stop();
@@ -68,8 +70,13 @@ public class LeaderboardService : IHostedService, IDisposable
         _timer?.Dispose();
     }
 
-    public async Task<LeaderboardData> GetLeaderboard(RangeOption rangeOption, string? username, AuthenticationState authenticationState, bool logAction = true)
+    public async Task<LeaderboardData> GetLeaderboard(RangeOption rangeOption, string? username, string[]? servers, AuthenticationState authenticationState, bool logAction = true)
     {
+        if (servers == null || servers.Length == 0)
+        {
+            servers = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!.Select(x => x.FallBackServerName).ToArray();
+        }
+
         var context = _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<ReplayDbContext>();
 
         Account? accountCaller = null;
@@ -111,7 +118,10 @@ public class LeaderboardService : IHostedService, IDisposable
             .Replace(" ", "-")
             .Replace(".", "-")
             .Replace("_", "-");
-        var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey;
+
+        var serversCacheKey = string.Join("-", servers);
+
+        var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey + "-" + serversCacheKey;
         if (_cache.TryGetValue(cacheKey, out LeaderboardData? leaderboardData))
         {
             return leaderboardData!;
@@ -130,7 +140,6 @@ public class LeaderboardService : IHostedService, IDisposable
         var stopwatch = new Stopwatch();
         long stopwatchPrevious = 0;
         stopwatch.Start();
-        var rangeTimespan = rangeOption.GetTimeSpan();
         var leaderboards = new Dictionary<string, Leaderboard>()
         {
             {"MostSeenPlayers", new Leaderboard()
@@ -172,6 +181,7 @@ public class LeaderboardService : IHostedService, IDisposable
         #region FUNNY SQL QUERIES
 
         var mostplayed = await context.ReplayParticipants
+            .Where(p => servers.Contains(p.Replay.ServerName))
             .Where(p => p.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
             .GroupBy(p => p.PlayerGuid)
             .Select(pg => new {
@@ -195,6 +205,7 @@ public class LeaderboardService : IHostedService, IDisposable
         stopwatch.Start();
 
         var mostplayednoghost = await context.ReplayParticipants
+            .Where(p => servers.Contains(p.Replay.ServerName))
             .Where(p => p.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
             .Where(p => p.Players!.Any(p => p.PlayerIcName != "Unknown"))
             .GroupBy(p => p.PlayerGuid)
@@ -220,6 +231,7 @@ public class LeaderboardService : IHostedService, IDisposable
         stopwatch.Start();
 
         var mostantag = await context.ReplayParticipants
+            .Where(p => servers.Contains(p.Replay.ServerName))
             .Where(p => p.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
             .Where(p => p.Players!.Any(p => p.AntagPrototypes.Count > 0))
             .GroupBy(p => p.PlayerGuid)
@@ -246,6 +258,7 @@ public class LeaderboardService : IHostedService, IDisposable
 
         var mostPlayedDepartments = await context.Players
             .Where(p => p.EffectiveJobId != null)
+            .Where(p => servers.Contains(p.Participant.Replay.ServerName))
             .Where(p => p.Participant.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
             .GroupBy(p => p.EffectiveJob!.Department)
             .Select(pg => new {
@@ -272,6 +285,7 @@ public class LeaderboardService : IHostedService, IDisposable
 
         var mostPlayedJobs = await context.Players
             .Where(p => p.JobPrototypes.Count > 0)
+            .Where(p => servers.Contains(p.Participant.Replay.ServerName))
             .Where(p => p.Participant.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
             .Select(p => p.JobPrototypes[0])
             .GroupBy(p => p)
@@ -299,6 +313,7 @@ public class LeaderboardService : IHostedService, IDisposable
 
         var perDepartmentPlayers = await context.Players
             .Where(p => p.EffectiveJobId != null)
+            .Where(p => servers.Contains(p.Participant.Replay.ServerName))
             .Where(p => p.Participant.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
             .GroupBy(p => new {
                 p.EffectiveJob!.Department,
@@ -335,6 +350,7 @@ public class LeaderboardService : IHostedService, IDisposable
 
         var perJobPlayers = await context.Players
             .Where(p => p.JobPrototypes.Count > 0)
+            .Where(p => servers.Contains(p.Participant.Replay.ServerName))
             .Where(p => p.Participant.Replay!.Date >= (DateTime.UtcNow - rangeOption.GetNormalTimeSpan()))
             .GroupBy(p => new {
                 Job = p.JobPrototypes[0],
