@@ -64,7 +64,7 @@ else
             Toggle server selection
         </button>
 
-        <div class="collapse" id="serverSelectionCollapse">
+        <div class="collapse" id="serverSelectionCollapse" style="margin-bottom: 6px">
             <div style="flex-direction: column; display: flex">
                 @{
                     var urls = Configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
@@ -77,19 +77,20 @@ else
                     var selectedServers = selectedServersQuery.Split(',');
                     foreach (var storage in urls)
                     {
-                    // Server selection
-                    <input
-                        type="checkbox"
-                        class="server-checkbox"
-                        id="@storage.FallBackServerName.Replace(' ', '_')"
-                        name="@storage.FallBackServerName.Replace(' ', '_')"
-                        value="@storage.FallBackServerName"
-                        checked="@selectedServers.Contains(storage.FallBackServerName)"
-                    >
-                    <label for="@storage.FallBackServerName.Replace(' ', '_')">@storage.FallBackServerName (@storage.FallBackServerId)</label>
+                        // Server selection
+                        <input
+                            type="checkbox"
+                            class="server-checkbox"
+                            id="@storage.FallBackServerName.Replace(' ', '_')"
+                            name="@storage.FallBackServerName.Replace(' ', '_')"
+                            value="@storage.FallBackServerName"
+                            checked="@selectedServers.Contains(storage.FallBackServerName)"
+                        >
+                        <label for="@storage.FallBackServerName.Replace(' ', '_')">@storage.FallBackServerName (@storage.FallBackServerId)</label>
                     }
                 }
             </div>
+            <button class="btn btn-secondary" type="button" onclick="toggle()">Toggle all</button>
         </div>
         <button class="btn btn-outline-success" type="button" onclick="search()">Filter</button>
     </div>
@@ -158,6 +159,15 @@ else
 
 <script>
     const allServersCount = document.getElementsByClassName("server-checkbox").length;
+
+    function toggle() {
+        let checkboxes = document.getElementsByClassName("server-checkbox");
+        let checked = Array.from(checkboxes).filter(x => x.checked).length;
+        let allChecked = checked === allServersCount;
+        for (let checkbox of checkboxes) {
+            checkbox.checked = !allChecked;
+        }
+    }
 
     function changeTimeRange(timeRange) {
         var uri = new URL(window.location.href);
