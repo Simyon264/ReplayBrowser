@@ -1,0 +1,75 @@
+﻿@page "/error/{code:int}"
+
+@inject NavigationManager NavigationManager
+
+<div class="error-container">
+    @{
+        switch (Code)
+        {
+            case 404:
+                <MetaDataSpecifer
+                    Title="Not found"
+                    Description="There is no page at the specified URL."
+                />
+                <h1>404 Not Found</h1>
+                <p>Oops. The page at <strong id="page-url"></strong> doesn't exist. What a shame.</p>
+                <em>Should there be a page here? Contribute to the project on <a href="https://github.com/Simyon264/ReplayBrowser" target="_blank">GitHub</a>!</em>
+                break;
+            case 500:
+                <MetaDataSpecifer
+                    Title="Internal Server Error"
+                    Description="There was an error on the server. Please try again later."
+                />
+                <h1>500 Internal Server Error</h1>
+                <p>There was an error on the server. Please try again later.</p>
+                <em>How did you get here? The other error page *should* have caught this.</em>
+                break;
+            default:
+                <MetaDataSpecifer
+                    Title="Error"
+                    Description="There was an error. Please try again later."
+                />
+                <h1>@Code</h1>
+                <p>There was an error. Please try again later.</p>
+                <em>That's all we know.</em>
+                break;
+        }
+    }
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // If there is a url under the url query parameter, display it
+        if (window.location.search.includes('url=')) {
+            document.getElementById('page-url').innerText = new URLSearchParams(window.location.search).get('url');
+            return;
+        }
+
+        const url = window.location.href;
+        const urlParts = url.split('/');
+        const pageUrl = urlParts.slice(3).join('/');
+        document.getElementById('page-url').innerText = "/" + pageUrl;
+    });
+</script>
+
+<style>
+    .error-container h1 {
+        font-size: 3em;
+        --bs-text-opacity: 1;
+        color: rgba(var(--bs-danger-rgb), var(--bs-text-opacity)) !important;
+    }
+
+    .error-container p {
+        font-size: 1.5em;
+    }
+
+    .error-container em {
+        font-size: 1em;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Code { get; set; }
+}

@@ -9,11 +9,12 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ReplayHelper ReplayHelper
 @inject ReplayParserService ReplayParserService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Replay viewer</PageTitle>
 @if (Replay == null)
 {
-    <p>Replay not found</p>
+    <p>Loading...</p>
 }
 else
 {
@@ -70,5 +71,10 @@ else
     {
         var authstate = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         Replay = await ReplayHelper.GetReplay(Id, authstate)!;
+        if (Replay == null)
+        {
+            var currentUrl = Uri.EscapeDataString(NavigationManager.Uri);
+            NavigationManager.NavigateTo($"/error/404?url={currentUrl}");
+        }
     }
 }

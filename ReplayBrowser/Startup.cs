@@ -239,6 +239,7 @@ public class Startup
 #else
         app.UseDeveloperExceptionPage();
 #endif
+        app.UseStatusCodePagesWithReExecute("/error/{0}");
 
         app.UseHttpsRedirection();
 
