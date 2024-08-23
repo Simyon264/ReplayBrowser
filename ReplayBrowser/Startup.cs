@@ -9,6 +9,7 @@ using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models.Account;
 using ReplayBrowser.Helpers;
 using ReplayBrowser.Pages.Shared;
+using ReplayBrowser.Pages.Shared.Layout;
 using ReplayBrowser.Services;
 using ReplayBrowser.Services.ReplayParser;
 using Serilog;
