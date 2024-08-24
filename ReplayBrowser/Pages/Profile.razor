@@ -23,11 +23,6 @@ else if (IsPrivate)
     <h1>Protected data (@Username)</h1>
     <p>@(Exception?.Message ?? "No info")</p>
 }
-else if (FailedToLoad)
-{
-    <h1>Error (@Username)</h1>
-    <p>Failed to load player data. Exception: @(Exception?.Message ?? "No info")</p>
-}
 else
 {
     <MetaDataSpecifer
@@ -196,13 +191,6 @@ else
             IsPrivate = true;
             Exception = e;
             _playerData = new();
-        }
-        catch (Exception e)
-        {
-            FailedToLoad = true;
-            Exception = e;
-            _playerData = new();
-            Log.Error(e, "Failed to load player data.");
         }
     }
 }

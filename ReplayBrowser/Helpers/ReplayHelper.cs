@@ -105,7 +105,7 @@ public class ReplayHelper
             });
         }
 
-       var replayPlayers = await _context.Players
+        var replayPlayers = await _context.Players
             .AsNoTracking()
             .Where(p => p.Participant.PlayerGuid == playerGuid)
             .Where(p => p.Participant.Replay!.Date != null)
@@ -120,6 +120,27 @@ public class ReplayHelper
                 p.PlayerIcName,
             })
             .ToListAsync();
+
+        if (replayPlayers.Count == 0)
+        {
+            return new CollectedPlayerData()
+            {
+                PlayerData = new PlayerData()
+                {
+                    PlayerGuid = playerGuid,
+                    Username = (await _apiHelper.FetchPlayerDataFromGuid(playerGuid)).Username ??
+                               "Unable to fetch username (API error)"
+                },
+                PlayerGuid = playerGuid,
+                Characters = new List<CharacterData>(),
+                TotalEstimatedPlaytime = TimeSpan.Zero,
+                TotalRoundsPlayed = 0,
+                TotalAntagRoundsPlayed = 0,
+                LastSeen = DateTime.MinValue,
+                JobCount = new List<JobCountData>(),
+                GeneratedAt = DateTime.UtcNow
+            };
+        }
 
         var replayPlayerGroup = replayPlayers.GroupBy(rp => rp.ReplayId);
 
