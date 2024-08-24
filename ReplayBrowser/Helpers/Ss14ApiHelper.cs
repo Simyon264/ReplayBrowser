@@ -77,6 +77,7 @@ public class Ss14ApiHelper
             }
 
             player.Username = "Unable to fetch username (API error)";
+            return player; // Avoid caching on an error.
         }
 
         var cacheEntryOptions = new MemoryCacheEntryOptions()
