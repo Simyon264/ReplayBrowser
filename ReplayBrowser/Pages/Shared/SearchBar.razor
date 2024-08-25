@@ -102,6 +102,28 @@
 </style>
 
 <script>
+    // note: `buffer` arg can be an ArrayBuffer or a Uint8Array
+    async function bufferToBase64(buffer) {
+        // use a FileReader to generate a base64 data URI.
+        const base64url = await new Promise(r => {
+            const reader = new FileReader();
+            reader.onload = () => r(reader.result);
+            reader.readAsDataURL(new Blob([buffer]));
+        });
+
+        // remove the `data:...;base64,` parrt from the start
+        return base64url.slice(base64url.indexOf(',') + 1);
+    }
+
+    async function base64ToBuffer(base64) {
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes;
+    }
+
     let selectedAutocompleteOption = null;
 
     function moveUp(element) {
@@ -120,7 +142,7 @@
         }
     }
 
-    function search(page) {
+    async function search(page) {
         const searchBars = document.querySelectorAll('.search-bar input');
 
         // sanity check
@@ -147,7 +169,7 @@
         );
 
         // Encode the searches as base64
-        const encodedSearches = btoa(JSON.stringify(searches));
+        const encodedSearches = await bufferToBase64(JSON.stringify(searches));
         builder.append('searches', encodedSearches);
         builder.append('page', page);
 
@@ -206,12 +228,14 @@
         selectedAutocompleteOption = suggestion;
     });
 
-    document.addEventListener('DOMContentLoaded', e => {
+    document.addEventListener('DOMContentLoaded', async e => {
         // Based on the current query, if we have anything loaded already in the query, create search bars based on that, otherwise if its empty, create a new one
         const searchParams = new URLSearchParams(window.location.search);
         const searches = searchParams.get('searches');
         if (searches !== null) {
-            const decodedSearches = JSON.parse(atob(searches));
+            let decodedSearchesBuffer = await base64ToBuffer(searches);
+            // Extract string from buffer
+            const decodedSearches = JSON.parse(new TextDecoder().decode(decodedSearchesBuffer));
             decodedSearches.forEach(searchObject => {
                 const searchBarPrefab = document.getElementsByClassName('prefab');
                 const newSearchBar = searchBarPrefab[0].cloneNode(true);
@@ -257,4 +281,6 @@
             document.getElementById('addSearchBar').click();
         }
     }, false);
+
+
 </script>
