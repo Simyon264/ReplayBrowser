@@ -8,7 +8,7 @@ from pyppeteer import launch
 async def run_tests():
     # Start the project
     process = subprocess.Popen(
-        ["dotnet", "run", "--no-build", "--urls", "https://localhost:7003/"],
+        ["dotnet", "run", "--no-build"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         preexec_fn=os.setsid
@@ -25,17 +25,17 @@ async def run_tests():
         page = await browser.newPage()
 
         urls = [
-            "https://localhost:7003/", # Home page
-            "https://localhost:7003/privacy", # Privacy page
-            "https://localhost:7003/contact", # Contact page
-            "https://localhost:7003/leaderboard", # Leaderboard page
-            "https://localhost:7003/player/aac26166-139a-4163-8aa9-ad2a059a427d", # Player page (no redaction)
-            "https://localhost:7003/player/8ced134c-8731-4087-bed3-107d59af1a11", # Player page (redacted [proected, but same thing pretty much])
-            "https://localhost:7003/downloads", # Downloads page
-            "https://localhost:7003/changelog", # Changelog page
-            "https://localhost:7003/replay/3", # Replay page
-            "https://localhost:7003/replay/312321", # Replay page (non-existant replay)
-            "https://localhost:7003/NOTFOUND" # non existant page
+            "https://localhost:5000/", # Home page
+            "https://localhost:5000/privacy", # Privacy page
+            "https://localhost:5000/contact", # Contact page
+            "https://localhost:5000/leaderboard", # Leaderboard page
+            "https://localhost:5000/player/aac26166-139a-4163-8aa9-ad2a059a427d", # Player page (no redaction)
+            "https://localhost:5000/player/8ced134c-8731-4087-bed3-107d59af1a11", # Player page (redacted [proected, but same thing pretty much])
+            "https://localhost:5000/downloads", # Downloads page
+            "https://localhost:5000/changelog", # Changelog page
+            "https://localhost:5000/replay/3", # Replay page
+            "https://localhost:5000/replay/312321", # Replay page (non-existant replay)
+            "https://localhost:5000/NOTFOUND" # non existant page
         ]
 
         for url in urls:

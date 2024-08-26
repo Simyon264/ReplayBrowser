@@ -9,6 +9,7 @@ jobs:
 
     env:
       Solution_Name: ReplayBrowser.sln
+      ASPNETCORE_URLS: https://+:5000
 
     services:
       postgres:
