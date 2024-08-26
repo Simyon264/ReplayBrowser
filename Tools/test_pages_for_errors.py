@@ -33,7 +33,6 @@ async def run_tests():
             "http://localhost:5000/downloads",  # Downloads page
             "http://localhost:5000/changelog",  # Changelog page
             "http://localhost:5000/replay/3",  # Replay page
-            "http://localhost:5000/throw" # Testing
         ]
 
         for url in urls:
@@ -49,6 +48,8 @@ async def run_tests():
                     error_message = await page.evaluate('(element) => element.textContent', exception_elements[0])
                     print(f"Error found on {url}: {error_message}")
                     error_found["value"] = True
+                else:
+                    print(f"No errors found")
 
             except Exception as e:
                 print(f"Error visiting {url}: {e}")
