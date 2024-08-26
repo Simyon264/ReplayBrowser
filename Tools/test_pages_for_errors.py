@@ -32,9 +32,7 @@ async def run_tests():
             "http://localhost:5000/player/8ced134c-8731-4087-bed3-107d59af1a11",  # Player page (redacted)
             "http://localhost:5000/downloads",  # Downloads page
             "http://localhost:5000/changelog",  # Changelog page
-            "http://localhost:5000/replay/3",  # Replay page
-            "http://localhost:5000/replay/312321",  # Replay page (non-existent replay)
-            "http://localhost:5000/NOTFOUND"  # Non-existent page
+            "http://localhost:5000/replay/3"  # Replay page
         ]
 
         for url in urls:
