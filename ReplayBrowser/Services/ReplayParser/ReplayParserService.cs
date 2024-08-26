@@ -50,11 +50,9 @@ public class ReplayParserService : IHostedService, IDisposable
 
         Status = ParserStatus.Idle;
 
-#if TESTING
-        return Task.CompletedTask;
-        // Testing mode, don't download anything, github actions wont like downloading tons of replays.
-#endif
+#if !TESTING
         Task.Run(() => FetchReplays(TokenSource.Token, urLs), TokenSource.Token);
+#endif
         return Task.CompletedTask;
     }
 
