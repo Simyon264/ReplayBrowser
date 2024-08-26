@@ -21,3 +21,6 @@ def main():
         sys.exit(1)
 
     print('No pending changes in the model. Good to go!')
+
+if __name__ == '__main__':
+    main()
