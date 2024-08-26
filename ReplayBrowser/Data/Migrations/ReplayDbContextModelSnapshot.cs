@@ -466,9 +466,11 @@ namespace Server.Migrations
 
             modelBuilder.Entity("ReplayBrowser.Data.Models.Account.HistoryEntry", b =>
                 {
-                    b.HasOne("ReplayBrowser.Data.Models.Account.Account", null)
+                    b.HasOne("ReplayBrowser.Data.Models.Account.Account", "Account")
                         .WithMany("History")
                         .HasForeignKey("AccountId");
+
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Data.Models.CharacterData", b =>
