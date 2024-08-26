@@ -7,7 +7,7 @@ from pyppeteer import launch
 
 async def run_tests():
     process = subprocess.Popen(
-        ["dotnet", "run", "--no-build"],
+        ["dotnet", "run", "--no-build", "--project", "../ReplayBrowser/ReplayBrowser.csproj"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         preexec_fn=os.setsid,
@@ -24,13 +24,12 @@ async def run_tests():
             else:
                 break
 
-    # Start background threads to stream stdout and stderr
     stdout_thread = asyncio.get_event_loop().run_in_executor(None, stream_output, process.stdout, "STDOUT")
     stderr_thread = asyncio.get_event_loop().run_in_executor(None, stream_output, process.stderr, "STDERR")
 
     try:
         print("Waiting for the application to start...")
-        await asyncio.sleep(20)  # Use async sleep
+        await asyncio.sleep(20)
 
         # Start the browser
         browser = await launch(headless=True)
