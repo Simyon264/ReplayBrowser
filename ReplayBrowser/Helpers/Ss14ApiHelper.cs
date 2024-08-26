@@ -24,7 +24,7 @@ public class Ss14ApiHelper
         try
         {
             var httpClient = new HttpClient();
-            response = await httpClient.GetAsync($"https://central.spacestation14.io/auth/api/query/name?name={username}");
+            response = await httpClient.GetAsync($"https://auth.spacestation14.com/api/query/name?name={username}");
             response.EnsureSuccessStatusCode();
             var responseString = await response.Content.ReadAsStringAsync();
             var data = JsonSerializer.Deserialize<UsernameResponse>(responseString)!;
@@ -61,7 +61,7 @@ public class Ss14ApiHelper
         try
         {
             var httpClient = new HttpClient();
-            response = await httpClient.GetAsync($"https://central.spacestation14.io/auth/api/query/userid?userid={player.PlayerGuid}");
+            response = await httpClient.GetAsync($"https://auth.spacestation14.com/api/query/userid?userid={player.PlayerGuid}");
             response.EnsureSuccessStatusCode();
             var responseString = await response.Content.ReadAsStringAsync();
             var username = JsonSerializer.Deserialize<UsernameResponse>(responseString)!.userName;
