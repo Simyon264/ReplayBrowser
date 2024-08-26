@@ -6,6 +6,7 @@ using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
 using ReplayBrowser.Services;
+using ReplayBrowser.Services.ReplayParser;
 
 namespace ReplayBrowser.Controllers;
 
@@ -17,12 +18,14 @@ public class ReplayController : Controller
     private readonly ReplayDbContext _dbContext;
     private readonly AccountService _accountService;
     private readonly ReplayHelper _replayHelper;
+    private readonly ReplayParserService _replayParserService;
 
-    public ReplayController(ReplayDbContext dbContext, AccountService accountService, ReplayHelper replayHelper)
+    public ReplayController(ReplayDbContext dbContext, AccountService accountService, ReplayHelper replayHelper, ReplayParserService replayParserService)
     {
         _dbContext = dbContext;
         _accountService = accountService;
         _replayHelper = replayHelper;
+        _replayParserService = replayParserService;
     }
 
     [HttpGet("{replayId}")]
@@ -37,6 +40,42 @@ public class ReplayController : Controller
         }
 
         return Ok(replay);
+    }
+
+    /// <summary>
+    /// Tells the server to parse a replay based on a provided url.
+    /// </summary>
+    /// <returns></returns>
+    [HttpPost("replay/parse")]
+    public async Task<IActionResult> ParseReplay(
+        [FromQuery] string url
+    )
+    {
+        if (User.Identity is null || !User.Identity.IsAuthenticated)
+        {
+            return Unauthorized();
+        }
+
+        var guidRequestor = AccountHelper.GetAccountGuid(User);
+
+        var requestor = await _dbContext.Accounts
+            .Include(a => a.Settings)
+            .Include(a => a.History)
+            .FirstOrDefaultAsync(a => a.Guid == guidRequestor);
+
+        if (requestor == null)
+        {
+            return NotFound("Account is null. This should not happen.");
+        }
+
+        if (!requestor.IsAdmin)
+            return Unauthorized("You are not an admin.");
+
+        ReplayParserService.Queue.Add(url);
+        if (_replayParserService.RequestQueueConsumption())
+            return Ok();
+
+        return BadRequest("The replay parser is currently busy.");
     }
 
     /// <summary>

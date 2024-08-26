@@ -203,9 +203,9 @@ public class AccountService : IHostedService, IDisposable
         var historyQuery = context.Set<HistoryEntry>().AsQueryable();
 
         if (string.IsNullOrWhiteSpace(username))
-            historyQuery = historyQuery.Where(h => h.Account.Guid == Guid.Empty);
+            historyQuery = historyQuery.Where(h => h.AccountId == null || h.Account!.Guid == Guid.Empty);
         else
-            historyQuery = historyQuery.Where(h => h.Account.Username == username);
+            historyQuery = historyQuery.Where(h => h.Account!.Username == username);
 
         var totalCount = await historyQuery.CountAsync();
 

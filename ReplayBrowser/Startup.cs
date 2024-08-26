@@ -84,8 +84,8 @@ public class Startup
             var proxyIP = Configuration["ProxyIP"];
             if (proxyIP == null)
             {
-                Log.Fatal("No proxy IP found in appsettings.json. Exiting.");
-                Environment.Exit(1);
+                proxyIP = "127.0.10.1";
+                Log.Warning("No ProxyIP set in configuration. Defaulting to {ProxyIP}", proxyIP);
             }
 
             Log.Information("Proxy IP: {ProxyIP}", proxyIP);
@@ -167,6 +167,7 @@ public class Startup
 
         JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
+        #if !TESTING
         services.AddAuthentication(options =>
         {
             options.DefaultScheme = "Cookies";
@@ -190,6 +191,8 @@ public class Startup
 
             options.GetClaimsFromUserInfoEndpoint = true;
         });
+        #endif
+
 
         services.AddHttpLogging(o => { });
 
@@ -241,7 +244,9 @@ public class Startup
 #endif
         app.UseStatusCodePagesWithReExecute("/error/{0}");
 
+#if !TESTING
         app.UseHttpsRedirection();
+#endif
 
         app.UseStaticFiles();
 

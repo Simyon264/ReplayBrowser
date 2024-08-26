@@ -8,8 +8,8 @@ public class HistoryEntry
     public DateTime Time { get; set; }
     public string? Details { get; set; }
 
-    public Account Account { get; set; } = null!;
-    public int AccountId { get; set; }
+    public Account? Account { get; set; } = null!;
+    public int? AccountId { get; set; }
 }
 
 public enum Action
