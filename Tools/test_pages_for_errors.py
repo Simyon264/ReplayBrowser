@@ -8,7 +8,7 @@ from pyppeteer import launch
 async def run_tests():
     # Start the project
     process = subprocess.Popen(
-        ["dotnet", "run", "--no-build"],
+        ["dotnet", "run", "--no-build", "--urls", "https://localhost:7003/"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         preexec_fn=os.setsid
