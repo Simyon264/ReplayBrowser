@@ -7,25 +7,13 @@ from pyppeteer import launch
 
 async def run_tests():
     process = subprocess.Popen(
-        ["dotnet", "run", "--no-build", "--project", "./ReplayBrowser/ReplayBrowser.csproj"],
+        ["dotnet", "run", "--no-build", "--project", "./ReplayBrowser/ReplayBrowser.csproj", "--configuration", "Testing"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         preexec_fn=os.setsid,
-        text=True
     )
 
     error_found = {"value": False}
-
-    def stream_output(pipe, stream_name):
-        while True:
-            line = pipe.readline()
-            if line:
-                print(f"{stream_name}: {line.strip()}")
-            else:
-                break
-
-    stdout_thread = asyncio.get_event_loop().run_in_executor(None, stream_output, process.stdout, "STDOUT")
-    stderr_thread = asyncio.get_event_loop().run_in_executor(None, stream_output, process.stderr, "STDERR")
 
     try:
         print("Waiting for the application to start...")
@@ -78,10 +66,6 @@ async def run_tests():
             os.killpg(os.getpgid(process.pid), signal.SIGTERM)
         except Exception as e:
             print(f"Error stopping the application: {e}")
-
-    # Ensure all output streams are processed before exiting
-    await stdout_thread
-    await stderr_thread
 
 def handle_console_message(msg, error_found):
     if msg.type == 'error':
