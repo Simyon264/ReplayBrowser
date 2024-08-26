@@ -67,7 +67,7 @@ jobs:
       # BUILD AND TEST
 
       - name: Build Solution
-        run: dotnet build ./ReplayBrowser/ReplayBrowser.csproj --Configuration Testing
+        run: dotnet build ./ReplayBrowser/ReplayBrowser.csproj --no-restore --configuration Testing
 
       - name: Check pending migrations
         run: python ./Tools/check_model_pending_changes.py # Exits with 1 if there are pending migrations
