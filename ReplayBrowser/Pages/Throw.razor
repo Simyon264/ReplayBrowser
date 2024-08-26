@@ -1,0 +1,14 @@
+﻿@page "/throw"
+
+<h4>This page only works in TESTING and DEVELOPMENT environments</h4>
+
+@code {
+    protected override void OnInitialized()
+    {
+#if RELEASE
+        return;
+#endif
+        // This page is purposely throwing an exception.
+        throw new Exception("An error occurred");
+    }
+}
