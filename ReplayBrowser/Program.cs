@@ -37,6 +37,7 @@ public class Program
                 builder.AddJsonFile("appsettings.Secret.json", optional: true, reloadOnChange: true);
                 builder.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
                 builder.AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
+                builder.AddEnvironmentVariables();
             })
             .UseSerilog((ctx, cfg) =>
             {
