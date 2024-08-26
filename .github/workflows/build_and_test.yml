@@ -62,19 +62,7 @@ jobs:
         run: dotnet restore ./ReplayBrowser/ReplayBrowser.csproj
 
       - name: Write appsettings.Secret.json file # This file is used to store the connection string for the database
-        run: |
-          echo "{
-          \"ConnectionStrings\":{\"DefaultConnection\":\"Host=localhost;Port=5432;Database=ReplayBrowser;Username=postgres;Password=postgres\"},
-          \"Kestrel\": {
-            \"EndPoints\": {
-              \"Http\": {
-                \"Url\": "http://localhost:12500"
-              },
-              \"Https\": {
-                \"Url\": "https://localhost:12501"
-              }
-            }
-          }}" > ./ReplayBrowser/appsettings.Secret.json
+        run: echo "{\"ConnectionStrings\":{\"DefaultConnection\":\"Host=localhost;Port=5432;Database=ReplayBrowser;Username=postgres;Password=postgres\"}}" > ./ReplayBrowser/appsettings.Secret.json
 
       # BUILD AND TEST
 

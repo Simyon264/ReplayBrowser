@@ -25,17 +25,17 @@ async def run_tests():
         page = await browser.newPage()
 
         urls = [
-            "https://localhost:12501/", # Home page
-            "https://localhost:12501/privacy", # Privacy page
-            "https://localhost:12501/contact", # Contact page
-            "https://localhost:12501/leaderboard", # Leaderboard page
-            "https://localhost:12501/player/aac26166-139a-4163-8aa9-ad2a059a427d", # Player page (no redaction)
-            "https://localhost:12501/player/8ced134c-8731-4087-bed3-107d59af1a11", # Player page (redacted [proected, but same thing pretty much])
-            "https://localhost:12501/downloads", # Downloads page
-            "https://localhost:12501/changelog", # Changelog page
-            "https://localhost:12501/replay/3", # Replay page
-            "https://localhost:12501/replay/312321", # Replay page (non-existant replay)
-            "https://localhost:12501/NOTFOUND" # non existant page
+            "https://localhost:7003/", # Home page
+            "https://localhost:7003/privacy", # Privacy page
+            "https://localhost:7003/contact", # Contact page
+            "https://localhost:7003/leaderboard", # Leaderboard page
+            "https://localhost:7003/player/aac26166-139a-4163-8aa9-ad2a059a427d", # Player page (no redaction)
+            "https://localhost:7003/player/8ced134c-8731-4087-bed3-107d59af1a11", # Player page (redacted [proected, but same thing pretty much])
+            "https://localhost:7003/downloads", # Downloads page
+            "https://localhost:7003/changelog", # Changelog page
+            "https://localhost:7003/replay/3", # Replay page
+            "https://localhost:7003/replay/312321", # Replay page (non-existant replay)
+            "https://localhost:7003/NOTFOUND" # non existant page
         ]
 
         for url in urls:
