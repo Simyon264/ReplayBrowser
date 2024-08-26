@@ -7,7 +7,7 @@ from pyppeteer import launch
 
 async def run_tests():
     process = subprocess.Popen(
-        ["dotnet", "run", "--no-build", "--project", "../ReplayBrowser/ReplayBrowser.csproj"],
+        ["dotnet", "run", "--no-build", "--project", "./ReplayBrowser/ReplayBrowser.csproj"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         preexec_fn=os.setsid,
