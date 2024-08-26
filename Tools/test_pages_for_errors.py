@@ -32,7 +32,8 @@ async def run_tests():
             "http://localhost:5000/player/8ced134c-8731-4087-bed3-107d59af1a11",  # Player page (redacted)
             "http://localhost:5000/downloads",  # Downloads page
             "http://localhost:5000/changelog",  # Changelog page
-            "http://localhost:5000/replay/3"  # Replay page
+            "http://localhost:5000/replay/3",  # Replay page
+            "http://localhost:5000/throw" # Testing
         ]
 
         for url in urls:
@@ -40,6 +41,7 @@ async def run_tests():
                 print(f"Visiting {url}")
                 page.on('console', lambda msg: handle_console_message(msg, error_found))
                 await page.goto(url)
+                await asyncio.sleep(3)
                 await page.waitForSelector('body', timeout=5000)
 
                 exception_elements = await page.querySelectorAll('pre.rawExceptionStackTrace')  # ASP.NET Core error dev page element
