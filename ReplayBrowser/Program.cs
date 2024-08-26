@@ -1,3 +1,4 @@
+using System.Net;
 using ReplayBrowser.Services;
 using ReplayBrowser.Services.ReplayParser;
 using Serilog;
@@ -51,7 +52,12 @@ public class Program
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
-                webBuilder.UseKestrel();
+                webBuilder.UseKestrel().ConfigureKestrel(o =>
+                {
+#if TESTING
+                    o.Listen(IPAddress.Any, 5000); // HTTP
+#endif
+                });
                 webBuilder.UseStartup<Startup>();
             })
             .ConfigureServices(s => {

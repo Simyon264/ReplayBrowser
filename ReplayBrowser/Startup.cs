@@ -241,7 +241,9 @@ public class Startup
 #endif
         app.UseStatusCodePagesWithReExecute("/error/{0}");
 
+#if !TESTING
         app.UseHttpsRedirection();
+#endif
 
         app.UseStaticFiles();
 
