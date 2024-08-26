@@ -74,3 +74,6 @@ jobs:
 
       - name: Run Migrations
         run: dotnet ef database update --project ./ReplayBrowser/ReplayBrowser.csproj --no-build --verbose
+
+      - name: Run Tests
+        run: python ./Tools/test_pages_for_errors.py
