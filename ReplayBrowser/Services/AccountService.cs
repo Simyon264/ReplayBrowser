@@ -150,10 +150,12 @@ public class AccountService : IHostedService, IDisposable
             account = context.Accounts
                 .Include(a => a.Settings)
                 .Include(a => a.History)
+                //.Include(a => a.Webhooks)
                 .FirstOrDefault(a => a.Guid == guid);
         } else {
             account = context.Accounts
                 .Include(a => a.Settings)
+                //.Include(a => a.Webhooks)
                 .FirstOrDefault(a => a.Guid == guid);
         }
 

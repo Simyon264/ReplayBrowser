@@ -47,6 +47,15 @@ else if (account != null)
                            <input type="checkbox" id="redact"/>
                        }</p>
 
+    // Webhook management
+    <h4>Webhooks</h4>
+    <button class="btn btn-primary" type="button" id="addwebhook">Add webhook</button>
+    <WebhookComponent Webhook="new Webhook()" Template="true"/>
+    <div id="webhooks">
+
+    </div>
+
+
     <button class="btn btn-primary" id="save">Save</button>
 
     // Collapse for deleting account
@@ -103,6 +112,12 @@ else
             {
                 window.location.href = "/account/delete?permanently=true";
             }
+        });
+
+        $("#addwebhook").click(function() {
+            let newWebhook = $("#webhooks .webhook").first().clone();
+            newWebhook.find("input").val("");
+            newWebhook.appendTo("#webhooks");
         });
     });
 </script>
