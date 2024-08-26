@@ -8,7 +8,7 @@ def main():
     try:
         # Run the dotnet ef migrations has-pending-model-changes command
         result = subprocess.run(
-            ['dotnet', 'ef', 'migrations', 'has-pending-model-changes', '--project', './ReplayBrowser/ReplayBrowser.csproj',
+            ['dotnet', 'ef', 'migrations', 'has-pending-model-changes', '--project', './ReplayBrowser/ReplayBrowser.csproj'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
