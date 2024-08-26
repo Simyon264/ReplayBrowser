@@ -167,6 +167,7 @@ public class Startup
 
         JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
+        #if !TESTING
         services.AddAuthentication(options =>
         {
             options.DefaultScheme = "Cookies";
@@ -190,6 +191,8 @@ public class Startup
 
             options.GetClaimsFromUserInfoEndpoint = true;
         });
+        #endif
+
 
         services.AddHttpLogging(o => { });
 
