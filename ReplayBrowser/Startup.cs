@@ -179,7 +179,7 @@ public class Startup
         {
             options.SignInScheme = "Cookies";
 
-            options.Authority = "https://central.spacestation14.io/web/";
+            options.Authority = "https://account.spacestation14.com/";
             options.ClientId = Configuration["ClientId"];
             options.ClientSecret = Configuration["ClientSecret"];
 

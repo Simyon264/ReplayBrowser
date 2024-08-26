@@ -11,4 +11,7 @@ public class WebhookHistory
     public int ResponseCode { get; set; }
     // ReSharper disable once EntityFramework.ModelValidation.UnlimitedStringLength // This is a log, it can be as long as it wants.
     public string ResponseBody { get; set; } = string.Empty;
+
+    public Webhook? Webhook { get; set; } = null!;
+    public int WebhookId { get; set; }
 }

@@ -24,6 +24,7 @@ public class Account : IEntityTypeConfiguration<Account>
     public List<Guid> SavedProfiles { get; set; } = new();
     public List<HistoryEntry> History { get; set; } = new();
 
+    public List<Webhook> Webhooks { get; set; } = new();
     public bool Protected { get; set; } = false;
 
     public void Configure(EntityTypeBuilder<Account> builder)

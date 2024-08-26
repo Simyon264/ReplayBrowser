@@ -1,19 +1,19 @@
 ﻿@using ReplayBrowser.Data.Models.Account
 
-<div class="card @(Template ? "hidden" : "")">
+<div class="card webhook @(Template ? "hidden" : "")">
     <div class="card-body">
         <h5 class="card-title">Webhook</h5>
-        <p class="card-text">Url: @Webhook.Url</p>
-        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+        <input type="text" class="form-control url" placeholder="Webhook URL" value="@Webhook.Url" style="margin-bottom: 3px">
+        <button class="btn btn-secondary dropdown-toggle type" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
             @Webhook.Type
         </button>
         <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
             @foreach (var type in Enum.GetNames(typeof(WebhookType)))
             {
-                <li><a class="dropdown-item" href="#">@type</a></li>
+                <li><a class="dropdown-item" onclick="changeType(this, '@type')">@type</a></li>
             }
         </ul>
-        <button class="btn btn-danger" type="button" id="deletewebhook" data-id="@Webhook.Id">Delete webhook</button>
+        <button class="btn btn-danger" type="button" id="deletewebhook" onclick="deleteWebhook(this)">Delete webhook</button>
     </div>
 </div>
 

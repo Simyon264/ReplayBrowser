@@ -3,13 +3,17 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.EntityFrameworkCore
+@using ReplayBrowser.Data
 @using ReplayBrowser.Data.Models.Account
+@using ReplayBrowser.Helpers
 @using ReplayBrowser.Services
 @using Action = ReplayBrowser.Data.Models.Account.Action
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 @attribute [Authorize]
 @inject AccountService AccountService
+@inject ReplayDbContext ReplayDbContext
 
 <PageTitle>Manage Account</PageTitle>
 
@@ -49,14 +53,24 @@ else if (account != null)
 
     // Webhook management
     <h4>Webhooks</h4>
-    <button class="btn btn-primary" type="button" id="addwebhook">Add webhook</button>
+    <button class="btn btn-primary" type="button" id="addwebhook" style="margin-bottom: 12px">Add webhook</button>
     <WebhookComponent Webhook="new Webhook()" Template="true"/>
     <div id="webhooks">
-
+        @foreach (var webhook in account.Webhooks)
+        {
+            <WebhookComponent Webhook="webhook"/>
+        }
     </div>
 
+    <br/>
+    <br/>
 
     <button class="btn btn-primary" id="save">Save</button>
+
+    <br/>
+    <br/>
+
+    <h4>Account Actions</h4>
 
     // Collapse for deleting account
     <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#deleteAccount" aria-expanded="false" aria-controls="deleteAccount">
@@ -91,12 +105,29 @@ else
     <p>Account not found (how did you get here?)</p>
 }
 
+<style>
+    .webhook {
+        margin-bottom: 6px;
+    }
+</style>
+
 <script>
     $(document).ready(function() {
         $("#save").click(function() {
             let redact = $("#redact").is(":checked");
             let uri = new URL(window.location.href);
             uri.searchParams.set("redact", redact);
+
+            let webhooks = [];
+            $("#webhooks .webhook").each(function() {
+                let webhook = {};
+                webhook.url = $(this).find(".url").val();
+                webhook.type = $(this).find(".dropdown-toggle").text();
+                webhooks.push(webhook);
+            });
+
+            uri.searchParams.set("webhooks", JSON.stringify(webhooks));
+
             window.location.href = uri;
         });
 
@@ -115,11 +146,23 @@ else
         });
 
         $("#addwebhook").click(function() {
-            let newWebhook = $("#webhooks .webhook").first().clone();
-            newWebhook.find("input").val("");
-            newWebhook.appendTo("#webhooks");
+            // Template is a webhook object with "hidden" class
+            let template = $(".webhook.hidden").clone();
+            template.removeClass("hidden");
+            $("#webhooks").append(template);
         });
     });
+
+    function deleteWebhook(button) {
+        let webhook = button.closest(".webhook");
+        webhook.remove();
+    }
+
+    function changeType(dropdownElement, type) {
+        let webhook = dropdownElement.closest(".card-body");
+        let button = webhook.querySelector(".dropdown-toggle");
+        button.innerHTML = type;
+    }
 </script>
 
 @code {
@@ -130,7 +173,16 @@ else
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        account = await AccountService.GetAccount(authState);
+        var guid = AccountHelper.GetAccountGuid(authState);
+        if (guid == null)
+        {
+            ErrorMessage = "Account not found, please go to the home page and then try again. How did you get here?";
+            return;
+        }
+        account = await ReplayDbContext.Accounts
+            .Include(x => x.Webhooks)
+            .Include(a => a.Settings)
+            .FirstOrDefaultAsync(x => x.Guid == guid);
 
         if (account == null)
         {
@@ -149,6 +201,7 @@ else
             return;
 
         var redact = queryDictionary["redact"];
+        var webhooks = queryDictionary["webhooks"];
         var changes = 0;
         if (redact != null)
         {
@@ -160,24 +213,57 @@ else
             }
         }
 
+        if (webhooks != null)
+        {
+            var valueWebhooks = JsonSerializer.Deserialize<List<JsonElement>>(webhooks);
+            if (valueWebhooks != null)
+            {
+                //await ReplayDbContext.Database.ExecuteSqlRawAsync("DELETE FROM \"Webhook\" WHERE \"AccountId\" = {0}", account.Id);
+                //await AccountService.AddHistory(account, new HistoryEntry()
+                //{
+                //    Action = Enum.GetName(typeof(Action), Action.WebhooksChanged) ?? "Unknown",
+                //    Time = DateTime.UtcNow,
+                //    Details = $"Old webhooks: {JsonSerializer.Serialize(account.Webhooks)} New webhooks: {JsonSerializer.Serialize(valueWebhooks)}",
+                //});
+                account.Webhooks.Clear();
+                await ReplayDbContext.SaveChangesAsync();
+
+                var webhookList = new List<Webhook>();
+                foreach (var webhook in valueWebhooks)
+                {
+                    var url = webhook.GetProperty("url").GetString();
+                    var type = webhook.GetProperty("type").GetString();
+                    if (url == null || type == null)
+                        continue;
+
+                    var enumParsed = Enum.TryParse<WebhookType>(type, out var webhookType);
+                    if (!enumParsed)
+                        continue;
+
+                    webhookList.Add(new Webhook()
+                    {
+                        Url = url,
+                        Type = webhookType,
+                    });
+                }
+
+                account.Webhooks = webhookList;
+
+                changes++;
+            }
+        }
+
         if (changes == 0)
             return;
 
-        try
+        await AccountService.AddHistory(account, new HistoryEntry()
         {
-            await AccountService.AddHistory(account, new HistoryEntry()
-            {
-                Action = Enum.GetName(typeof(Action), Action.AccountSettingsChanged) ?? "Unknown",
-                Time = DateTime.UtcNow,
-                Details = $"Old settings: {JsonSerializer.Serialize(oldAccountSettings)} New settings: {JsonSerializer.Serialize(account.Settings)}",
-            });
+            Action = Enum.GetName(typeof(Action), Action.AccountSettingsChanged) ?? "Unknown",
+            Time = DateTime.UtcNow,
+            Details = $"Old settings: {JsonSerializer.Serialize(oldAccountSettings)} New settings: {JsonSerializer.Serialize(account.Settings)}",
+        });
 
-            await AccountService.UpdateAccount(account);
-            ChangeSaved = true;
-        }
-        catch (Exception e)
-        {
-            ErrorMessage = e.Message + "\n " + e.StackTrace;
-        }
+        await AccountService.UpdateAccount(account);
+        ChangeSaved = true;
     }
 }

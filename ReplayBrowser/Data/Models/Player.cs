@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ReplayBrowser.Models.Ingested;
 
@@ -6,6 +7,7 @@ namespace ReplayBrowser.Data.Models;
 
 public class Player : IEntityTypeConfiguration<Player>
 {
+    [JsonIgnore]
     public int Id { get; set; }
 
     public List<string> AntagPrototypes { get; set; } = null!;
@@ -13,7 +15,9 @@ public class Player : IEntityTypeConfiguration<Player>
     public required string PlayerIcName { get; set; }
     public bool Antag { get; set; }
 
+    [JsonIgnore]
     public ReplayParticipant Participant { get; set; } = null!;
+    [JsonIgnore]
     public int ParticipantId { get; set; }
 
     public JobDepartment? EffectiveJob { get; set; }

@@ -206,6 +206,15 @@ public class ReplayParserService : IHostedService, IDisposable
                         await AddParsedReplayToDb(replay);
                         parsedReplays.Add(parsedReplay);
                         Log.Information("Parsed " + replay);
+                        try
+                        {
+                            var webhookService = new WebhookService(_factory);
+                            await webhookService.SendReplayToWebhooks(parsedReplay);
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Error(e, "Error while sending replay to webhooks.");
+                        }
                     }
                     catch (Exception e)
                     {
@@ -347,7 +356,6 @@ public class ReplayParserService : IHostedService, IDisposable
         {
             return;
         }
-        Log.Information("Adding " + replay + " to the queue.");
         // Check if it's already in the queue.
         if (!Queue.Contains(replay))
         {
