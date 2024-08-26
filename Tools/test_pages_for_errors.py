@@ -33,12 +33,12 @@ async def run_tests():
 
             urls = [
                 "http://localhost:5000/",  # Home page
+                "http://localhost:5000/downloads",  # Downloads page
                 "http://localhost:5000/privacy",  # Privacy page
                 "http://localhost:5000/contact",  # Contact page
                 "http://localhost:5000/leaderboard",  # Leaderboard page
                 "http://localhost:5000/player/aac26166-139a-4163-8aa9-ad2a059a427d",  # Player page (no redaction)
                 "http://localhost:5000/player/8ced134c-8731-4087-bed3-107d59af1a11",  # Player page (redacted)
-                "http://localhost:5000/downloads",  # Downloads page
                 "http://localhost:5000/changelog",  # Changelog page
                 "http://localhost:5000/replay/3",  # Replay page
             ]
