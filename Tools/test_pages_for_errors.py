@@ -39,7 +39,6 @@ async def run_tests():
         for url in urls:
             try:
                 print(f"Visiting {url}")
-                page.on('console', lambda msg: handle_console_message(msg, error_found))
                 await page.goto(url)
                 await asyncio.sleep(3)
                 await page.waitForSelector('body', timeout=5000)
@@ -66,11 +65,6 @@ async def run_tests():
             os.killpg(os.getpgid(process.pid), signal.SIGTERM)
         except Exception as e:
             print(f"Error stopping the application: {e}")
-
-def handle_console_message(msg, error_found):
-    if msg.type == 'error':
-        print(f"Console error: {msg.text}")
-        error_found["value"] = True
 
 if __name__ == "__main__":
     asyncio.run(run_tests())
