@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Seed database
-        run: psql -h localhost -U postgres -d ReplayBrowser -f ./Tools/replaybrowser_ci_seed.sql
+        run: PGPASSWORD='postgres' psql -h localhost -U postgres -d ReplayBrowser -f ./Tools/replaybrowser_ci_seed.sql
 
       - name: Install .NET Core
         uses: actions/setup-dotnet@v3
