@@ -49,7 +49,11 @@ public class ReplayParserService : IHostedService, IDisposable
         }
 
         Status = ParserStatus.Idle;
-        
+
+#if TESTING
+        return Task.CompletedTask;
+        // Testing mode, don't download anything, github actions wont like downloading tons of replays.
+#endif
         Task.Run(() => FetchReplays(TokenSource.Token, urLs), TokenSource.Token);
         return Task.CompletedTask;
     }
@@ -99,6 +103,18 @@ public class ReplayParserService : IHostedService, IDisposable
             Details = "";
             await Task.Delay(delay, token);
         }
+    }
+
+    /// <summary>
+    /// Requests the queue to be consumed. It will only consume the queue if it's not already being consumed.
+    /// </summary>
+    public bool RequestQueueConsumption()
+    {
+        if (Status != ParserStatus.Idle) return false;
+
+
+        Task.Run(() => ConsumeQueue(TokenSource.Token), TokenSource.Token);
+        return true;
     }
 
     private async Task ConsumeQueue(CancellationToken token)
@@ -212,6 +228,11 @@ public class ReplayParserService : IHostedService, IDisposable
                 Log.Warning("Parsing took too long for " + string.Join(", ", tasks.Select(x => x.Id)));
             }
         }
+
+        // Set the status to idle.
+        Status = ParserStatus.Idle;
+        Details = "";
+        Log.Information("Finished parsing replays.");
     }
 
     /// <summary>

@@ -31,6 +31,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Seed database
+        run: psql -h localhost -U postgres -d ReplayBrowser -f ./Tools/replaybrowser_ci_seed.sql
+
       - name: Install .NET Core
         uses: actions/setup-dotnet@v3
         with:
@@ -46,15 +49,32 @@ jobs:
         run: dotnet ef --version
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
+
+      - name: Install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyppeteer
 
       - name: Restore NuGet Packages
         run: dotnet restore ./ReplayBrowser/ReplayBrowser.csproj
 
       - name: Write appsettings.Secret.json file # This file is used to store the connection string for the database
-        run: echo "{\"ConnectionStrings\":{\"DefaultConnection\":\"Host=localhost;Port=5432;Database=ReplayBrowser;Username=postgres;Password=postgres\"}}" > ./ReplayBrowser/appsettings.Secret.json
+        run: |
+          echo "{
+          \"ConnectionStrings\":{\"DefaultConnection\":\"Host=localhost;Port=5432;Database=ReplayBrowser;Username=postgres;Password=postgres\"},
+          \"Kestrel\": {
+            \"EndPoints\": {
+              \"Http\": {
+                \"Url\": "http://localhost:12500"
+              },
+              \"Https\": {
+                \"Url\": "https://localhost:12501"
+              }
+            }
+          }}" > ./ReplayBrowser/appsettings.Secret.json
 
       # BUILD AND TEST
 
