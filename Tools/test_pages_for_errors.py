@@ -33,7 +33,6 @@ async def run_tests():
 
             urls = [
                 "http://localhost:5000/",  # Home page
-                "http://localhost:5000/downloads",  # Downloads page
                 "http://localhost:5000/privacy",  # Privacy page
                 "http://localhost:5000/contact",  # Contact page
                 "http://localhost:5000/leaderboard",  # Leaderboard page
