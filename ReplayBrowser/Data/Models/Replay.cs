@@ -11,6 +11,7 @@ namespace ReplayBrowser.Data.Models;
 
 public class Replay : IEntityTypeConfiguration<Replay>
 {
+    [JsonIgnore]
     public int Id { get; set; }
 
     public required string Link { get; set; }

@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <PackageReference Include="ByteSize" Version="2.1.2" />
+        <PackageReference Include="Discord.Net.Webhook" Version="3.15.3" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0"/>
         <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0"/>

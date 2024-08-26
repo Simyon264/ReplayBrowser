@@ -17,6 +17,7 @@ public enum Action
     // Account actions
     AccountSettingsChanged,
     Login,
+    WebhooksChanged,
 
     // Site actions
     SearchPerformed,
