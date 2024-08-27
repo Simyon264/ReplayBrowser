@@ -4,6 +4,8 @@
     <div class="card-body">
         <h5 class="card-title">Webhook</h5>
         <input type="text" class="form-control url" placeholder="Webhook URL" value="@Webhook.Url" style="margin-bottom: 3px">
+        <input type="text" class="form-control servers" placeholder="salamander, goobstation, etc." value="@Webhook.Servers" style="margin-bottom: 3px">
+        <p>The above servers will be included in the webhook. Leave blank to include all servers. This is a comma seperated list.</p>
         <button class="btn btn-secondary dropdown-toggle type" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
             @Webhook.Type
         </button>
