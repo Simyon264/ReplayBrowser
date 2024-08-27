@@ -123,6 +123,7 @@ else
                 let webhook = {};
                 webhook.url = $(this).find(".url").val();
                 webhook.type = $(this).find(".dropdown-toggle").text();
+                webhook.servers = $(this).find(".servers").val();
                 webhooks.push(webhook);
             });
 
@@ -218,13 +219,12 @@ else
             var valueWebhooks = JsonSerializer.Deserialize<List<JsonElement>>(webhooks);
             if (valueWebhooks != null)
             {
-                //await ReplayDbContext.Database.ExecuteSqlRawAsync("DELETE FROM \"Webhook\" WHERE \"AccountId\" = {0}", account.Id);
-                //await AccountService.AddHistory(account, new HistoryEntry()
-                //{
-                //    Action = Enum.GetName(typeof(Action), Action.WebhooksChanged) ?? "Unknown",
-                //    Time = DateTime.UtcNow,
-                //    Details = $"Old webhooks: {JsonSerializer.Serialize(account.Webhooks)} New webhooks: {JsonSerializer.Serialize(valueWebhooks)}",
-                //});
+                await AccountService.AddHistory(account, new HistoryEntry()
+                {
+                    Action = Enum.GetName(typeof(Action), Action.WebhooksChanged) ?? "Unknown",
+                    Time = DateTime.UtcNow,
+                    Details = $"Old webhooks: {JsonSerializer.Serialize(account.Webhooks)} New webhooks: {JsonSerializer.Serialize(valueWebhooks)}",
+                });
                 account.Webhooks.Clear();
                 await ReplayDbContext.SaveChangesAsync();
 
@@ -233,7 +233,8 @@ else
                 {
                     var url = webhook.GetProperty("url").GetString();
                     var type = webhook.GetProperty("type").GetString();
-                    if (url == null || type == null)
+                    var servers = webhook.GetProperty("servers").GetString();
+                    if (url == null || type == null || servers == null)
                         continue;
 
                     var enumParsed = Enum.TryParse<WebhookType>(type, out var webhookType);
@@ -244,6 +245,7 @@ else
                     {
                         Url = url,
                         Type = webhookType,
+                        Servers = servers,
                     });
                 }
 

@@ -34,6 +34,12 @@ public class WebhookService
         {
             foreach (var webhook in account.Webhooks)
             {
+                var servers = webhook.Servers.Split(',');
+                if (!servers.Contains(parsedReplay.ServerName))
+                {
+                    continue;
+                }
+
                 if (webhook.Type == WebhookType.Discord)
                 {
                     await SendDiscordWebhook(webhook, parsedReplay);
