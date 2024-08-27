@@ -35,7 +35,7 @@ public class WebhookService
             foreach (var webhook in account.Webhooks)
             {
                 var servers = webhook.Servers.Split(',');
-                if (!servers.Contains(parsedReplay.ServerName))
+                if (!servers.Contains(parsedReplay.ServerName) && !string.IsNullOrWhiteSpace(servers))
                 {
                     continue;
                 }
