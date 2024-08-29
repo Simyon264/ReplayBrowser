@@ -13,11 +13,13 @@ public class ReplayEventPlayer
     /// <summary>
     /// The username of the player.
     /// </summary>
+    [YamlMember(Alias = "playerOOCName")]
     public string? PlayerOocName { get; set; }
 
     /// <summary>
     /// The character name of the entity the player is playing as.
     /// </summary>
+    [YamlMember(Alias = "playerICName")]
     public string? PlayerIcName { get; set; }
 
     /// <summary>

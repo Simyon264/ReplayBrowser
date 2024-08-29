@@ -72,6 +72,11 @@ public class Startup
             });
         });
 
+        services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+        });
+
         // Endpoint logging
         services.Configure<RequestLoggingOptions>(options =>
         {
@@ -229,6 +234,8 @@ public class Startup
                 Log.Error(e, "Failed to create system account.");
             }
         }
+
+        app.UseResponseCompression();
 
         app.Use((context, next) =>
         {

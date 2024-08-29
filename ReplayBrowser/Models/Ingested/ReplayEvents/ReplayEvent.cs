@@ -15,7 +15,16 @@ public class ReplayEvent
     /// <summary>
     /// How severe the event is.
     /// </summary>
+    [JsonIgnore]
     public ReplayEventSeverity Severity { get; set; }
+
+    [NotMapped]
+    [YamlIgnore]
+    public string? SeverityString
+    {
+        get => Severity.ToString();
+        set => Severity = Enum.Parse<ReplayEventSeverity>(value);
+    }
 
     /// <summary>
     /// The type of event that occurred.
@@ -50,6 +59,7 @@ public class ReplayEvent
     /// </summary>
     [NotMapped] // This is not a database column.
     [YamlMember(Alias = "position")]
+    [JsonIgnore]
     public string PositionString
     {
         get => $"{Position.X},{Position.Y}";

@@ -40,12 +40,14 @@ public class Replay : IEntityTypeConfiguration<Replay>
     public List<ReplayDbEvent>? Events { get; set; }
 
     [JsonIgnore]
+    [Newtonsoft.Json.JsonIgnore]
     public NpgsqlTsVector RoundEndTextSearchVector { get; set; } = null!;
 
     /// <summary>
     /// Determines if a replay is marked as a favorite.
     /// </summary>
     [JsonIgnore]
+    [Newtonsoft.Json.JsonIgnore]
     [NotMapped]
     public bool IsFavorite { get; set; }
 

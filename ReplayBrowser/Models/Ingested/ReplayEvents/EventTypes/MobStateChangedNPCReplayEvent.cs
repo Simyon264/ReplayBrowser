@@ -1,6 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Newtonsoft.Json;
 using ReplayBrowser.Data.Models;
+using YamlDotNet.Serialization;
 
 namespace ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes;
 
@@ -17,12 +20,30 @@ public class MobStateChangedNPCReplayEvent : ReplayDbEvent, IEntityTypeConfigura
     /// <summary>
     /// The old state of the mob.
     /// </summary>
+    [JsonIgnore]
     public MobState OldState;
+
+    [YamlIgnore]
+    [NotMapped]
+    public string OldStateString
+    {
+        get => OldState.ToString();
+        set => OldState = Enum.Parse<MobState>(value);
+    }
 
     /// <summary>
     /// The new state of the mob.
     /// </summary>
+    [JsonIgnore]
     public MobState NewState;
+
+    [YamlIgnore]
+    [NotMapped]
+    public string NewStateString
+    {
+        get => NewState.ToString();
+        set => NewState = Enum.Parse<MobState>(value);
+    }
 
     public void Configure(EntityTypeBuilder<MobStateChangedNPCReplayEvent> builder)
     {

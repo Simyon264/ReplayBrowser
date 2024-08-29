@@ -40,6 +40,10 @@ public class ReplayController : Controller
             return NotFound();
         }
 
+        // Sort replay events by time
+        if (replay.Events != null)
+            replay.Events = replay.Events.OrderBy(e => e.Time).ToList();
+
         var settings = new JsonSerializerSettings
         {
             ReferenceLoopHandling = ReferenceLoopHandling.Ignore,

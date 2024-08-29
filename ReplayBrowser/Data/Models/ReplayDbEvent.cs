@@ -1,8 +1,8 @@
 ﻿using System.Numerics;
 using System.Reflection;
-using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Newtonsoft.Json;
 using ReplayBrowser.Models.Ingested.ReplayEvents;
 using ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes;
 
