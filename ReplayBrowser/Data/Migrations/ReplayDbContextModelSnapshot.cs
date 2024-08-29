@@ -559,39 +559,6 @@ namespace Server.Migrations
                     b.ToTable("ReplayParticipants");
                 });
 
-            modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.ReplayEventPlayer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string[]>("AntagPrototypes")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<string[]>("JobPrototypes")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<Guid?>("PlayerGuid")
-                        .IsRequired()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("PlayerIcName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PlayerOocName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ReplayEventPlayer");
-                });
-
             modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.AlertLevelChangedReplayEvent", b =>
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");

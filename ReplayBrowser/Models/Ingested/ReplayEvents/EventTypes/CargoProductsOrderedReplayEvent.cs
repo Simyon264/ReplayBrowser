@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Newtonsoft.Json;
 using ReplayBrowser.Data.Models;
@@ -24,7 +25,11 @@ public class CargoProductsOrderedReplayEvent : ReplayDbEvent, IEntityTypeConfigu
         builder.Property(e => e.Products)
             .HasConversion(
                 v => JsonConvert.SerializeObject(v),
-                v => JsonConvert.DeserializeObject<CargoReplayProduct[]>(v));
+                v => JsonConvert.DeserializeObject<CargoReplayProduct[]>(v))
+            .Metadata.SetValueComparer(new ValueComparer<CargoReplayProduct[]>(
+                (c1, c2) => c1.SequenceEqual(c2),
+                c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                c => (CargoReplayProduct[])c.Clone()));
     }
 }
 

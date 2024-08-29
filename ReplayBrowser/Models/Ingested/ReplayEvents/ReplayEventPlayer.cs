@@ -8,20 +8,8 @@ namespace ReplayBrowser.Models.Ingested.ReplayEvents;
 /// <summary>
 /// Represents a player in a replay event.
 /// </summary>
-public class ReplayEventPlayer : IEntityTypeConfiguration<ReplayEventPlayer>
+public class ReplayEventPlayer
 {
-    public int Id { get; set; }
-
-    public void Configure(EntityTypeBuilder<ReplayEventPlayer> builder)
-    {
-        builder.HasKey(e => e.Id);
-        builder.Property(e => e.PlayerOocName).IsRequired();
-        builder.Property(e => e.PlayerIcName).IsRequired();
-        builder.Property(e => e.PlayerGuid).IsRequired();
-        builder.Property(e => e.JobPrototypes).IsRequired();
-        builder.Property(e => e.AntagPrototypes).IsRequired();
-    }
-
     /// <summary>
     /// The username of the player.
     /// </summary>
