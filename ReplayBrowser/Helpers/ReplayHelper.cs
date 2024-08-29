@@ -206,6 +206,7 @@ public class ReplayHelper
             .AsNoTracking()
             .Include(r => r.RoundParticipants!)
             .ThenInclude(p => p.Players)
+            .Include(r => r.Events)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (replay == null)
