@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Newtonsoft.Json;
 using YamlDotNet.Serialization;
 
 namespace ReplayBrowser.Models.Ingested.ReplayEvents;
@@ -6,14 +8,19 @@ namespace ReplayBrowser.Models.Ingested.ReplayEvents;
 /// <summary>
 /// Represents a player in a replay event.
 /// </summary>
-public class ReplayEventPlayer
+public class ReplayEventPlayer : IEntityTypeConfiguration<ReplayEventPlayer>
 {
-    /// <summary>
-    /// DB primary key.
-    /// </summary>
-    [JsonIgnore]
-    [YamlIgnore]
     public int Id { get; set; }
+
+    public void Configure(EntityTypeBuilder<ReplayEventPlayer> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.PlayerOocName).IsRequired();
+        builder.Property(e => e.PlayerIcName).IsRequired();
+        builder.Property(e => e.PlayerGuid).IsRequired();
+        builder.Property(e => e.JobPrototypes).IsRequired();
+        builder.Property(e => e.AntagPrototypes).IsRequired();
+    }
 
     /// <summary>
     /// The username of the player.

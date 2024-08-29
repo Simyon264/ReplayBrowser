@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
@@ -33,13 +34,21 @@ public class ReplayController : Controller
     public async Task<IActionResult> GetReplay(int replayId)
     {
         var authState = new AuthenticationState(HttpContext.User);
-        var replay = await _replayHelper.GetReplay(replayId, authState);
+        var replay = await _replayHelper.GetFullReplay(replayId, authState);
         if (replay == null)
         {
             return NotFound();
         }
 
-        return Ok(replay);
+        var settings = new JsonSerializerSettings
+        {
+            ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+            Formatting = Formatting.Indented,
+            TypeNameHandling = TypeNameHandling.None,
+            TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple
+        };
+
+        return Ok(JsonConvert.SerializeObject(replay, settings));
     }
 
     /// <summary>
