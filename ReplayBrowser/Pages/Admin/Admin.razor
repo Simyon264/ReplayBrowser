@@ -15,56 +15,57 @@
 @if (_isNotAdmin)
 {
     <p>You are not an admin.</p>
-} else if (_isLoading)
+}
+else if (_isLoading)
 {
     <p>Loading...</p>
 }
 else
 {
     <table class="table">
-        <thead>
+    <thead>
         <tr>
             <th>Id</th>
             <th>Username</th>
             <th>Guid</th>
             <th>IsAdmin</th>
-            <th>Settings</th>
-            <th>Favorites</th>
+            <th>IsRedacted</th>
             <th>Logs</th>
         </tr>
-        </thead>
-        <tbody>
+    </thead>
+    <tbody>
         @foreach (var account in _accounts)
-        {
-            <tr>
-                <td>@account.Id</td>
-                <td>@account.Username</td>
-                <td>@account.Guid</td>
-                <td>@account.IsAdmin</td>
-                <td>@JsonSerializer.Serialize(account.Settings)</td>
-                <td>@JsonSerializer.Serialize(account.FavoriteReplays)</td>
-                <td><a href="/account/logs?username=@account.Username">Logs</a></td>
-            </tr>
-        }
+            {
+                <tr>
+                    <td>@account.Id</td>
+                    <td>@account.Username</td>
+                    <td>@account.Guid</td>
+                    <td>@account.IsAdmin</td>
+                    <td>@account.Settings.RedactInformation</td>
+                    <td><a href="/account/logs?username=@account.Username">Logs</a></td>
+                </tr>
+            }
         </tbody>
     </table>
-    
+
     // GDPR compliance
-    <p>Putting in a guid in this field will delete and permanently remove any and all replay data associated with the account.</p>
+    <p>Putting in a guid in this field will delete and permanently remove any and all replay data associated with the
+    account.</p>
     <input type="text" id="deleteGuid" placeholder="Guid" class="form-control" />
     <button id="deleteAccountButton" class="btn btn-primary">Delete account (gdpr)</button>
     <button id="getAccountData" class="btn btn-primary">Download account data</button>
     <button id="deleteAccountNonGdpr" class="btn btn-primary">Delete account (non-gdpr)</button>
-    
-    // Protected account stuff
-    <p>Add a new account for protection. Put in a Username and that account will "log in" and have their redaction set to true.</p>
+
+                // Protected account stuff
+    <p>Add a new account for protection. Put in a Username and that account will "log in" and have their redaction set to
+    true.</p>
     <input type="text" id="newAccountUsername" placeholder="Username" class="form-control" />
     <button id="addProtectedAccount" class="btn btn-primary">Add protected account</button>
 }
 
 <script>
-    $(document).ready(function() {
-        $('#deleteAccountButton').click(function() {
+    $(document).ready(function () {
+        $('#deleteAccountButton').click(function () {
             const guid = $('#deleteGuid').val();
             if (guid === '') {
                 alert('Guid cannot be empty.');
@@ -79,16 +80,16 @@ else
                 url: '/account/delete-admin?guid=' + guid,
                 type: 'POST',
                 contentType: 'application/json',
-                success: function() {
+                success: function () {
                     alert('Account deleted.');
                 },
-                error: function() {
+                error: function () {
                     alert('Failed to delete account.');
                 }
             });
         });
-        
-        $('#getAccountData').click(function() {
+
+        $('#getAccountData').click(function () {
             const guid = $('#deleteGuid').val();
             if (guid === '') {
                 alert('Guid cannot be empty.');
@@ -98,8 +99,8 @@ else
             // Open a new tab with the account data
             window.open('/account/download-data-admin?guid=' + guid, '_blank');
         });
-        
-        $('#deleteAccountNonGdpr').click(function() {
+
+        $('#deleteAccountNonGdpr').click(function () {
             const guid = $('#deleteGuid').val();
             if (guid === '') {
                 alert('Guid cannot be empty.');
@@ -114,16 +115,16 @@ else
                 url: '/account/delete-admin-non-gdpr?guid=' + guid,
                 type: 'POST',
                 contentType: 'application/json',
-                success: function() {
+                success: function () {
                     alert('Account deleted.');
                 },
-                error: function() {
+                error: function () {
                     alert('Failed to delete account.');
                 }
             });
         });
-        
-        $('#addProtectedAccount').click(function() {
+
+        $('#addProtectedAccount').click(function () {
             const username = $('#newAccountUsername').val();
             if (username === '') {
                 alert('Username cannot be empty.');
@@ -134,10 +135,10 @@ else
                 url: '/account/add-protected-account?username=' + username,
                 type: 'POST',
                 contentType: 'application/json',
-                success: function() {
+                success: function () {
                     alert('Account added.');
                 },
-                error: function() {
+                error: function () {
                     alert('Failed to add account.');
                 }
             });
