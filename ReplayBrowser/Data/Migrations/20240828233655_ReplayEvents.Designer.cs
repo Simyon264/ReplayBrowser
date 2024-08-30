@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using ReplayBrowser.Data;
 namespace Server.Migrations
 {
     [DbContext(typeof(ReplayDbContext))]
-    partial class ReplayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240828233655_ReplayEvents")]
+    partial class ReplayEvents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -559,13 +562,37 @@ namespace Server.Migrations
                     b.ToTable("ReplayParticipants");
                 });
 
+            modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.ReplayEventPlayer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string[]>("AntagPrototypes")
+                        .HasColumnType("text[]");
+
+                    b.Property<string[]>("JobPrototypes")
+                        .HasColumnType("text[]");
+
+                    b.Property<Guid?>("PlayerGuid")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PlayerIcName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PlayerOocName")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReplayEventPlayer");
+                });
+
             modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.AlertLevelChangedReplayEvent", b =>
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
-
-                    b.Property<string>("AlertLevel")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.HasDiscriminator().HasValue("AlertLevelChangedReplayEvent");
                 });
@@ -574,26 +601,12 @@ namespace Server.Migrations
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
 
-                    b.Property<double>("Amount")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("ObjectsSold")
-                        .HasColumnType("integer");
-
                     b.HasDiscriminator().HasValue("CargoObjectSoldReplayEvent");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.CargoProductsOrderedReplayEvent", b =>
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
-
-                    b.Property<string>("ApprovedBy")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Products")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.HasDiscriminator().HasValue("CargoProductsOrderedReplayEvent");
                 });
@@ -602,41 +615,12 @@ namespace Server.Migrations
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
 
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Sender")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.HasDiscriminator().HasValue("ChatAnnouncementReplayEvent");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.ChatMessageReplayEvent", b =>
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Sender")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.ToTable("ReplayDbEvent", t =>
-                        {
-                            t.Property("Message")
-                                .HasColumnName("ChatMessageReplayEvent_Message");
-
-                            t.Property("Sender")
-                                .HasColumnName("ChatMessageReplayEvent_Sender");
-                        });
 
                     b.HasDiscriminator().HasValue("ChatMessageReplayEvent");
                 });
@@ -645,13 +629,6 @@ namespace Server.Migrations
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
 
-                    b.Property<string>("Origin")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Target")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.HasDiscriminator().HasValue("GenericObjectEvent");
                 });
 
@@ -659,21 +636,15 @@ namespace Server.Migrations
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
 
-                    b.Property<string>("Origin")
-                        .HasColumnType("text");
+                    b.Property<int?>("OriginId")
+                        .HasColumnType("integer");
 
-                    b.Property<string>("Target")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("TargetId")
+                        .HasColumnType("integer");
 
-                    b.ToTable("ReplayDbEvent", t =>
-                        {
-                            t.Property("Origin")
-                                .HasColumnName("GenericPlayerEvent_Origin");
+                    b.HasIndex("OriginId");
 
-                            t.Property("Target")
-                                .HasColumnName("GenericPlayerEvent_Target");
-                        });
+                    b.HasIndex("TargetId");
 
                     b.HasDiscriminator().HasValue("GenericPlayerEvent");
                 });
@@ -682,50 +653,12 @@ namespace Server.Migrations
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
 
-                    b.Property<byte>("NewState")
-                        .HasColumnType("smallint");
-
-                    b.Property<byte>("OldState")
-                        .HasColumnType("smallint");
-
-                    b.Property<string>("Target")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.ToTable("ReplayDbEvent", t =>
-                        {
-                            t.Property("Target")
-                                .HasColumnName("MobStateChangedNPCReplayEvent_Target");
-                        });
-
                     b.HasDiscriminator().HasValue("MobStateChangedNPCReplayEvent");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.MobStateChangedPlayerReplayEvent", b =>
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
-
-                    b.Property<byte>("NewState")
-                        .HasColumnType("smallint");
-
-                    b.Property<byte>("OldState")
-                        .HasColumnType("smallint");
-
-                    b.Property<string>("Target")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.ToTable("ReplayDbEvent", t =>
-                        {
-                            t.Property("NewState")
-                                .HasColumnName("MobStateChangedPlayerReplayEvent_NewState");
-
-                            t.Property("OldState")
-                                .HasColumnName("MobStateChangedPlayerReplayEvent_OldState");
-
-                            t.Property("Target")
-                                .HasColumnName("MobStateChangedPlayerReplayEvent_Target");
-                        });
 
                     b.HasDiscriminator().HasValue("MobStateChangedPlayerReplayEvent");
                 });
@@ -734,57 +667,12 @@ namespace Server.Migrations
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
 
-                    b.Property<string>("Author")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<TimeSpan>("ShareTime")
-                        .HasColumnType("interval");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.HasDiscriminator().HasValue("NewsArticlePublishedReplayEvent");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.ReplayExplosionEvent", b =>
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
-
-                    b.Property<bool>("CanCreateVacuum")
-                        .HasColumnType("boolean");
-
-                    b.Property<float>("Intensity")
-                        .HasColumnType("real");
-
-                    b.Property<int>("MaxTileBreak")
-                        .HasColumnType("integer");
-
-                    b.Property<float>("MaxTileIntensity")
-                        .HasColumnType("real");
-
-                    b.Property<float>("Slope")
-                        .HasColumnType("real");
-
-                    b.Property<string>("Source")
-                        .HasColumnType("text");
-
-                    b.Property<float>("TileBreakScale")
-                        .HasColumnType("real");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.ToTable("ReplayDbEvent", t =>
-                        {
-                            t.Property("Type")
-                                .HasColumnName("ReplayExplosionEvent_Type");
-                        });
 
                     b.HasDiscriminator().HasValue("ReplayExplosionEvent");
                 });
@@ -793,18 +681,6 @@ namespace Server.Migrations
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
 
-                    b.Property<int?>("Countdown")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Source")
-                        .HasColumnType("text");
-
-                    b.ToTable("ReplayDbEvent", t =>
-                        {
-                            t.Property("Source")
-                                .HasColumnName("ShuttleReplayEvent_Source");
-                        });
-
                     b.HasDiscriminator().HasValue("ShuttleReplayEvent");
                 });
 
@@ -812,38 +688,12 @@ namespace Server.Migrations
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
 
-                    b.Property<string>("Buyer")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Cost")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Item")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.HasDiscriminator().HasValue("StoreBuyReplayEvent");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.TechnologyUnlockedReplayEvent", b =>
                 {
                     b.HasBaseType("ReplayBrowser.Data.Models.ReplayDbEvent");
-
-                    b.Property<string>("Discipline")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Player")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Tier")
-                        .HasColumnType("integer");
 
                     b.HasDiscriminator().HasValue("TechnologyUnlockedReplayEvent");
                 });
@@ -948,6 +798,23 @@ namespace Server.Migrations
                         .IsRequired();
 
                     b.Navigation("Replay");
+                });
+
+            modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.GenericPlayerEvent", b =>
+                {
+                    b.HasOne("ReplayBrowser.Models.Ingested.ReplayEvents.ReplayEventPlayer", "Origin")
+                        .WithMany()
+                        .HasForeignKey("OriginId");
+
+                    b.HasOne("ReplayBrowser.Models.Ingested.ReplayEvents.ReplayEventPlayer", "Target")
+                        .WithMany()
+                        .HasForeignKey("TargetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Origin");
+
+                    b.Navigation("Target");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Data.Models.Account.Account", b =>

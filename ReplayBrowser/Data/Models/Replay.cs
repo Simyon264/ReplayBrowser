@@ -1,10 +1,12 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Reflection;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NpgsqlTypes;
 using ReplayBrowser.Models;
 using ReplayBrowser.Models.Ingested;
+using ReplayBrowser.Models.Ingested.ReplayEvents;
 using YamlDotNet.Serialization;
 
 namespace ReplayBrowser.Data.Models;
@@ -35,13 +37,17 @@ public class Replay : IEntityTypeConfiguration<Replay>
     public int UncompressedSize { get; set; }
     public required string EndTime { get; set; }
 
+    public List<ReplayDbEvent>? Events { get; set; }
+
     [JsonIgnore]
+    [Newtonsoft.Json.JsonIgnore]
     public NpgsqlTsVector RoundEndTextSearchVector { get; set; } = null!;
 
     /// <summary>
     /// Determines if a replay is marked as a favorite.
     /// </summary>
     [JsonIgnore]
+    [Newtonsoft.Json.JsonIgnore]
     [NotMapped]
     public bool IsFavorite { get; set; }
 
@@ -86,7 +92,7 @@ public class Replay : IEntityTypeConfiguration<Replay>
         };
     }
 
-    public static Replay FromYaml(YamlReplay replay, string link)
+    public static Replay FromYaml(YamlReplay replay, List<ReplayDbEvent>? replayEvents, string link)
     {
         var participants = replay.RoundEndPlayers?
             .GroupBy(p => p.PlayerGuid)
@@ -114,7 +120,9 @@ public class Replay : IEntityTypeConfiguration<Replay>
             FileCount = replay.FileCount,
             Size = replay.Size,
             UncompressedSize = replay.UncompressedSize,
-            EndTime = replay.EndTime
+            EndTime = replay.EndTime,
+
+            Events = replayEvents
         };
     }
 

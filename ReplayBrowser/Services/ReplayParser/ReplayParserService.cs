@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO.Compression;
+using System.Reflection;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using ReplayBrowser.Data;
@@ -8,6 +9,7 @@ using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
 using ReplayBrowser.Models;
 using ReplayBrowser.Models.Ingested;
+using ReplayBrowser.Models.Ingested.ReplayEvents;
 using ReplayBrowser.Services.ReplayParser.Providers;
 using Serilog;
 using YamlDotNet.Serialization;
@@ -191,8 +193,16 @@ public class ReplayParserService : IHostedService, IDisposable
                             }
                             catch (FormatException)
                             {
-                                var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                                parsedReplay.Date = date.ToUniversalTime();
+                                try
+                                {
+                                    var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                                    parsedReplay.Date = date.ToUniversalTime();
+                                }
+                                catch (FormatException e)
+                                {
+                                    // fuck this
+                                    parsedReplay.Date = DateTime.UtcNow;
+                                }
                             }
                         }
 
@@ -270,17 +280,42 @@ public class ReplayParserService : IHostedService, IDisposable
             throw new Exception("Replay is not valid.");
         }
 
-        var replay = Replay.FromYaml(yamlReplay, replayLink);
+        var eventFile = zipArchive.GetEntry("_replay/events.yml");
+        List<ReplayDbEvent>? replayEvents = null;
+        if (eventFile != null)
+        {
+            var eventStream = eventFile.Open();
+            var eventReader = new StreamReader(eventStream);
+            var eventDeserializerBuilder = new DeserializerBuilder()
+                .IgnoreUnmatchedProperties()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance);
+
+            var eventTypes = Assembly.GetExecutingAssembly()
+                .GetTypes()
+                .Where(t => t.IsSubclassOf(typeof(ReplayDbEvent)) && !t.IsAbstract);
+
+            foreach (var type in eventTypes)
+            {
+                var tagName = $"!type:{type.Name}";
+                eventDeserializerBuilder = eventDeserializerBuilder.WithTagMapping(tagName, type);
+            }
+
+            var eventDeserializer = eventDeserializerBuilder.Build();
+
+            replayEvents = eventDeserializer.Deserialize<List<ReplayDbEvent>?>(eventReader);
+        }
+
+        var replay = Replay.FromYaml(yamlReplay, replayEvents, replayLink);
 
         var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
         if (replay.ServerId == Constants.UnsetServerId)
         {
-            replay.ServerId = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerId;
+            replay.ServerId = replayUrls.FirstOrDefault(x => replay.Link!.Contains(x.Url))?.FallBackServerId ?? string.Empty;
         }
 
         if (replay.ServerName == Constants.UnsetServerName)
         {
-            replay.ServerName = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerName;
+            replay.ServerName = replayUrls.FirstOrDefault(x => replay.Link!.Contains(x.Url))?.FallBackServerName ?? string.Empty;
         }
 
         if (yamlReplay.RoundEndPlayers == null)
@@ -315,7 +350,23 @@ public class ReplayParserService : IHostedService, IDisposable
     public StorageUrl GetStorageUrlFromReplayLink(string replayLink)
     {
         var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
-        var fetched = replayUrls.First(x => replayLink.Contains(x.Url));
+        var fetched = replayUrls.FirstOrDefault(x => replayLink.Contains(x.Url));
+        if (fetched == null)
+        {
+            var fallback = new StorageUrl
+            {
+                Provider = "Unknown",
+                Url = replayLink,
+                ReplayRegex = "",
+                ServerNameRegex = "",
+                FallBackServerId = Constants.UnsetServerId,
+                FallBackServerName = Constants.UnsetServerName,
+            };
+
+            fallback.CompileRegex();
+            return fallback;
+        }
+
         fetched.CompileRegex();
         return fetched;
     }

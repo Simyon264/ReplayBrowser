@@ -77,13 +77,13 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Players</h5>
-                     @if(RequestModal != null)
-                     {
-                         <button class="btn-close" data-bs-target="#@RequestModal" data-bs-toggle="modal"></button>
-                     } else
-                     {
-                         <button class="btn-close" data-bs-dismiss="modal"></button>
-                     }
+                    @if(RequestModal != null)
+                    {
+                        <button class="btn-close" data-bs-target="#@RequestModal" data-bs-toggle="modal"></button>
+                    } else
+                    {
+                        <button class="btn-close" data-bs-dismiss="modal"></button>
+                    }
                 </div>
                 <div class="modal-body">
                     @if (FullReplay is not null && FullReplay.RoundParticipants is not null)
@@ -112,12 +112,52 @@
             </div>
         </div>
     </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTimeline-@Replay.Id" id="buttonTimeline-@Replay.Id">
+        View Timeline
+    </button>
+    <div class="modal fade modal-lg" id="modalTimeline-@Replay.Id" tabindex="-1" aria-labelledby="modalTimeline-@Replay.Id" aria-hidden="true" style="--bs-modal-width: 2000px;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Events</h5>
+                    @if(RequestModal != null)
+                    {
+                        <button class="btn-close" data-bs-target="#@RequestModal" data-bs-toggle="modal"></button>
+                    } else
+                    {
+                        <button class="btn-close" data-bs-dismiss="modal"></button>
+                    }
+                </div>
+                <div class="modal-body">
+                    <div>
+                        <div id="timeline-@Replay.Id"></div>
+                        <div id="timelineDetails-@Replay.Id"></div>
+                    </div>
+                </div>
+                @if(RequestModal != null)
+                {
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-bs-target="#@RequestModal" data-bs-toggle="modal">
+                            Return
+                        </button>
+                    </div>
+                } else
+                {
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-bs-dismiss="modal">
+                            Close
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
 
     <a href="@Replay.Link" target="_blank" class="btn btn-primary">Download</a>
 
 
-    @if (FullReplay is null || FullReplay.RoundParticipants is null || FullReplay.RoundEndText is null) {
-    <script>
+    @if (FullReplay is null || FullReplay.RoundParticipants is null || FullReplay.RoundEndText is null || FullReplay.Events is null) {
+        <script>
     document.addEventListener('DOMContentLoaded', function() {
         const modalPlayers = document.getElementById("buttonPlayers-@Replay.Id")
         modalPlayers.addEventListener('click', function() {
@@ -135,6 +175,14 @@
             // Do an HTTP request to get the replay
             if (endTextElement.innerHTML == "Loading...")
                 loadDetails(players, endTextElement, @Replay.Id);
+        });
+
+        const modalTimeline = document.getElementById("buttonTimeline-@Replay.Id")
+        modalTimeline.addEventListener('click', function() {
+            const timeline = document.getElementById("timeline-@Replay.Id");
+            const timelineDetails = document.getElementById("timelineDetails-@Replay.Id");
+            if (timeline.innerHTML == "")
+                loadTimeline(timeline, @Replay.Id, timelineDetails);
         });
     });
     </script>

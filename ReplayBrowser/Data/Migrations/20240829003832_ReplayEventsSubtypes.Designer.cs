@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using ReplayBrowser.Data;
 namespace Server.Migrations
 {
     [DbContext(typeof(ReplayDbContext))]
-    partial class ReplayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240829003832_ReplayEventsSubtypes")]
+    partial class ReplayEventsSubtypes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -557,6 +560,39 @@ namespace Server.Migrations
                         .IsUnique();
 
                     b.ToTable("ReplayParticipants");
+                });
+
+            modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.ReplayEventPlayer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string[]>("AntagPrototypes")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string[]>("JobPrototypes")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<Guid?>("PlayerGuid")
+                        .IsRequired()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PlayerIcName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PlayerOocName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReplayEventPlayer");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Models.Ingested.ReplayEvents.EventTypes.AlertLevelChangedReplayEvent", b =>

@@ -34,6 +34,12 @@ public class WebhookService
         {
             foreach (var webhook in account.Webhooks)
             {
+                // URL check, don't send if empty, doesn't parse as URL or points to localhost
+                if (string.IsNullOrWhiteSpace(webhook.Url) || !Uri.TryCreate(webhook.Url, UriKind.Absolute, out var url) || url.Host == "localhost")
+                {
+                    continue;
+                }
+
                 var servers = webhook.Servers.Split(',');
                 if (!servers.Contains(parsedReplay.ServerName) && !string.IsNullOrWhiteSpace(webhook.Servers))
                 {

@@ -200,6 +200,27 @@ public class ReplayHelper
         return await _context.Replays.CountAsync();
     }
 
+    /// <summary>
+    /// Fetches a replay from the database including the events. WARNING: SHIT WILL TAKE AGES.
+    /// </summary>
+    /// <returns>A way too large of an object</returns>
+    public async Task<Replay?> GetFullReplay(int id, AuthenticationState authstate)
+    {
+        var replay = await _context.Replays
+            .AsNoTracking()
+            .Include(r => r.RoundParticipants!)
+            .ThenInclude(p => p.Players)
+            .Include(r => r.Events)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (replay == null)
+            return null;
+
+        var caller = await _accountService.GetAccount(authstate);
+        replay = FilterReplay(replay, caller);
+        return replay;
+    }
+
     public async Task<Replay?> GetReplay(int id, AuthenticationState authstate)
     {
         var replay = await _context.Replays
