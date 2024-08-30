@@ -230,7 +230,12 @@ public class AccountController : Controller
                 var historyEntry = archive.CreateEntry("history.json");
                 using (var entryStream = historyEntry.Open())
                 {
-                    await JsonSerializer.SerializeAsync(entryStream, user.History);
+                    await JsonSerializer.SerializeAsync(entryStream, user.History, new JsonSerializerOptions()
+                    {
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                        ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                        WriteIndented = true
+                    });
                 }
 
                 user.History = [];
@@ -238,9 +243,11 @@ public class AccountController : Controller
                 var baseEntry = archive.CreateEntry("user.json");
                 using (var entryStream = baseEntry.Open())
                 {
-                    await JsonSerializer.SerializeAsync(entryStream, user, new JsonSerializerOptions
+                    await JsonSerializer.SerializeAsync(entryStream, user, new JsonSerializerOptions()
                     {
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                        ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                        WriteIndented = true
                     });
                 }
             }
@@ -256,10 +263,11 @@ public class AccountController : Controller
                 var replayEntry = archive.CreateEntry($"replay-{replay.Id}.json");
                 using (var entryStream = replayEntry.Open())
                 {
-                    await JsonSerializer.SerializeAsync(entryStream, replay, new JsonSerializerOptions
+                    await JsonSerializer.SerializeAsync(entryStream, replay, new JsonSerializerOptions()
                     {
                         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                        ReferenceHandler = ReferenceHandler.IgnoreCycles
+                        ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                        WriteIndented = true
                     });
                 }
             }
@@ -424,7 +432,12 @@ public class AccountController : Controller
             var historyEntry = archive.CreateEntry("history.json");
             using (var entryStream = historyEntry.Open())
             {
-                await JsonSerializer.SerializeAsync(entryStream, user.History);
+                await JsonSerializer.SerializeAsync(entryStream, user.History, new JsonSerializerOptions()
+                {
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                    WriteIndented = true
+                });
             }
 
             user.History = [];
@@ -434,7 +447,9 @@ public class AccountController : Controller
             {
                 await JsonSerializer.SerializeAsync(entryStream, user, new JsonSerializerOptions
                 {
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                    WriteIndented = true
                 });
             }
         }
