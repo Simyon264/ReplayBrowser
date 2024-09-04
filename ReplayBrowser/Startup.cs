@@ -230,12 +230,6 @@ public class Startup
             }
         }
 
-        app.Use((context, next) =>
-        {
-            context.Request.Scheme = "https";
-            return next();
-        });
-
 #if RELEASE
         app.UseExceptionHandler("/error", createScopeForErrors: true);
         app.UseHsts();
@@ -248,9 +242,11 @@ public class Startup
         app.UseHttpsRedirection();
 #endif
 
-        app.UseStaticFiles();
-
+        app.UseForwardedHeaders();
         app.UseRouting();
+        app.UseCors();
+
+        app.UseStaticFiles();
 
         app.UseAuthentication();
         app.UseAuthorization();
@@ -270,10 +266,5 @@ public class Startup
                 name: "default",
                 pattern: "api/{controller=Home}/{action=Index}/{id?}");
         });
-
-        app.UseHttpsRedirection();
-        app.UseForwardedHeaders();
-        app.UseRouting();
-        app.UseCors();
     }
 }
