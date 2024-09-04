@@ -202,8 +202,6 @@ public class ReplayHelper
 
     public async Task<Replay?> GetReplay(string @operator, string server, int id, AuthenticationState authstate)
     {
-        Log.Information($"Looking for replay: {@operator}, {server}, {id}");
-
         var replay = await _context.Replays
             .AsNoTracking()
             .Include(r => r.RoundParticipants!)
