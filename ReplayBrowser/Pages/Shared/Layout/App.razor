@@ -17,6 +17,33 @@
 
     <script src="_framework/blazor.web.js" autostart="false"></script>
 
+    <style>
+        /* For ReplayDisplay cards description */
+        dl {
+            display: grid;
+            grid-gap: 10px 16px;
+            grid-template-columns: auto max-content;
+        }
+
+        dt {
+            grid-column-start: 1;
+        }
+
+        dt:not(:first-of-type)::before {
+            content: "";
+            position: absolute;
+            left: 0.5em;
+            right: 0.5em;
+            margin-top: -5px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        dd {
+            margin: 0;
+            grid-column-start: 2;
+        }
+    </style>
+
     <HeadOutlet/>
 </head>
 

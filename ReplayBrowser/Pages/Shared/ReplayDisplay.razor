@@ -11,36 +11,45 @@
 @inject ReplayParserService ReplayParserService
 
 <div class="card" style="width: 18rem; margin-top: 1rem">
-    <div class="card-body">
-        <h5 class="card-title">@_nameFormatted</h5>
-        @if (ReplayData.Map == null)
-        {
-        <p>Maps: @string.Join(", ", ReplayData.Maps!)</p>
-        }
-        else
-        {
-        <p>Map: @ReplayData.Map</p>
-        }
-        <p class="card-text">Gamemode: @ReplayData.Gamemode</p>
+    <div class="card-header">
+        <h5 class="card-title m-0 d-flex"><span class="flex-fill text-truncate me-2">@(ReplayData.ServerName ?? ReplayData.ServerId ?? "Unknown!")</span><span>#@ReplayData.RoundId</span></h5>
     </div>
-    <div class="card-footer">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#r-@ReplayData.Id" style="margin-right: 0.1rem">
-            View replay
-        </button>
-        <a class="btn btn-secondary" style="margin-right: 0.1rem" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
-
-        <button class="btn btn-outline-danger" style="float: right; margin-top: 10px; margin-right: 0;" id="favorite-button-@ReplayData.Id" onclick="FavouriteReplay(@ReplayData.Id, @ReloadOnFavourite.ToString().ToLower())">
-            @if (ReplayData.IsFavorite)
+    <div class="card-body">
+        <dl class="replay-description">
+            <dt>Date</dt><dd>@ReplayData.Date</dd>
+            <dt>Gamemode</dt><dd>@ReplayData.Gamemode</dd>
+            @if (ReplayData.Map == null)
             {
-                <i class="fas fa-star"></i>
-                <p>Remove from favorites</p>
+            <dt>Maps</dt>
+                @foreach (var map in ReplayData.Maps!) {
+                    <dd>@map</dd>
+                }
             }
             else
             {
-                <i class="far fa-star"></i>
-                <p>Add to favorites</p>
+            <dt>Map</dt><dd>@ReplayData.Map</dd>
             }
-        </button>
+        </dl>
+    </div>
+    <div class="card-footer d-flex">
+        <div class="btn-group flex-fill" role="group" aria-label="Basic example">
+            <a class="btn btn-primary flex-fill" type="button" href="/replay/@ReplayData.ServerId/@ReplayData.ServerName/@ReplayData.RoundId" data-bs-toggle="modal" data-bs-target="#r-@ReplayData.Id">
+                View replay
+            </a>
+            <a class="btn btn-secondary flex-grow-0" href="/replay/@ReplayData.ServerId/@ReplayData.ServerName/@ReplayData.RoundId" target="_blank">
+                <i class="fas fa-external-link-alt" title="Open in new tab"></i>
+            </a>
+            <button class="btn m-0 px-2 btn-outline-secondary text-warning flex-grow-0" id="favorite-button-@ReplayData.Id" onclick="FavouriteReplay(@ReplayData.Id, @ReloadOnFavourite.ToString().ToLower())">
+                @if (ReplayData.IsFavorite)
+                {
+                    <i class="fas fa-star" title="Remove from favorites"></i>
+                }
+                else
+                {
+                    <i class="far fa-star" title="Add to favorites"></i>
+                }
+            </button>
+        </div>
     </div>
 </div>
 <div class="modal fade modal-lg" id="@ModalId" tabindex="-1" aria-labelledby="@ModalId" aria-hidden="true">
@@ -51,7 +60,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <a class="btn btn-primary" href="/replay/@ReplayData.Id" target="_blank">View in new tab</a>
+                <a class="btn btn-primary" href="/replay/@ReplayData.ServerId/@ReplayData.ServerName/@ReplayData.RoundId" target="_blank">View in new tab</a>
             </div>
         </div>
     </div>
@@ -70,38 +79,8 @@
     protected override async void OnInitialized()
     {
         await base.OnInitializedAsync();
-        // Get the date and server name of the replay using regex
-        var fileName = Path.GetFileName(ReplayData.Link);
-        if (fileName == null)
-        {
-            return;
-        }
-        var storageUrl = ReplayParserService.GetStorageUrlFromReplayLink(ReplayData.Link);
-        var matchName = storageUrl.ServerNameRegexCompiled.Match(fileName);
-        var matchDate = storageUrl.ReplayRegexCompiled.Match(fileName);
-        if (matchName.Success && matchDate.Success)
-        {
-            if (string.IsNullOrWhiteSpace(matchName.Groups[1].Value))
-            {
-                // wut? Fallback to server id
-                _nameFormatted = $"{ReplayData.ServerId} - {matchDate.Groups[1].Value}";
-            }
-            else
-            {
-                _nameFormatted = $"{matchName.Groups[1].Value} - {matchDate.Groups[1].Value}";
-            }
-        }
-        else
-        {
-            if (ReplayData.ServerName != null)
-            {
-                _nameFormatted = ReplayData.ServerName;
-            }
-            else
-            {
-                _nameFormatted = ReplayData.ServerId;
-            }
-        }
+
+        _nameFormatted =  $"{ReplayData.ServerName ?? ReplayData.ServerId} #{ReplayData!.RoundId}";
 
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var account = await AccountService.GetAccount(authState);

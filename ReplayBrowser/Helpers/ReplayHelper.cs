@@ -200,13 +200,30 @@ public class ReplayHelper
         return await _context.Replays.CountAsync();
     }
 
+    public async Task<Replay?> GetReplay(string @operator, string server, int id, AuthenticationState authstate)
+    {
+        var replay = await _context.Replays
+            .AsNoTracking()
+            .Include(r => r.RoundParticipants!)
+            .ThenInclude(p => p.Players)
+            .OrderByDescending(r => r.Duration)
+            .FirstOrDefaultAsync(r => r.ServerId == @operator && r.ServerName == server && r.RoundId == id);
+
+        if (replay == null)
+            return null;
+
+        var caller = await _accountService.GetAccount(authstate);
+        replay = FilterReplay(replay, caller);
+        return replay;
+    }
+
     public async Task<Replay?> GetReplay(int id, AuthenticationState authstate)
     {
         var replay = await _context.Replays
             .AsNoTracking()
             .Include(r => r.RoundParticipants!)
             .ThenInclude(p => p.Players)
-            .FirstOrDefaultAsync(r => r.Id == id);
+            .SingleOrDefaultAsync(r => r.Id == id);
 
         if (replay == null)
             return null;

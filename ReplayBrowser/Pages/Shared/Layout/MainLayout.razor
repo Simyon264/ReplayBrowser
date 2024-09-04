@@ -159,11 +159,11 @@
                     if (isFavourited) {
                         icon.removeClass('far');
                         icon.addClass('fas');
-                        button.children().last().text('Remove from favourites');
+                        button.children().last().attr("title", 'Remove from favourites');
                     } else {
                         icon.removeClass('fas');
                         icon.addClass('far');
-                        button.children().last().text('Add to favorites');
+                        button.children().last().attr("title", 'Add to favorites');
                     }
 
                     if (reloadOnComplete) {

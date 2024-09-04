@@ -1,0 +1,61 @@
+﻿@page "/replay/{id:int}"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data.Models
+@using ReplayBrowser.Helpers
+@using ReplayBrowser.Pages.Shared
+@using ReplayBrowser.Services.ReplayParser
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ReplayHelper ReplayHelper
+@inject ReplayParserService ReplayParserService
+@inject NavigationManager NavigationManager
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Replay viewer</PageTitle>
+@if (Replay == null)
+{
+    <ReplayBrowser.Pages.Shared.Layout.ErrorCode Code=404 />
+}
+else
+{
+    <ReplayDetails FullReplay="Replay" />
+
+    <MetaDataSpecifer
+        Title="@GetTitle()"
+        Description="@GetDescription()"
+    />
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    public Replay? Replay { get; set; }
+
+    protected string GetTitle()
+    {
+        // Not null because the function is used only when Replay IS NOT null
+        return $"Round #{Replay!.RoundId} - {Replay.ServerName ?? Replay.ServerId} - {Replay.Date}";
+    }
+
+    protected string GetDescription()
+    {
+        return "Round " + Replay!.RoundId + " played on " + Replay.Map + " on " + Replay.Date?.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    protected virtual Task<Replay?> GetReplay(AuthenticationState? state)
+    {
+        return ReplayHelper.GetReplay((int) Id!, state!);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Replay = await GetReplay(await AuthenticationStateProvider.GetAuthenticationStateAsync());
+
+        if (Replay is not null)
+            return;
+
+        HttpContextAccessor.HttpContext!.Response.StatusCode = 404;
+    }
+}

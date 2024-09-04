@@ -1,0 +1,32 @@
+﻿@page "/replay/{operator}/{server}/{RoundId:int}"
+@inherits ViewReplayBase
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using ReplayBrowser.Data.Models
+@using ReplayBrowser.Helpers
+@using ReplayBrowser.Pages.Shared
+@using ReplayBrowser.Services.ReplayParser
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ReplayHelper ReplayHelper
+@inject ReplayParserService ReplayParserService
+@inject NavigationManager NavigationManager
+
+@{
+    base.BuildRenderTree(__builder);
+}
+
+@code {
+    [Parameter]
+    required public string Operator { get; set; }
+    [Parameter]
+    required public string Server { get; set; }
+    [Parameter]
+    required public int RoundId { get; set; }
+
+    protected override Task<Replay?> GetReplay(AuthenticationState? state)
+    {
+        return ReplayHelper.GetReplay(Operator, Server, RoundId, state!);
+    }
+}
