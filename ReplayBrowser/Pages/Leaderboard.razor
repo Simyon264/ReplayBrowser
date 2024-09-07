@@ -35,6 +35,8 @@ else
 {
     var queryDictionary = System.Web.HttpUtility.ParseQueryString(new Uri(NavigationManager.Uri).Query);
     var username = queryDictionary["username"] ?? "";
+    var entries = int.Parse(queryDictionary["entries"] ?? "10"); // This can error, but we don't care.
+
     // 0, 1, 2, 3, 4, 5 = Last24Hours, Last7Days, Last30Days, Last90Days, Last365Days, AllTime
     <div class="btn-group" role="group" aria-label="Time range selection" style="margin-bottom: 10px">
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(0)">Last 24 hours</button>
@@ -45,7 +47,13 @@ else
         <button type="button" class="btn btn-secondary" onclick="changeTimeRange(5)">All time</button>
     </div>
 
-    // Need a simple search bar to filter for own name
+    <p>Showing leaderboards for the time range: @((RangeOption)int.Parse(queryDictionary["timeRange"] ?? "5"))</p>
+
+    <div class="input-group mb-3">
+        <span class="input-group-text" id="basic-addon1">Entries to show</span>
+        <input type="number" id="entries" class="form-control" placeholder="10" aria-label="Entries" aria-describedby="basic-addon1" value="@entries">
+    </div>
+
     <div class="search-bar">
         <div class="d-flex ms-auto">
             <input
@@ -173,6 +181,7 @@ else
         var uri = new URL(window.location.href);
         uri.searchParams.set("timeRange", timeRange);
         uri.searchParams.set("username", document.getElementById("search").value);
+        uri.searchParams.set("entries", document.getElementById("entries").value);
         // Get the selected servers
         let selectedServers = Array.from(document.getElementsByClassName("server-checkbox"))
             .filter(x => x.checked)
@@ -191,6 +200,7 @@ else
         var uri = new URL(window.location.href);
         uri.searchParams.set("timeRange", uri.searchParams.get("timeRange") || 5);
         uri.searchParams.set("username",search);
+        uri.searchParams.set("entries", document.getElementById("entries").value);
         let selectedServers = Array.from(document.getElementsByClassName("server-checkbox"))
             .filter(x => x.checked)
             .map(x => x.value)
@@ -244,6 +254,7 @@ else
         // Need to convert the timerange number to the enum
         var timeRangeEnum = (RangeOption) timeRange;
         var username = queryDictionary["username"];
+        var entries = int.Parse(queryDictionary["entries"] ?? "10");
 
         if (username != null)
         {
@@ -268,7 +279,7 @@ else
             }
 
             var selectedServersArray = selectedServers.Split(',');
-            leaderboard = await LeaderboardService.GetLeaderboard(timeRangeEnum, username, selectedServersArray, authState);
+            leaderboard = await LeaderboardService.GetLeaderboard(timeRangeEnum, username, selectedServersArray, authState, entries);
         }
         catch (UnauthorizedAccessException)
         {

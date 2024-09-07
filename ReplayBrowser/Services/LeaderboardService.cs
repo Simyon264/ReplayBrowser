@@ -52,7 +52,7 @@ public class LeaderboardService : IHostedService, IDisposable
         foreach (var rangeOption in Enum.GetValues<RangeOption>())
         {
             var anonymousAuth = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-            GetLeaderboard(rangeOption, null, [], anonymousAuth, false).Wait();
+            GetLeaderboard(rangeOption, null, [], anonymousAuth, 10, false).Wait();
         }
 
         sw.Stop();
@@ -70,7 +70,7 @@ public class LeaderboardService : IHostedService, IDisposable
         _timer?.Dispose();
     }
 
-    public async Task<LeaderboardData> GetLeaderboard(RangeOption rangeOption, string? username, string[]? servers, AuthenticationState authenticationState, bool logAction = true)
+    public async Task<LeaderboardData> GetLeaderboard(RangeOption rangeOption, string? username, string[]? servers, AuthenticationState authenticationState, int entries = 10, bool logAction = true)
     {
         if (servers == null || servers.Length == 0)
         {
@@ -121,7 +121,7 @@ public class LeaderboardService : IHostedService, IDisposable
 
         var serversCacheKey = string.Join("-", servers);
 
-        var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey + "-" + serversCacheKey;
+        var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey + "-" + serversCacheKey + "-" + entries;
         if (_cache.TryGetValue(cacheKey, out LeaderboardData? leaderboardData))
         {
             return leaderboardData!;
@@ -387,7 +387,7 @@ public class LeaderboardService : IHostedService, IDisposable
         // Need to calculate the position of every player in the leaderboard.
         foreach (var leaderboard in leaderboards)
         {
-            var leaderboardResult = await GenerateLeaderboard(leaderboard.Key, leaderboard.Key, leaderboard.Value, usernameGuid, leaderboard.Value.Limit);
+            var leaderboardResult = await GenerateLeaderboard(leaderboard.Key, leaderboard.Key, leaderboard.Value, usernameGuid, entries);
             leaderboards[leaderboard.Key].Data = leaderboardResult.Data;
         }
 
