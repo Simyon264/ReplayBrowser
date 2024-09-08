@@ -1,0 +1,60 @@
+﻿@page "/faq"
+@using ReplayBrowser.Pages.Shared
+@using Microsoft.AspNetCore.Components.Web
+<h3>FAQ</h3>
+
+<MetaDataSpecifer
+    Title="FAQ"
+    Description="Frequently asked questions about the replays and this website."
+    IncludeImage="true"
+/>
+
+<PageTitle>FAQ</PageTitle>
+
+<p>
+    Here you can find answers to some frequently asked questions.
+    If you have a question that is not answered here, feel free to ask in the <a href="/contact">contact</a> section.
+</p>
+
+<div class="accordion" id="accordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                How do I run a replay?
+            </button>
+        </h2>
+        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordion">
+            <div class="accordion-body">
+                <div class="card card-body">
+                    <p>
+                        To run a replay, you first download it.
+                        Afterwards, you open the launcher and click the "Home" tab.
+                        From there, you click the "Run content bundle/replay" button and select the replay you downloaded.
+                        Your replay will then start to load (this may take a while).
+                    </p>
+                    <!-- visual tutorial here -->
+                    <img src="/assets/img/faq/replay_run_1.png" alt="Run replay button">
+                    <img src="/assets/img/faq/replay_run_2.png" alt="Select replay">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                A server is missing!
+            </button>
+        </h2>
+        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordion">
+            <div class="accordion-body">
+                If a server that has replays is missing from the replay browser, please contact me and I will add it, given we get permission from the server owner.
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    img {
+        margin-bottom: 1rem;
+    }
+</style>
