@@ -12,7 +12,7 @@ public class Program
     {
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
-            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Hour, fileSizeLimitBytes: null)
+            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Infinite, fileSizeLimitBytes: null)
             .CreateLogger();
 
         try
