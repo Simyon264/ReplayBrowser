@@ -6,6 +6,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Configurations>Debug;Release;Testing</Configurations>
         <Platforms>AnyCPU</Platforms>
+        
+        <SolutionDir Condition=" '$(SolutionDir)' == '' ">$(MSBuildThisFileDirectory)..\</SolutionDir>
     </PropertyGroup>
 
     <ItemGroup>
@@ -33,8 +35,14 @@
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
         <PackageReference Include="YamlDotNet" Version="15.1.1" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.4" />
+
+        <ToolsFolder Include="$(SolutionDir)Tools\**\*.*" />
     </ItemGroup>
 
+    <Target Name="CopyToolsFolder" AfterTargets="Build">
+        <Copy SourceFiles="@(ToolsFolder)" DestinationFolder="$(OutputPath)Tools\%(RecursiveDir)" />
+    </Target>
+    
     <ItemGroup>
       <_ContentIncludedByDefault Remove="wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css" />
       <_ContentIncludedByDefault Remove="wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css.map" />
