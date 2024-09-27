@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Net.Http.Headers;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
@@ -33,6 +34,11 @@ public class ReplayParserService : IHostedService, IDisposable
     private readonly IConfiguration _configuration;
     private readonly IServiceScopeFactory _factory;
 
+
+    /// <summary>
+    /// In this case we wont just add it to the parsed replays, so it redownloads it every time.
+    /// </summary>
+    private const string YamlSerializerError = "Exception during deserialization";
 
     public ReplayParserService(IConfiguration configuration, IServiceScopeFactory factory)
     {
@@ -163,18 +169,46 @@ public class ReplayParserService : IHostedService, IDisposable
                         });
                         client.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
                         Log.Information("Downloading " + replay);
-                        var stream = await client.GetStreamAsync(replay, progress, token);
-                        completed++;
-                        Details = $"{completed}/{total}";
+                        var fileSize = await client.GetFileSizeAsync(replay);
+                        // Check if the server supports range requests.
+                        var supportsRange = (await client.SupportsRangeRequests(replay) && fileSize != -1);
+
                         Replay? parsedReplay = null;
                         try
                         {
-                            parsedReplay = ParseReplay(stream, replay);
+                            if (supportsRange)
+                            {
+                                try
+                                {
+                                    // The server supports ranged processing!
+                                    string[] files = ["_replay/replay_final.yml"];
+                                    var extractedFiles = await ZipDownloader.ExtractFilesFromZipAsync(replay, files);
+                                    completed++;
+                                    Details = $"{completed}/{total}";
+                                    parsedReplay = FinalizeReplayParse(new StreamReader(extractedFiles["_replay/replay_final.yml"]), replay);
+                                }
+                                catch (Exception e)
+                                {
+                                    Log.Error(e, "Error while downloading " + replay);
+                                    // fuck it, we ball and try the normal method
+                                    supportsRange = false;
+                                }
+                            }
+
+                            if (!supportsRange)
+                            {
+                                var stream = await client.GetStreamAsync(replay, progress, token);
+                                completed++;
+                                Details = $"{completed}/{total}";
+                                parsedReplay = ParseReplay(stream, replay);
+                            }
                         }
                         catch (Exception e)
                         {
                             Log.Error(e, "Error while parsing " + replay);
-                            await AddParsedReplayToDb(replay); // Prevent circular download eating up all resources.
+                            if (e.Message.Contains(YamlSerializerError)) return;
+
+                            await AddParsedReplayToDb(replay);
                             return;
                         }
                         // See if the link matches the date regex, if it does set the date
@@ -259,12 +293,17 @@ public class ReplayParserService : IHostedService, IDisposable
         var replayStream = replayFile.Open();
         var reader = new StreamReader(replayStream);
 
+        return FinalizeReplayParse(reader, replayLink);
+    }
+
+    private Replay FinalizeReplayParse(StreamReader stream, string replayLink)
+    {
         var deserializer = new DeserializerBuilder()
             .IgnoreUnmatchedProperties()
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
 
-        var yamlReplay = deserializer.Deserialize<YamlReplay>(reader);
+        var yamlReplay = deserializer.Deserialize<YamlReplay>(stream);
         if (yamlReplay.Map == null && yamlReplay.Maps == null)
         {
             throw new Exception("Replay is not valid.");

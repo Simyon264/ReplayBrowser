@@ -1,7 +1,30 @@
-﻿namespace ReplayBrowser.Helpers;
+﻿using System.IO.Compression;
+
+namespace ReplayBrowser.Helpers;
 
 public static class HttpExtensions
 {
+    /// <summary>
+    /// Checks if the server supports
+    /// </summary>
+    public static async Task<bool> SupportsRangeRequests(this HttpClient client, string requestUri)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Head, requestUri);
+        var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        return response.Headers.AcceptRanges.Contains("bytes");
+    }
+
+    /// <summary>
+    /// Returns the size of the file in bytes
+    /// </summary>
+    public static async Task<long> GetFileSizeAsync(this HttpClient client, string requestUri)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Head, requestUri);
+        var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        var contentLength = response.Content.Headers.ContentLength;
+        return contentLength ?? -1;
+    }
+
     public static async Task<Stream> GetStreamAsync(this HttpClient client, string requestUri, IProgress<double> progress, CancellationToken token)
     {
         var response = await client.GetAsync(requestUri, HttpCompletionOption.ResponseHeadersRead, token);
