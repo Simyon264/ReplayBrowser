@@ -176,14 +176,7 @@ public class ReplayParserService : IHostedService, IDisposable
                         Replay? parsedReplay = null;
                         try
                         {
-                            if (!supportsRange)
-                            {
-                                var stream = await client.GetStreamAsync(replay, progress, token);
-                                completed++;
-                                Details = $"{completed}/{total}";
-                                parsedReplay = ParseReplay(stream, replay);
-                            }
-                            else
+                            if (supportsRange)
                             {
                                 try
                                 {
@@ -197,11 +190,17 @@ public class ReplayParserService : IHostedService, IDisposable
                                 catch (Exception e)
                                 {
                                     Log.Error(e, "Error while downloading " + replay);
-                                    if (e.Message.Contains(YamlSerializerError)) return;
-
-                                    await AddParsedReplayToDb(replay);
-                                    return;
+                                    // fuck it, we ball and try the normal method
+                                    supportsRange = false;
                                 }
+                            }
+
+                            if (!supportsRange)
+                            {
+                                var stream = await client.GetStreamAsync(replay, progress, token);
+                                completed++;
+                                Details = $"{completed}/{total}";
+                                parsedReplay = ParseReplay(stream, replay);
                             }
                         }
                         catch (Exception e)
