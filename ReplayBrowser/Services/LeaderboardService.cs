@@ -28,6 +28,8 @@ public class LeaderboardService : IHostedService, IDisposable
     private readonly AccountService _accountService;
     private readonly IConfiguration _configuration;
 
+    private List<Guid> RedactedAccounts;
+
     public LeaderboardService(IMemoryCache cache, Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService, IConfiguration configuration)
     {
         _cache = cache;
@@ -43,16 +45,29 @@ public class LeaderboardService : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    private void DoWork(object? state)
+    private async void DoWork(object? state)
     {
         var sw = new Stopwatch();
         sw.Start();
         Log.Information("Updating leaderboards...");
+
+        // Fetch all the redacted players, cache it
+        // Yeah this ignores whether someone's an admin and doesn't let them bypass this
+        // Better for performance though
+
+        using (var scope = _scopeFactory.CreateScope()) {
+            var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+            RedactedAccounts = await context.Accounts
+                .Where(a => a.Settings.RedactInformation)
+                .Select(a => a.Guid)
+                .ToListAsync();
+        }
+
         // Loop through every range option.
         foreach (var rangeOption in Enum.GetValues<RangeOption>())
         {
             var anonymousAuth = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-            GetLeaderboard(rangeOption, null, [], anonymousAuth, 10, false).Wait();
+            await GetLeaderboard(rangeOption, null, [], anonymousAuth, 10, false);
         }
 
         sw.Stop();
@@ -77,7 +92,8 @@ public class LeaderboardService : IHostedService, IDisposable
             servers = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!.Select(x => x.FallBackServerName).ToArray();
         }
 
-        var context = _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<ReplayDbContext>();
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
 
         Account? accountCaller = null;
         if (logAction)
@@ -419,7 +435,7 @@ public class LeaderboardService : IHostedService, IDisposable
         Leaderboard data,
         Guid targetPlayer,
         int limit = 10
-        )
+    )
     {
         var returnValue = new Leaderboard()
         {
@@ -428,7 +444,8 @@ public class LeaderboardService : IHostedService, IDisposable
             Data = new Dictionary<string, PlayerCount>()
         };
 
-        var players = data.Data.Values.ToList();
+        var players = data.Data.Values.Where(p => p.Player?.PlayerGuid is null || p.Player.PlayerGuid == Guid.Empty || !RedactedAccounts.Contains(p.Player?.PlayerGuid ?? Guid.Empty)).ToList();
+
         players.Sort((a, b) => b.Count.CompareTo(a.Count));
         for (var i = 0; i < players.Count; i++)
         {
