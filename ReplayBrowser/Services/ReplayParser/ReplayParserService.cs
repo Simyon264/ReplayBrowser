@@ -39,10 +39,6 @@ public class ReplayParserService : IHostedService, IDisposable
     /// In this case we wont just add it to the parsed replays, so it redownloads it every time.
     /// </summary>
     private const string YamlSerializerError = "Exception during deserialization";
-    /// <summary>
-    /// Holds the amount of retries for parsing a replay. If it fails 3 times, it will be added to the parsed replays.
-    /// </summary>
-    private Dictionary<string, int> _replayRetries = new();
 
     public ReplayParserService(IConfiguration configuration, IServiceScopeFactory factory)
     {
@@ -209,21 +205,7 @@ public class ReplayParserService : IHostedService, IDisposable
                         }
                         catch (Exception e)
                         {
-                            if (!_replayRetries.TryGetValue(replay, out var count))
-                            {
-                                _replayRetries.Add(replay, 1);
-                                count = 1;
-                            }
-                            _replayRetries[replay]++;
-                            Log.Error(e, "Error while parsing {Replay}. Retry count: {Count}", replay, count);
-                            if (count >= 3)
-                            {
-                                await AddParsedReplayToDb(replay);
-                                Log.Error("Failed to parse " + replay + " after 3 retries.");
-                                return;
-                            }
-                            if (e.Message.Contains(YamlSerializerError)) return;
-
+                            Log.Error(e, "Error while parsing {Replay}", replay);
                             await AddParsedReplayToDb(replay);
                             return;
                         }
