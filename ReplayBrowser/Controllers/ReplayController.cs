@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -244,6 +245,22 @@ public class ReplayController : Controller
         try
         {
             replay = _replayParserService.FinalizeReplayParse(reader, null);
+            var replayFileName = Path.GetFileName(replay.Link);
+            var storageUrl = _replayParserService.GetStorageUrlFromReplayLink(replay.Link);
+            var match = storageUrl.ReplayRegexCompiled.Match(replayFileName);
+            if (match.Success)
+            {
+                try
+                {
+                    var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy_MM_dd-HH_mm", CultureInfo.InvariantCulture);
+                    replay.Date = date.ToUniversalTime();
+                }
+                catch (FormatException)
+                {
+                    var date = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    replay.Date = date.ToUniversalTime();
+                }
+            }
         }
         catch (Exception e)
         {
