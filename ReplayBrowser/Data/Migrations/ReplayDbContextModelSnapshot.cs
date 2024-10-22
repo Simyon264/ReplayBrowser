@@ -510,6 +510,18 @@ namespace Server.Migrations
                     b.ToTable("ReplayParticipants");
                 });
 
+            modelBuilder.Entity("ReplayBrowser.Data.Models.ServerToken", b =>
+                {
+                    b.Property<string>("Token")
+                        .HasColumnType("text");
+
+                    b.HasKey("Token");
+
+                    b.HasIndex("Token");
+
+                    b.ToTable("ServerTokens");
+                });
+
             modelBuilder.Entity("ReplayBrowser.Data.Models.Account.Account", b =>
                 {
                     b.HasOne("ReplayBrowser.Data.Models.Account.AccountSettings", "Settings")

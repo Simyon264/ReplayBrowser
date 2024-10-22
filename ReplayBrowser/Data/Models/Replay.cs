@@ -86,7 +86,7 @@ public class Replay : IEntityTypeConfiguration<Replay>
         };
     }
 
-    public static Replay FromYaml(YamlReplay replay, string link)
+    public static Replay FromYaml(YamlReplay replay, string? link)
     {
         var participants = replay.RoundEndPlayers?
             .GroupBy(p => p.PlayerGuid)
@@ -96,6 +96,8 @@ public class Replay : IEntityTypeConfiguration<Replay>
                 Username = pg.First().PlayerOocName
             })
             .ToList();
+
+        link ??= replay.Link ?? throw new ArgumentException("Link is required.");
 
         return new Replay {
             Link = link,

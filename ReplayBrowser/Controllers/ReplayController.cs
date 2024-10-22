@@ -220,4 +220,50 @@ public class ReplayController : Controller
 
         return Ok(!isFavorited);
     }
+
+    [HttpPost("replay/upload")]
+    [AllowAnonymous]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> UploadReplay(
+        IFormCollection form
+    )
+    {
+        if (!CheckAuthenticationTokenServerApi())
+        {
+            return Unauthorized("No valid token provided.");
+        }
+
+        var file = form.Files.FirstOrDefault();
+        if (file == null)
+        {
+            return BadRequest("No file provided.");
+        }
+
+        var reader = new StreamReader(file.OpenReadStream());
+        Replay? replay = null;
+        try
+        {
+            replay = _replayParserService.FinalizeReplayParse(reader, null);
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
+        }
+        await _dbContext.Replays.AddAsync(replay);
+        await _dbContext.SaveChangesAsync();
+        return Ok();
+    }
+
+    private bool CheckAuthenticationTokenServerApi()
+    {
+        var token = Request.Headers.Authorization;
+        if (token.Count == 0)
+        {
+            return false;
+        }
+
+        var tokenString = token.ToString().Split(" ")[1];
+
+        return _dbContext.ServerTokens.Any(t => t.Token == tokenString);
+    }
 }
