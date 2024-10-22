@@ -5,6 +5,11 @@ namespace ReplayBrowser.Models.Ingested;
 public class YamlReplay {
     public int? RoundId { get; set; }
 
+    /// <summary>
+    /// Fallback link to the replay.
+    /// </summary>
+    public string? Link { get; set; }
+
     [YamlMember(Alias = "server_id", ApplyNamingConventions = false)]
     public required string ServerId { get; set; }
     [YamlMember(Alias = "server_name", ApplyNamingConventions = false)]

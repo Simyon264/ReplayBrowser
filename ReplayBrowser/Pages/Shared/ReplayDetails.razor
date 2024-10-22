@@ -9,6 +9,14 @@
 @if(Replay != null)
 {
     <h2>@NameFormatted</h2>
+    @if(Replay.Duration == "00:00:00.0000000")
+    {
+        // Replay is a legacy replay, show a warning
+        <div class="alert alert-warning" role="alert">
+            This replay is a legacy replay and is missing a lot of information. You may not be able to run this replay in a normal client.
+        </div>
+    }
+
     @if (Replay.Map == null)
     {
         <p>Maps: @string.Join(", ", Replay.Maps!)</p>

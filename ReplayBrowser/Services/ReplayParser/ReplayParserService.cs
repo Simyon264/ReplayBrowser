@@ -294,7 +294,7 @@ public class ReplayParserService : IHostedService, IDisposable
         return FinalizeReplayParse(reader, replayLink);
     }
 
-    private Replay FinalizeReplayParse(StreamReader stream, string replayLink)
+    public Replay FinalizeReplayParse(TextReader stream, string? replayLink)
     {
         var deserializer = new DeserializerBuilder()
             .IgnoreUnmatchedProperties()

@@ -47,4 +47,6 @@ public class ReplayDbContext : DbContext
     public DbSet<JobDepartment> JobDepartments { get; set; }
 
     public DbSet<ReplayParticipant> ReplayParticipants { get; set; }
+
+    public DbSet<ServerToken> ServerTokens { get; set; }
 }
