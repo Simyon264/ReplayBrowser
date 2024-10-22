@@ -8,6 +8,7 @@ using ReplayBrowser.Data.Models;
 using ReplayBrowser.Helpers;
 using ReplayBrowser.Services;
 using ReplayBrowser.Services.ReplayParser;
+using Serilog;
 
 namespace ReplayBrowser.Controllers;
 
@@ -20,13 +21,15 @@ public class ReplayController : Controller
     private readonly AccountService _accountService;
     private readonly ReplayHelper _replayHelper;
     private readonly ReplayParserService _replayParserService;
+    private readonly IServiceScopeFactory _factory;
 
-    public ReplayController(ReplayDbContext dbContext, AccountService accountService, ReplayHelper replayHelper, ReplayParserService replayParserService)
+    public ReplayController(ReplayDbContext dbContext, AccountService accountService, ReplayHelper replayHelper, ReplayParserService replayParserService, IServiceScopeFactory factory)
     {
         _dbContext = dbContext;
         _accountService = accountService;
         _replayHelper = replayHelper;
         _replayParserService = replayParserService;
+        _factory = factory;
     }
 
     [HttpGet("{replayId}")]
@@ -268,6 +271,17 @@ public class ReplayController : Controller
         }
         await _dbContext.Replays.AddAsync(replay);
         await _dbContext.SaveChangesAsync();
+        Log.Information("Parsed " + replay);
+        try
+        {
+            var webhookService = new WebhookService(_factory);
+            await webhookService.SendReplayToWebhooks(replay);
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "Error while sending replay to webhooks.");
+        }
+
         return Ok();
     }
 
