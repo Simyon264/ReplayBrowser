@@ -206,6 +206,8 @@
             text = text.Replace("\n", "<br>");
             text = Regex.Replace(text, boldTagPattern, boldTagReplacement);
 
+            text = text.Replace("[bullet/]", "•");
+
             ReplayEndTextFormatted = new MarkupString(text);
         }
 
