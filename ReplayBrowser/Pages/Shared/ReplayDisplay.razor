@@ -13,6 +13,7 @@
 <div class="card" style="width: 18rem; margin-top: 1rem">
     <div class="card-header">
         <h5 class="card-title m-0 d-flex"><span class="flex-fill text-truncate me-2">@(ReplayData.ServerName ?? ReplayData.ServerId ?? "Unknown!")</span><span>#@ReplayData.RoundId</span></h5>
+        <h6 class="card-subtitle mb-2 text-muted">@(ReplayData.ServerId ?? "Unknown!")</h6>
     </div>
     <div class="card-body">
         <dl class="replay-description">
