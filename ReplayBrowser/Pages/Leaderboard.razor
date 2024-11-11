@@ -105,7 +105,14 @@ else
 
     <hr/>
 
-    @foreach (var leaderboard in LeaderboardData.Leaderboards)
+    @if(LeaderboardData.Length == 0)
+    {
+        <div class="alert alert-warning" role="alert">
+            <p>No data was found for the selected servers and time range. Data is probably still collected and calculated. Please try again later.</p>
+        </div>
+    }
+
+    @foreach (var leaderboard in LeaderboardData)
     {
         <h4>@leaderboard.Name</h4>
         if (leaderboard.ExtraInfo != null)
@@ -233,7 +240,7 @@ else
 
 @code{
     private bool IsLoading { get; set; } = true;
-    private LeaderboardData? LeaderboardData { get; set; } = null;
+    private Models.Leaderboard[]? LeaderboardData { get; set; } = null;
     private bool RequestedPrivate { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
@@ -267,7 +274,7 @@ else
             }
         }
 
-        LeaderboardData? leaderboard = null;
+        Models.Leaderboard[]? leaderboard = null;
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         try
         {
@@ -279,7 +286,7 @@ else
             }
 
             var selectedServersArray = selectedServers.Split(',');
-            leaderboard = await LeaderboardService.GetLeaderboard(timeRangeEnum, username, selectedServersArray, authState, entries);
+            leaderboard = await LeaderboardService.GetLeaderboards(timeRangeEnum, username, selectedServersArray, authState, entries);
         }
         catch (UnauthorizedAccessException)
         {

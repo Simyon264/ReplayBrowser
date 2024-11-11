@@ -3,13 +3,6 @@ using ReplayBrowser.Data.Models;
 
 namespace ReplayBrowser.Models;
 
-public class LeaderboardData
-{
-    public bool IsCache { get; set; } = false;
-
-    public List<Leaderboard> Leaderboards { get; set; } = null!;
-}
-
 public class PlayerCount
 {
     public PlayerData? Player { get; set; }
