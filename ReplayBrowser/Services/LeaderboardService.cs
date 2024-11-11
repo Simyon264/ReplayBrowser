@@ -22,20 +22,17 @@ public class LeaderboardService : IHostedService, IDisposable
     ];
 
     private Timer? _timer = null;
+    private readonly IMemoryCache _cache;
     private readonly Ss14ApiHelper _apiHelper;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly AccountService _accountService;
     private readonly IConfiguration _configuration;
 
-    private const int MaxConcurrentUpdates = 10;
+    private List<Guid> RedactedAccounts;
 
-    public static bool IsUpdating { get; private set; } = false;
-    public static DateTime UpdateStarted { get; private set; } = DateTime.MinValue;
-    public static int UpdateProgress { get; private set; } = 0;
-    public static int UpdateTotal { get; private set; } = 0;
-
-    public LeaderboardService(Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService, IConfiguration configuration)
+    public LeaderboardService(IMemoryCache cache, Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService, IConfiguration configuration)
     {
+        _cache = cache;
         _apiHelper = apiHelper;
         _scopeFactory = factory;
         _accountService = accountService;
@@ -44,80 +41,37 @@ public class LeaderboardService : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromHours(24));
+        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromHours(6));
         return Task.CompletedTask;
     }
 
     private async void DoWork(object? state)
     {
-        if (IsUpdating)
-        {
-            Log.Warning("Leaderboard update already in progress, skipping this update.");
-            return;
-        }
-
-        IsUpdating = true;
-        UpdateStarted = DateTime.UtcNow;
-
         var sw = new Stopwatch();
         sw.Start();
         Log.Information("Updating leaderboards...");
 
-        var servers = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!.Select(x => x.FallBackServerName)
-            .Distinct().ToList();
+        // Fetch all the redacted players, cache it
+        // Yeah this ignores whether someone's an admin and doesn't let them bypass this
+        // Better for performance though
 
-        var combinations = GetCombinations(servers).ToList();
-        Log.Information("Total combinations: {Combinations}", combinations.Count);
-
-        UpdateTotal = combinations.Count * Enum.GetValues<RangeOption>().Length;
-        var semaphore = new SemaphoreSlim(MaxConcurrentUpdates);
-        var tasks = new List<Task>();
-
-        foreach (var serverArr in combinations)
-        {
-            var values = Enum.GetValues<RangeOption>();
-            foreach (var rangeOption in values)
-            {
-                await semaphore.WaitAsync();
-                tasks.Add(Task.Run(async () =>
-                {
-                    try
-                    {
-                        await GenerateLeaderboard(rangeOption, serverArr.ToArray());
-                        UpdateProgress++;
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                }));
-            }
+        using (var scope = _scopeFactory.CreateScope()) {
+            var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+            RedactedAccounts = await context.Accounts
+                .Where(a => a.Settings.RedactInformation)
+                .Select(a => a.Guid)
+                .ToListAsync();
         }
 
-        await Task.WhenAll(tasks);
+        // Loop through every range option.
+        foreach (var rangeOption in Enum.GetValues<RangeOption>())
+        {
+            var anonymousAuth = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+            await GetLeaderboard(rangeOption, null, [], anonymousAuth, 10, false);
+        }
 
         sw.Stop();
         Log.Information("Leaderboards updated in {Time}", sw.Elapsed);
-
-        IsUpdating = false;
-    }
-
-    static IEnumerable<List<string>> GetCombinations(List<string> list)
-    {
-        var subsetCount = 1 << list.Count;
-
-        for (var i = 1; i < subsetCount; i++)
-        {
-            var combination = new List<string>();
-            for (var j = 0; j < list.Count; j++)
-            {
-                if ((i & (1 << j)) != 0)
-                {
-                    combination.Add(list[j]);
-                }
-            }
-            yield return combination;
-        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
@@ -131,8 +85,7 @@ public class LeaderboardService : IHostedService, IDisposable
         _timer?.Dispose();
     }
 
-    public async Task<Leaderboard[]?> GetLeaderboards(RangeOption rangeOption, string? username, string[]? servers,
-        AuthenticationState authenticationState, int entries = 10, bool logAction = true)
+    public async Task<LeaderboardData> GetLeaderboard(RangeOption rangeOption, string? username, string[]? servers, AuthenticationState authenticationState, int entries = 10, bool logAction = true)
     {
         if (servers == null || servers.Length == 0)
         {
@@ -175,69 +128,30 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         }
 
-        var redactedAccounts = await context.Accounts
-            .Where(a => a.Settings.RedactInformation)
-            .Select(a => a.Guid)
-            .ToListAsync();
+        // First, try to get the leaderboard from the cache
+        var usernameCacheKey = username
+            ?.ToLower()
+            .Replace(" ", "-")
+            .Replace(".", "-")
+            .Replace("_", "-");
 
-        entries += redactedAccounts.Count; // Add the redacted accounts to the count so that removed listings still show the correct amount of entries
+        var serversCacheKey = string.Join("-", servers);
 
-        var leaderboards = await context.Leaderboards
-            .Where(l => l.Servers.SequenceEqual(servers))
-            .Where(l => l.Position <= entries || l.Username == username)
-            .Include(l => l.LeaderboardDefinition)
-            .ToListAsync();
-
-        var finalReturned = new Dictionary<string, Leaderboard>();
-
-        foreach (var position in leaderboards)
+        var cacheKey = "leaderboard-" + rangeOption + "-" + usernameCacheKey + "-" + serversCacheKey + "-" + entries;
+        if (_cache.TryGetValue(cacheKey, out LeaderboardData? leaderboardData))
         {
-            // Remove positions that are redacted
-            if (position.PlayerGuid != null && redactedAccounts.Contains((Guid)position.PlayerGuid))
-            {
-                continue;
-            }
-
-            if (!finalReturned.ContainsKey(position.LeaderboardDefinition.Name))
-            {
-                finalReturned.Add(position.LeaderboardDefinition.Name, new Leaderboard()
-                {
-                    Name = position.LeaderboardDefinition.Name,
-                    TrackedData = position.LeaderboardDefinition.TrackedData,
-                    Data = new Dictionary<string, PlayerCount>()
-                });
-            }
-
-            finalReturned[position.LeaderboardDefinition.Name].Data[position.PlayerGuid.ToString() ?? GenerateRandomGuid().ToString()] = new PlayerCount()
-            {
-                Count = position.Count,
-                Player = new PlayerData()
-                {
-                    PlayerGuid = position.PlayerGuid,
-                    Username = position.Username
-                },
-                Position = position.Position
-            };
+            return leaderboardData!;
         }
 
-        var returnList = new List<Leaderboard>();
-        foreach (var (key, value) in finalReturned)
+        var usernameGuid = Guid.Empty;
+        if (!string.IsNullOrWhiteSpace(username))
         {
-            returnList.Add(await FinalizeLeaderboard(key, value.NameColumn, value, accountCaller?.Guid ?? Guid.Empty, authenticationState, entries));
+            // Fetch the GUID for the username
+            var player = await context.ReplayParticipants
+                .FirstOrDefaultAsync(p => p.Username.ToLower() == username.ToLower());
+            if (player != null) usernameGuid = player.PlayerGuid;
         }
 
-        return returnList.ToArray();
-    }
-
-    public async Task GenerateLeaderboard(RangeOption rangeOption, string[]? servers)
-    {
-        if (servers == null || servers.Length == 0)
-        {
-            servers = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!.Select(x => x.FallBackServerName).ToArray();
-        }
-
-        using var scope = _scopeFactory.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
 
         var stopwatch = new Stopwatch();
         long stopwatchPrevious = 0;
@@ -486,76 +400,40 @@ public class LeaderboardService : IHostedService, IDisposable
         Log.Information("SQL queries took {TimeTotal}ms", stopwatch.ElapsedMilliseconds);
         stopwatch.Restart();
 
-        // Set the positions
+        // Need to calculate the position of every player in the leaderboard.
         foreach (var leaderboard in leaderboards)
         {
-            var players = leaderboard.Value.Data.Values.ToList();
-            players.Sort((a, b) => b.Count.CompareTo(a.Count));
-            for (var i = 0; i < players.Count; i++)
-            {
-                players[i].Position = i + 1;
-            }
+            var leaderboardResult = await GenerateLeaderboard(leaderboard.Key, leaderboard.Key, leaderboard.Value, usernameGuid, entries);
+            leaderboards[leaderboard.Key].Data = leaderboardResult.Data;
         }
-
-        var dbLeaderboards = new List<LeaderboardPosition>();
-        foreach (var (key, leaderboard) in leaderboards)
-        {
-            // Ensure a leaderboard definition exists
-            var leaderboardDefinition = await context.LeaderboardDefinitions
-                .FirstOrDefaultAsync(l => l.Name == key);
-
-            if (leaderboardDefinition == null)
-            {
-                leaderboardDefinition = new LeaderboardDefinition()
-                {
-                    Name = key,
-                    TrackedData = leaderboard.TrackedData,
-                    NameColumn = leaderboard.NameColumn,
-                    ExtraInfo = leaderboard.ExtraInfo
-                };
-                await context.LeaderboardDefinitions.AddAsync(leaderboardDefinition);
-            } else
-            {
-                leaderboardDefinition.TrackedData = leaderboard.TrackedData;
-                leaderboardDefinition.NameColumn = leaderboard.NameColumn;
-                leaderboardDefinition.ExtraInfo = leaderboard.ExtraInfo;
-            }
-
-            await context.SaveChangesAsync();
-
-            foreach (var (s, value) in leaderboard.Data)
-            {
-                if (string.IsNullOrEmpty(value.Player?.Username) && value.Player?.PlayerGuid != null)
-                {
-                    value.Player.Username = await GetNameFromDbOrApi((Guid)value.Player.PlayerGuid);
-                }
-
-                // S is player guid
-                dbLeaderboards.Add(new LeaderboardPosition()
-                {
-                    Servers = servers.ToList(),
-                    Count = value.Count,
-                    PlayerGuid = value.Player?.PlayerGuid,
-                    Username = value.Player?.Username ?? string.Empty,
-                    LeaderboardDefinitionName = key,
-                });
-            }
-        }
-
-        context.Leaderboards.RemoveRange(context.Leaderboards.Where(l => l.Servers.SequenceEqual(servers)));
-        await context.Leaderboards.AddRangeAsync(dbLeaderboards);
-        await context.SaveChangesAsync();
 
         stopwatch.Stop();
         Log.Information("Calculating leaderboard took {Time}ms", stopwatch.ElapsedMilliseconds);
+
+        // Save leaderboard to cache (its expensive as fuck to calculate)
+        var cacheEntryOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(TimeSpan.FromHours(5));
+        var cacheLeaderboard = new LeaderboardData()
+        {
+            Leaderboards = leaderboards.Values.ToList(),
+            IsCache = true
+        };
+
+        _cache.Set(cacheKey, cacheLeaderboard, cacheEntryOptions);
+
+
+        return new LeaderboardData()
+        {
+            Leaderboards = leaderboards.Values.ToList(),
+            IsCache = false
+        };
     }
 
-    private async Task<Leaderboard> FinalizeLeaderboard(
+    private async Task<Leaderboard> GenerateLeaderboard(
         string name,
         string columnName,
         Leaderboard data,
         Guid targetPlayer,
-        AuthenticationState authenticationState,
         int limit = 10
     )
     {
@@ -566,25 +444,7 @@ public class LeaderboardService : IHostedService, IDisposable
             Data = new Dictionary<string, PlayerCount>()
         };
 
-        var redactedAccounts = await _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<ReplayDbContext>().Accounts
-            .Where(a => a.Settings.RedactInformation)
-            .Select(a => a.Guid)
-            .ToListAsync();
-
-        var account = await _accountService.GetAccount(authenticationState);
-        // Remove any redacted accounts
-        var players = data.Data.Values.ToList();
-        if (account == null || !account.IsAdmin)
-        {
-            players = players.Where(p =>
-                p.Player?.PlayerGuid == null
-                || (
-                    !redactedAccounts.Contains((Guid)p.Player.PlayerGuid)
-                    && account?.Guid != p.Player.PlayerGuid // Users can see their own data even if redacted
-                    ))
-                .ToList();
-        }
-
+        var players = data.Data.Values.Where(p => p.Player?.PlayerGuid is null || p.Player.PlayerGuid == Guid.Empty || !RedactedAccounts.Contains(p.Player?.PlayerGuid ?? Guid.Empty)).ToList();
 
         players.Sort((a, b) => b.Count.CompareTo(a.Count));
         for (var i = 0; i < players.Count; i++)
@@ -619,31 +479,27 @@ public class LeaderboardService : IHostedService, IDisposable
             if (player.Value.Player?.PlayerGuid == null)
                 continue;
 
-            player.Value.Player.Username = await GetNameFromDbOrApi((Guid)player.Value.Player.PlayerGuid);
+            // get the latest name from the db
+            var playerData = await context.ReplayParticipants
+                .Where(p => p.PlayerGuid == player.Value.Player.PlayerGuid)
+                .OrderByDescending(p => p.Id)
+                .FirstOrDefaultAsync();
+
+            if (playerData == null)
+            {
+                // ??? try to get using api
+                var playerDataApi = await _apiHelper.FetchPlayerDataFromGuid((Guid)player.Value.Player.PlayerGuid);
+                player.Value.Player.Username = playerDataApi.Username;
+            }
+            else
+            {
+                player.Value.Player.Username = playerData.Username;
+            }
         }
         stopwatch.Stop();
         Log.Verbose("Fetching player data took {Time}ms", stopwatch.ElapsedMilliseconds);
 
         return returnValue;
-    }
-
-    private async Task<string> GetNameFromDbOrApi(Guid guid)
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
-
-        // get the latest name from the db
-        var playerData = await context.ReplayParticipants
-            .Where(p => p.PlayerGuid == guid)
-            .OrderByDescending(p => p.Id)
-            .FirstOrDefaultAsync();
-
-        if (playerData != null) return playerData.Username;
-
-        // ??? try to get using api
-        var playerDataApi = await _apiHelper.FetchPlayerDataFromGuid(guid);
-        return playerDataApi.Username;
-
     }
 
     private Guid GenerateRandomGuid()
