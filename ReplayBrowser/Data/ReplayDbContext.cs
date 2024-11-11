@@ -49,7 +49,4 @@ public class ReplayDbContext : DbContext
     public DbSet<ReplayParticipant> ReplayParticipants { get; set; }
 
     public DbSet<ServerToken> ServerTokens { get; set; }
-
-    public DbSet<LeaderboardPosition> Leaderboards { get; set; }
-    public DbSet<LeaderboardDefinition> LeaderboardDefinitions { get; set; }
 }

@@ -1,5 +1,4 @@
 ﻿@page "/leaderboard"
-@using Humanizer
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReplayBrowser.Models
 @using ReplayBrowser.Services
@@ -21,14 +20,6 @@
 
 <PageTitle>Leaderboard</PageTitle>
 <h4>Leaderboards</h4>
-<em>Leaderboards update every 24 hours.</em>
-@if(LeaderboardService.IsUpdating) {
-    <div class="alert alert-warning" role="alert">
-        <p>The leaderboards are currently updating. This may take a while. Please be patient.</p>
-        <em>Update started: @LeaderboardService.UpdateStarted.Humanize(utcDate: true). Current progress: @LeaderboardService.UpdateProgress / @LeaderboardService.UpdateTotal</em>
-    </div>
-}
-
 @if(RequestedPrivate)
 {
     <div class="alert alert-danger" role="alert">
@@ -114,14 +105,7 @@ else
 
     <hr/>
 
-    @if(LeaderboardData.Length == 0)
-    {
-        <div class="alert alert-warning" role="alert">
-            <p>No data was found for the selected servers and time range. Data is probably still collected and calculated. Please try again later. This will take a long time.</p>
-        </div>
-    }
-
-    @foreach (var leaderboard in LeaderboardData)
+    @foreach (var leaderboard in LeaderboardData.Leaderboards)
     {
         <h4>@leaderboard.Name</h4>
         if (leaderboard.ExtraInfo != null)
@@ -249,7 +233,7 @@ else
 
 @code{
     private bool IsLoading { get; set; } = true;
-    private Models.Leaderboard[]? LeaderboardData { get; set; } = null;
+    private LeaderboardData? LeaderboardData { get; set; } = null;
     private bool RequestedPrivate { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
@@ -283,7 +267,7 @@ else
             }
         }
 
-        Models.Leaderboard[]? leaderboard = null;
+        LeaderboardData? leaderboard = null;
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         try
         {
@@ -295,7 +279,7 @@ else
             }
 
             var selectedServersArray = selectedServers.Split(',');
-            leaderboard = await LeaderboardService.GetLeaderboards(timeRangeEnum, username, selectedServersArray, authState, entries);
+            leaderboard = await LeaderboardService.GetLeaderboard(timeRangeEnum, username, selectedServersArray, authState, entries);
         }
         catch (UnauthorizedAccessException)
         {

@@ -301,63 +301,6 @@ namespace Server.Migrations
                     b.ToTable("JobDepartments");
                 });
 
-            modelBuilder.Entity("ReplayBrowser.Data.Models.LeaderboardDefinition", b =>
-                {
-                    b.Property<string>("Name")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ExtraInfo")
-                        .HasColumnType("text");
-
-                    b.Property<string>("NameColumn")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TrackedData")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Name");
-
-                    b.ToTable("LeaderboardDefinitions");
-                });
-
-            modelBuilder.Entity("ReplayBrowser.Data.Models.LeaderboardPosition", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Count")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("LeaderboardDefinitionName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("PlayerGuid")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("integer");
-
-                    b.Property<List<string>>("Servers")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LeaderboardDefinitionName");
-
-                    b.ToTable("Leaderboards");
-                });
-
             modelBuilder.Entity("ReplayBrowser.Data.Models.Notice", b =>
                 {
                     b.Property<int?>("Id")
@@ -640,17 +583,6 @@ namespace Server.Migrations
                     b.HasOne("ReplayBrowser.Data.Models.CollectedPlayerData", null)
                         .WithMany("JobCount")
                         .HasForeignKey("CollectedPlayerDataPlayerGuid");
-                });
-
-            modelBuilder.Entity("ReplayBrowser.Data.Models.LeaderboardPosition", b =>
-                {
-                    b.HasOne("ReplayBrowser.Data.Models.LeaderboardDefinition", "LeaderboardDefinition")
-                        .WithMany()
-                        .HasForeignKey("LeaderboardDefinitionName")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LeaderboardDefinition");
                 });
 
             modelBuilder.Entity("ReplayBrowser.Data.Models.Player", b =>
