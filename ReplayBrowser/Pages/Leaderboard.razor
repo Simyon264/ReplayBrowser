@@ -1,4 +1,5 @@
 ﻿@page "/leaderboard"
+@using Humanizer
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReplayBrowser.Models
 @using ReplayBrowser.Services
@@ -20,6 +21,14 @@
 
 <PageTitle>Leaderboard</PageTitle>
 <h4>Leaderboards</h4>
+<em>Leaderboards update every 24 hours.</em>
+@if(LeaderboardService.IsUpdating) {
+    <div class="alert alert-warning" role="alert">
+        <p>The leaderboards are currently updating. This may take a while. Please be patient.</p>
+        <em>Update started: @LeaderboardService.UpdateStarted.Humanize(utcDate: true). Current progress: @LeaderboardService.UpdateProgress / @LeaderboardService.UpdateTotal</em>
+    </div>
+}
+
 @if(RequestedPrivate)
 {
     <div class="alert alert-danger" role="alert">

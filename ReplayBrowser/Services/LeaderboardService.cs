@@ -27,7 +27,12 @@ public class LeaderboardService : IHostedService, IDisposable
     private readonly AccountService _accountService;
     private readonly IConfiguration _configuration;
 
-    private List<Guid> RedactedAccounts;
+    private const int MaxConcurrentUpdates = 10;
+
+    public static bool IsUpdating { get; private set; } = false;
+    public static DateTime UpdateStarted { get; private set; } = DateTime.MinValue;
+    public static int UpdateProgress { get; private set; } = 0;
+    public static int UpdateTotal { get; private set; } = 0;
 
     public LeaderboardService(Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService, IConfiguration configuration)
     {
@@ -39,43 +44,62 @@ public class LeaderboardService : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromHours(6));
+        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromHours(24));
         return Task.CompletedTask;
     }
 
     private async void DoWork(object? state)
     {
+        if (IsUpdating)
+        {
+            Log.Warning("Leaderboard update already in progress, skipping this update.");
+            return;
+        }
+
+        IsUpdating = true;
+        UpdateStarted = DateTime.UtcNow;
+
         var sw = new Stopwatch();
         sw.Start();
         Log.Information("Updating leaderboards...");
-
-        // Fetch all the redacted players, cache it
-        // Yeah this ignores whether someone's an admin and doesn't let them bypass this
-        // Better for performance though
-
-        using (var scope = _scopeFactory.CreateScope()) {
-            var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
-            RedactedAccounts = await context.Accounts
-                .Where(a => a.Settings.RedactInformation)
-                .Select(a => a.Guid)
-                .ToListAsync();
-        }
 
         var servers = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!.Select(x => x.FallBackServerName)
             .Distinct().ToList();
 
         var combinations = GetCombinations(servers).ToList();
+        Log.Information("Total combinations: {Combinations}", combinations.Count);
+
+        UpdateTotal = combinations.Count * Enum.GetValues<RangeOption>().Length;
+        var semaphore = new SemaphoreSlim(MaxConcurrentUpdates);
+        var tasks = new List<Task>();
 
         foreach (var serverArr in combinations)
         {
-            foreach (var rangeOption in Enum.GetValues<RangeOption>())
+            var values = Enum.GetValues<RangeOption>();
+            foreach (var rangeOption in values)
             {
-                await GenerateLeaderboard(rangeOption, serverArr.ToArray());
+                await semaphore.WaitAsync();
+                tasks.Add(Task.Run(async () =>
+                {
+                    try
+                    {
+                        await GenerateLeaderboard(rangeOption, serverArr.ToArray());
+                        UpdateProgress++;
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }));
             }
         }
 
+        await Task.WhenAll(tasks);
+
         sw.Stop();
         Log.Information("Leaderboards updated in {Time}", sw.Elapsed);
+
+        IsUpdating = false;
     }
 
     static IEnumerable<List<string>> GetCombinations(List<string> list)
@@ -199,7 +223,7 @@ public class LeaderboardService : IHostedService, IDisposable
         var returnList = new List<Leaderboard>();
         foreach (var (key, value) in finalReturned)
         {
-            returnList.Add(await FinalizeLeaderboard(key, value.NameColumn, value, accountCaller?.Guid ?? Guid.Empty, entries));
+            returnList.Add(await FinalizeLeaderboard(key, value.NameColumn, value, accountCaller?.Guid ?? Guid.Empty, authenticationState, entries));
         }
 
         return returnList.ToArray();
@@ -531,6 +555,7 @@ public class LeaderboardService : IHostedService, IDisposable
         string columnName,
         Leaderboard data,
         Guid targetPlayer,
+        AuthenticationState authenticationState,
         int limit = 10
     )
     {
@@ -541,7 +566,25 @@ public class LeaderboardService : IHostedService, IDisposable
             Data = new Dictionary<string, PlayerCount>()
         };
 
-        var players = data.Data.Values.Where(p => p.Player?.PlayerGuid is null || p.Player.PlayerGuid == Guid.Empty || !RedactedAccounts.Contains(p.Player?.PlayerGuid ?? Guid.Empty)).ToList();
+        var redactedAccounts = await _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<ReplayDbContext>().Accounts
+            .Where(a => a.Settings.RedactInformation)
+            .Select(a => a.Guid)
+            .ToListAsync();
+
+        var account = await _accountService.GetAccount(authenticationState);
+        // Remove any redacted accounts
+        var players = data.Data.Values.ToList();
+        if (account == null || !account.IsAdmin)
+        {
+            players = players.Where(p =>
+                p.Player?.PlayerGuid == null
+                || (
+                    !redactedAccounts.Contains((Guid)p.Player.PlayerGuid)
+                    && account?.Guid != p.Player.PlayerGuid // Users can see their own data even if redacted
+                    ))
+                .ToList();
+        }
+
 
         players.Sort((a, b) => b.Count.CompareTo(a.Count));
         for (var i = 0; i < players.Count; i++)
