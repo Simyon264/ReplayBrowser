@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -27,7 +28,10 @@ public class LeaderboardService : IHostedService, IDisposable
     private readonly AccountService _accountService;
     private readonly IConfiguration _configuration;
 
-    private const int MaxConcurrentUpdates = 10;
+    /// <summary>
+    /// How long a leaderboard will be kept valid in the DB before it is updated.
+    /// </summary>
+    private static readonly TimeSpan MaxCacheTime = TimeSpan.FromHours(1);
 
     public static bool IsUpdating { get; private set; } = false;
     public static DateTime UpdateStarted { get; private set; } = DateTime.MinValue;
@@ -66,58 +70,25 @@ public class LeaderboardService : IHostedService, IDisposable
         var servers = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!.Select(x => x.FallBackServerName)
             .Distinct().ToList();
 
-        var combinations = GetCombinations(servers).ToList();
-        Log.Information("Total combinations: {Combinations}", combinations.Count);
+        UpdateTotal = Enum.GetValues<RangeOption>().Length;
 
-        UpdateTotal = combinations.Count * Enum.GetValues<RangeOption>().Length;
-        var semaphore = new SemaphoreSlim(MaxConcurrentUpdates);
-        var tasks = new List<Task>();
-
-        foreach (var serverArr in combinations)
+        var values = Enum.GetValues<RangeOption>();
+        foreach (var rangeOption in values)
         {
-            var values = Enum.GetValues<RangeOption>();
-            foreach (var rangeOption in values)
+            try
             {
-                await semaphore.WaitAsync();
-                tasks.Add(Task.Run(async () =>
-                {
-                    try
-                    {
-                        await GenerateLeaderboard(rangeOption, serverArr.ToArray());
-                        UpdateProgress++;
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                }));
+                await GenerateLeaderboard(rangeOption, servers.ToArray());
+            }
+            finally
+            {
+                UpdateProgress++;
             }
         }
-
-        await Task.WhenAll(tasks);
 
         sw.Stop();
         Log.Information("Leaderboards updated in {Time}", sw.Elapsed);
 
         IsUpdating = false;
-    }
-
-    static IEnumerable<List<string>> GetCombinations(List<string> list)
-    {
-        var subsetCount = 1 << list.Count;
-
-        for (var i = 1; i < subsetCount; i++)
-        {
-            var combination = new List<string>();
-            for (var j = 0; j < list.Count; j++)
-            {
-                if ((i & (1 << j)) != 0)
-                {
-                    combination.Add(list[j]);
-                }
-            }
-            yield return combination;
-        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
@@ -131,7 +102,7 @@ public class LeaderboardService : IHostedService, IDisposable
         _timer?.Dispose();
     }
 
-    public async Task<Leaderboard[]?> GetLeaderboards(RangeOption rangeOption, string? username, string[]? servers,
+    public async Task<IEnumerable<Leaderboard>?> GetLeaderboards(RangeOption rangeOption, string? username, string[]? servers,
         AuthenticationState authenticationState, int entries = 10, bool logAction = true)
     {
         if (servers == null || servers.Length == 0)
@@ -180,11 +151,29 @@ public class LeaderboardService : IHostedService, IDisposable
             .Select(a => a.Guid)
             .ToListAsync();
 
-        entries += redactedAccounts.Count; // Add the redacted accounts to the count so that removed listings still show the correct amount of entries
+        var entriesToGenerate = entries + redactedAccounts.Count; // Add the redacted accounts to the count so that removed listings still show the correct amount of entries
+
+        var lastUpdate = await context.Leaderboards
+            .Where(l => l.Servers.SequenceEqual(servers))
+            .Where(l => l.RangeOption == rangeOption)
+            .OrderByDescending(l => l.GeneratedAt)
+            .Take(1)
+            .Select(l => l.GeneratedAt)
+            .FirstOrDefaultAsync();
+
+        if (lastUpdate < DateTime.UtcNow - MaxCacheTime)
+        {
+            if (IsUpdating)
+            {
+                return [];
+            }
+            await GenerateLeaderboard(rangeOption, servers);
+        }
 
         var leaderboards = await context.Leaderboards
             .Where(l => l.Servers.SequenceEqual(servers))
-            .Where(l => l.Position <= entries || l.Username == username)
+            .Where(l => l.RangeOption == rangeOption)
+            .Where(l => l.Position <= entriesToGenerate || l.Username == username)
             .Include(l => l.LeaderboardDefinition)
             .ToListAsync();
 
@@ -226,7 +215,7 @@ public class LeaderboardService : IHostedService, IDisposable
             returnList.Add(await FinalizeLeaderboard(key, value.NameColumn, value, accountCaller?.Guid ?? Guid.Empty, authenticationState, entries));
         }
 
-        return returnList.ToArray();
+        return returnList;
     }
 
     public async Task GenerateLeaderboard(RangeOption rangeOption, string[]? servers)
@@ -238,6 +227,21 @@ public class LeaderboardService : IHostedService, IDisposable
 
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
+
+        // Don't update if it's already been updated recently
+        var lastUpdate = await context.Leaderboards
+            .Where(l => l.Servers.SequenceEqual(servers))
+            .Where(l => l.RangeOption == rangeOption)
+            .OrderByDescending(l => l.GeneratedAt)
+            .Take(1)
+            .Select(l => l.GeneratedAt)
+            .FirstOrDefaultAsync();
+
+        if (lastUpdate >= DateTime.UtcNow - MaxCacheTime)
+        {
+            Log.Information("Leaderboards already updated recently, skipping update.");
+            return;
+        }
 
         var stopwatch = new Stopwatch();
         long stopwatchPrevious = 0;
@@ -497,6 +501,8 @@ public class LeaderboardService : IHostedService, IDisposable
             }
         }
 
+        var generatedAt = DateTime.UtcNow;
+
         var dbLeaderboards = new List<LeaderboardPosition>();
         foreach (var (key, leaderboard) in leaderboards)
         {
@@ -538,16 +544,27 @@ public class LeaderboardService : IHostedService, IDisposable
                     PlayerGuid = value.Player?.PlayerGuid,
                     Username = value.Player?.Username ?? string.Empty,
                     LeaderboardDefinitionName = key,
+                    GeneratedAt = generatedAt,
+                    Position = value.Position,
+                    RangeOption = rangeOption
                 });
             }
         }
 
-        context.Leaderboards.RemoveRange(context.Leaderboards.Where(l => l.Servers.SequenceEqual(servers)));
-        await context.Leaderboards.AddRangeAsync(dbLeaderboards);
-        await context.SaveChangesAsync();
+        stopwatch.Restart();
 
-        stopwatch.Stop();
-        Log.Information("Calculating leaderboard took {Time}ms", stopwatch.ElapsedMilliseconds);
+        var serverSet = new HashSet<string>(servers);
+        Expression<Func<string, bool>> serverSetContains = server => serverSet.Contains(server);
+
+        context.Leaderboards.RemoveRange(
+            context.Leaderboards.Where(l => l.Servers.AsQueryable().All(serverSetContains) && l.Servers.Count == serverSet.Count && l.RangeOption == rangeOption));
+        Log.Information("Removing old leaderboards took {Time}ms", stopwatch.ElapsedMilliseconds);
+        stopwatch.Restart();
+        await context.Leaderboards.AddRangeAsync(dbLeaderboards);
+        Log.Information("Adding new leaderboards took {Time}ms", stopwatch.ElapsedMilliseconds);
+        stopwatch.Restart();
+        await context.SaveChangesAsync();
+        Log.Information("Saving leaderboards to database took {Time}ms", stopwatch.ElapsedMilliseconds);
     }
 
     private async Task<Leaderboard> FinalizeLeaderboard(

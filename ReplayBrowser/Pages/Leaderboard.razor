@@ -114,7 +114,7 @@ else
 
     <hr/>
 
-    @if(LeaderboardData.Length == 0)
+    @if(!LeaderboardData.Any())
     {
         <div class="alert alert-warning" role="alert">
             <p>No data was found for the selected servers and time range. Data is probably still collected and calculated. Please try again later. This will take a long time.</p>
@@ -249,7 +249,7 @@ else
 
 @code{
     private bool IsLoading { get; set; } = true;
-    private Models.Leaderboard[]? LeaderboardData { get; set; } = null;
+    private IEnumerable<Models.Leaderboard>? LeaderboardData { get; set; } = null;
     private bool RequestedPrivate { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
@@ -283,7 +283,7 @@ else
             }
         }
 
-        Models.Leaderboard[]? leaderboard = null;
+        IEnumerable<Models.Leaderboard>? leaderboard = null;
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         try
         {
