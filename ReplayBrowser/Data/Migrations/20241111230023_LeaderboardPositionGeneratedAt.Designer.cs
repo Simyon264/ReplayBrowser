@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using ReplayBrowser.Data;
 namespace Server.Migrations
 {
     [DbContext(typeof(ReplayDbContext))]
-    partial class ReplayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241111230023_LeaderboardPositionGeneratedAt")]
+    partial class LeaderboardPositionGeneratedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -346,9 +349,6 @@ namespace Server.Migrations
                     b.Property<int>("Position")
                         .HasColumnType("integer");
 
-                    b.Property<int>("RangeOption")
-                        .HasColumnType("integer");
-
                     b.Property<List<string>>("Servers")
                         .IsRequired()
                         .HasColumnType("text[]");
@@ -359,13 +359,7 @@ namespace Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GeneratedAt");
-
                     b.HasIndex("LeaderboardDefinitionName");
-
-                    b.HasIndex("RangeOption");
-
-                    b.HasIndex("Servers");
 
                     b.ToTable("Leaderboards");
                 });
