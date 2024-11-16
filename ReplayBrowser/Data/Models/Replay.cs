@@ -28,11 +28,14 @@ public class Replay : IEntityTypeConfiguration<Replay>
     public List<ReplayParticipant>? RoundParticipants { get; set; }
     public string? RoundEndText { get; set; }
     public required string ServerId { get; set; }
+    // Doesn't need to be a long because at 30TPS that's 828 days.
+    // Unless we get round saving and it restores the tick count?
+    // - November 2024
     public int EndTick { get; set; }
     public required string Duration { get; set; }
     public int FileCount { get; set; }
-    public int Size { get; set; }
-    public int UncompressedSize { get; set; }
+    public long Size { get; set; }
+    public long UncompressedSize { get; set; }
     public required string EndTime { get; set; }
 
     [JsonIgnore]
