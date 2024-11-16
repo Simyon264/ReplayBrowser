@@ -247,7 +247,8 @@ public class ReplayController : Controller
         Replay? replay = null;
         try
         {
-            replay = _replayParserService.FinalizeReplayParse(reader, null);
+            var replayYaml = _replayParserService.ParseReplay(reader);
+            replay = _replayParserService.ParseReplayYaml(replayYaml, null);
             var replayFileName = Path.GetFileName(replay.Link);
             var storageUrl = _replayParserService.GetStorageUrlFromReplayLink(replay.Link);
             var match = storageUrl.ReplayRegexCompiled.Match(replayFileName);
