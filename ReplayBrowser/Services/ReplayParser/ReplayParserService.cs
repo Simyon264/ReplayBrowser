@@ -171,11 +171,12 @@ public class ReplayParserService : IHostedService, IDisposable
                         Log.Information("Downloading " + replay);
                         var fileSize = await client.GetFileSizeAsync(replay);
                         // Check if the server supports range requests.
-                        var supportsRange = (await client.SupportsRangeRequests(replay) && fileSize != -1);
+                        var supportsRange = await client.SupportsRangeRequests(replay) && fileSize != -1;
 
                         Replay? parsedReplay = null;
                         try
                         {
+                            YamlReplay? yamlReplay = null;
                             if (supportsRange)
                             {
                                 try
@@ -185,7 +186,7 @@ public class ReplayParserService : IHostedService, IDisposable
                                     var extractedFiles = await ZipDownloader.ExtractFilesFromZipAsync(replay, files);
                                     completed++;
                                     Details = $"{completed}/{total}";
-                                    parsedReplay = FinalizeReplayParse(new StreamReader(extractedFiles["_replay/replay_final.yml"]), replay);
+                                    yamlReplay = ParseReplay(new StreamReader(extractedFiles["_replay/replay_final.yml"]));
                                 }
                                 catch (Exception e)
                                 {
@@ -200,8 +201,11 @@ public class ReplayParserService : IHostedService, IDisposable
                                 var stream = await client.GetStreamAsync(replay, progress, token);
                                 completed++;
                                 Details = $"{completed}/{total}";
-                                parsedReplay = ParseReplay(stream, replay);
+                                yamlReplay = ParseReplay(stream);
                             }
+
+                            // This shouldn't ever be null in reality, as it will either be assigned in the try, or in the second if that runs on catch
+                            parsedReplay = ParseReplayYaml(yamlReplay!, replay);
                         }
                         catch (Exception e)
                         {
@@ -277,10 +281,10 @@ public class ReplayParserService : IHostedService, IDisposable
     /// <summary>
     /// Parses a replay file and returns a Replay object.
     /// </summary>
-    private Replay ParseReplay(Stream stream, string replayLink)
+    private YamlReplay ParseReplay(Stream zipStream)
     {
         // Read the replay file and unzip it.
-        var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read);
+        var zipArchive = new ZipArchive(zipStream, ZipArchiveMode.Read);
         var replayFile = zipArchive.GetEntry("_replay/replay_final.yml");
 
         if (replayFile == null)
@@ -291,10 +295,10 @@ public class ReplayParserService : IHostedService, IDisposable
         var replayStream = replayFile.Open();
         var reader = new StreamReader(replayStream);
 
-        return FinalizeReplayParse(reader, replayLink);
+        return ParseReplay(reader);
     }
 
-    public Replay FinalizeReplayParse(TextReader stream, string? replayLink)
+    public YamlReplay ParseReplay(TextReader stream)
     {
         var deserializer = new DeserializerBuilder()
             .IgnoreUnmatchedProperties()
@@ -306,6 +310,12 @@ public class ReplayParserService : IHostedService, IDisposable
         {
             throw new Exception("Replay is not valid.");
         }
+
+        return yamlReplay;
+    }
+
+    public Replay ParseReplayYaml(YamlReplay yamlReplay, string? replayLink)
+    {
 
         var replay = Replay.FromYaml(yamlReplay, replayLink);
 

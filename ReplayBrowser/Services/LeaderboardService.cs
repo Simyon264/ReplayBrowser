@@ -28,7 +28,7 @@ public class LeaderboardService : IHostedService, IDisposable
     private readonly AccountService _accountService;
     private readonly IConfiguration _configuration;
 
-    private List<Guid> RedactedAccounts;
+    private List<Guid> RedactedAccounts = [];
 
     public LeaderboardService(IMemoryCache cache, Ss14ApiHelper apiHelper, IServiceScopeFactory factory, AccountService accountService, IConfiguration configuration)
     {

@@ -1,9 +1,5 @@
 ﻿@inject IConfiguration Configuration
 
-@{
-    var plausibleSnippet = new MarkupString(Configuration["Plausible:Snippet"]);
-}
-
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark" data-enhance-nav="false">
 
@@ -19,9 +15,9 @@
     <link rel="stylesheet" href="app.css"/>
     <link rel="icon" type="image/png" href="favicon.png"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    @if(Configuration["Plausible:Enabled"] == "True")
+    @if(Configuration["Plausible:Enabled"] == "True" && Configuration["Plausible:Snippet"] is not null)
     {
-        @plausibleSnippet
+        @(new MarkupString(Configuration["Plausible:Snippet"]!))
     }
 
     <script src="_framework/blazor.web.js" autostart="false"></script>

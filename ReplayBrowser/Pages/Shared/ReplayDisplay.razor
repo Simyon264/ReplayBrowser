@@ -17,7 +17,9 @@
     </div>
     <div class="card-body">
         <dl class="replay-description">
-            <dt>Date</dt><dd>@ReplayData.Date</dd>
+            @if (ReplayData.Date is not null) {
+                <dt>Date</dt><dd>@(DateTime.SpecifyKind((DateTime) ReplayData.Date, DateTimeKind.Utc))</dd>
+            }
             <dt>Gamemode</dt><dd>@ReplayData.Gamemode</dd>
             @if (ReplayData.Map == null)
             {
