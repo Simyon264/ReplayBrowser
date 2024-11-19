@@ -25,7 +25,7 @@ public class YamlReplay {
     public int EndTick { get; set; }
     public required string Duration { get; set; }
     public int FileCount { get; set; }
-    public int Size { get; set; }
-    public int UncompressedSize { get; set; }
+    public long Size { get; set; }
+    public long UncompressedSize { get; set; }
     public required string EndTime { get; set; }
 }

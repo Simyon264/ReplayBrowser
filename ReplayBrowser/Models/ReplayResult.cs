@@ -17,8 +17,8 @@ public class ReplayResult
     public required string Duration { get; set; }
     public DateTime? Date { get; set; }
     public int? RoundId { get; set; }
-    public int Size { get; set; }
-    public int UncompressedSize { get; set; }
+    public long Size { get; set; }
+    public long UncompressedSize { get; set; }
 
     public bool IsFavorite { get; set; }
 }
