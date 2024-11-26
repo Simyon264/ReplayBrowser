@@ -47,7 +47,7 @@ These instructions assume that you have a postgres database set up.
    "Plausible": {
      // This is the domain for the plausible analytics, you can set this to your own domain if you want to track analytics
      "Snippet": "<script ...>", // This will go into the head of every page
-     "Enabled": true,
+     "Enabled": true
    }
 }
 ```
