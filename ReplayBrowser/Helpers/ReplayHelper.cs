@@ -274,7 +274,7 @@ public class ReplayHelper
             {
                 Action = Enum.GetName(typeof(Action), Action.SearchPerformed) ?? "Unknown",
                 Time = DateTime.UtcNow,
-                Details = string.Join(", ", searchItems.Select(x => $"{x.SearchMode}={x.SearchValue}"))
+                Details = string.Join(", ", searchItems.Select(x => $"{x.SearchModeEnum}={x.SearchValue}"))
             });
         });
         #pragma warning restore CS4014
@@ -376,7 +376,7 @@ public class ReplayHelper
         var stopWatch = new Stopwatch();
         stopWatch.Start();
 
-        var cacheKey = $"{string.Join("-", searchItems.Select(x => $"{x.SearchMode}-{x.SearchValue}"))}";
+        var cacheKey = $"{string.Join("-", searchItems.Select(x => $"{x.SearchModeEnum}-{x.SearchValue}"))}";
 
         var queryable = _context.Replays
             .AsNoTracking()
