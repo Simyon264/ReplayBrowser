@@ -255,6 +255,8 @@
     document.addEventListener('DOMContentLoaded', async e => {
         const searchBars = document.querySelectorAll(".search-bar .search-form:not(.prefab)");
         searchBars.forEach(bar => createSearchBar(bar));
+        if (searchBars.length == 0)
+            createSearchBar()
     }, false);
 
 
