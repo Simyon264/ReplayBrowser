@@ -22,10 +22,18 @@ public class SearchQueryItem
 
     public static List<SearchQueryItem> FromQuery(IQueryCollection query) {
         List<SearchQueryItem> result = [];
+        // Yes this is fragile. No it won't really do anything but annoy people
+        // Technically inefficient. In practice, meh
+        // Too bad this collection isn't just a list of tuples
+        var ordered = query.OrderBy(q => q.Key.Contains('[') ? int.Parse(q.Key[(q.Key.IndexOf('[') + 1)..q.Key.IndexOf(']')]) : int.MaxValue).ToList();
 
-        foreach (var item in query)
+        foreach (var item in ordered)
         {
-            result.AddRange(QueryValueParse(item.Key, item.Value));
+            var index = item.Key.IndexOf('[');
+            if (index != -1)
+                result.AddRange(QueryValueParse(item.Key[..index], item.Value));
+            else
+                result.AddRange(QueryValueParse(item.Key, item.Value));
         }
 
         var legacyQuery = query["searches"];
@@ -50,10 +58,13 @@ public class SearchQueryItem
             .ToList();
     }
 
+    public static string QueryName(SearchMode mode)
+        => ModeMapping.First(v => v.Value == mode).Key;
+
     // String values must be lowercase!
     // Be careful with changing any of the values here, as it can cause old searched to be invalid
     // For this reason, it's better to only add new entries
-    static readonly Dictionary<string, SearchMode> ModeMapping = new() {
+    public static readonly Dictionary<string, SearchMode> ModeMapping = new() {
         { "guid", Models.SearchMode.Guid },
         { "username", Models.SearchMode.PlayerOocName },
         { "character", Models.SearchMode.PlayerIcName },

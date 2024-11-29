@@ -20,7 +20,7 @@
 <h1>Replay browser for Space Station 14</h1>
 <p>Search for replays by using the search bar below</p>
 <hr/>
-<SearchBar></SearchBar>
+<SearchBar Items="SearchItems"></SearchBar>
 <hr/>
 @if (ErrorMessage != null)
 {
@@ -199,7 +199,6 @@
             ErrorMessage = "Invalid search query";
             ErrorDetails = e.Message;
             stopWatch.Stop();
-            NavigationManager.NavigateTo("/");
             return;
         }
 

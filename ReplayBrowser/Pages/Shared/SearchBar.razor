@@ -1,29 +1,37 @@
 ﻿@using Humanizer
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
 @using Microsoft.Extensions.Configuration
 @using ReplayBrowser.Data
 @using ReplayBrowser.Models
 @inject IConfiguration Configuration
 
+@code{
+    [Parameter] public List<SearchQueryItem>? Items { get; set; }
+}
+
 @{
     var searchModes = Enum.GetValues(typeof(SearchMode)).Cast<SearchMode>().ToList();
-    <div class="search-bar">
-        <div class="d-flex ms-auto hidden prefab search-form">
+    void RenderLine(SearchQueryItem? item) {
+        <div class="d-flex ms-auto @(item is null ? "hidden prefab " : "")search-form">
             <input
                 type="text"
                 class="form-control"
                 placeholder="Search for a replay..."
                 aria-label="Search"
+                value="@(item?.SearchValue)"
                 data-filter="/api/Data/username-completion?username=#QUERY#"
             >
-            <button class="btn-secondary btn dropdown-toggle" type="button" style="margin-left: 1rem; margin-right: 1rem;" data-bs-toggle="dropdown" aria-expanded="false">
-                @SearchMode.PlayerOocName.Humanize()
-            </button>
-            <ul class="dropdown-menu no-affect">
-                @foreach (var mode in searchModes)
-                {
-                    <li><a class="dropdown-item">@mode.Humanize()</a></li>
-                }
-            </ul>
+            <div class="dropdown">
+                <button class="btn-secondary btn dropdown-toggle" type="button" style="margin-left: 1rem; margin-right: 1rem;" data-bs-toggle="dropdown" aria-expanded="false" data-type="@SearchQueryItem.QueryName(item?.SearchModeEnum ?? SearchMode.PlayerOocName)">
+                    @((item?.SearchModeEnum ?? SearchMode.PlayerOocName).Humanize())
+                </button>
+                <ul class="dropdown-menu no-affect">
+                    @foreach (var mode in searchModes)
+                    {
+                        <li><a class="dropdown-item" data-type="@SearchQueryItem.QueryName(mode)">@mode.Humanize()</a></li>
+                    }
+                </ul>
+            </div>
             <div class="search-container">
                 <button class="btn btn-outline-danger remove-bar">
                     -
@@ -36,15 +44,24 @@
                 </button>
             </div>
         </div>
-    </div>
-
-    <div class="d-flex" style="margin-top: 1rem;">
-        <button class="btn btn-outline-primary" style="margin-right: 1rem" type="button" id="addSearchBar">
-            +
-        </button>
-        <button class="btn btn-outline-success" type="button" onclick="search(0)">Search</button>
-    </div>
+    }
 }
+
+<div class="search-bar">
+@{
+    RenderLine(null);
+    foreach (var item in Items ?? []) {
+        RenderLine(item);
+    }
+}
+</div>
+
+<div class="d-flex" style="margin-top: 1rem;">
+    <button class="btn btn-outline-primary" style="margin-right: 1rem" type="button" id="addSearchBar">
+        +
+    </button>
+    <button class="btn btn-outline-success" type="button" onclick="search(0)">Search</button>
+</div>
 
 <style>
     /* this is a bit stupid
@@ -102,30 +119,9 @@
 </style>
 
 <script>
-    // note: `buffer` arg can be an ArrayBuffer or a Uint8Array
-    async function bufferToBase64(buffer) {
-        // use a FileReader to generate a base64 data URI.
-        const base64url = await new Promise(r => {
-            const reader = new FileReader();
-            reader.onload = () => r(reader.result);
-            reader.readAsDataURL(new Blob([buffer]));
-        });
-
-        // remove the `data:...;base64,` parrt from the start
-        return base64url.slice(base64url.indexOf(',') + 1);
-    }
-
-    async function base64ToBuffer(base64) {
-        const binaryString = atob(base64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes;
-    }
-
-    let selectedAutocompleteOption = null;
-
+    /**
+    @@param {HTMLElement} element
+    */
     function moveUp(element) {
         const parent = element.parentElement.parentElement;
         const previousElement = parent.previousElementSibling;
@@ -134,6 +130,9 @@
         }
     }
 
+    /**
+    @@param {HTMLElement} element
+    */
     function moveDown(element) {
         const parent = element.parentElement.parentElement;
         const nextElement = parent.nextElementSibling;
@@ -146,75 +145,105 @@
         const searchBars = document.querySelectorAll('.search-bar input');
 
         // sanity check
-        if(page === null) page = 0;
+        if (page === null) page = 0;
 
         const builder = new URLSearchParams();
-        let searches = []
-        searchBars.forEach((searchBar, index) => {
-            const searchMode = searchBar.parentElement.querySelector('.dropdown-toggle').textContent;
-            const searchValue = searchBar.value;
-            if (searchValue !== '') {
-                searches.push({
+
+        const searchModeCount = {};
+        let multiple = false;
+
+        let searches = [...searchBars].map((searchBar, index) => {
+                const searchMode = searchBar.parentElement.querySelector('.dropdown-toggle').getAttribute("data-type");
+                const searchValue = searchBar.value;
+                if (!searchValue) return;
+
+                searchModeCount[searchMode] = (searchModeCount[searchMode] || 0) + 1
+                if (searchModeCount[searchMode] > 1)
+                    multiple = true
+
+                return {
                     searchMode: searchMode,
                     searchValue: searchValue
-                });
-            }
-        });
-
-        // Remove duplicates
-        searches = searches.filter((search, index, self) =>
-            index === self.findIndex((t) => (
-                t.searchMode === search.searchMode && t.searchValue === search.searchValue
-            ))
-        );
-
-        // Encode the searches as base64
-        const encodedSearches = await bufferToBase64(JSON.stringify(searches));
-        builder.append('searches', encodedSearches);
+                };
+            })
+            // Remove duplicates
+            .filter((search, index, self) =>
+                search &&
+                index === self.findIndex((t) => (
+                    t && t.searchMode === search.searchMode && t.searchValue === search.searchValue
+                ))
+            );
+        searches.forEach((s, index) => builder.append(multiple ? `${s.searchMode}[${index}]` : s.searchMode, s.searchValue));
         builder.append('page', page);
 
         window.location.href = `/search?${builder.toString()}`
     }
 
-    document.getElementById('addSearchBar').addEventListener('click', () => {
-        const searchBarPrefab = document.getElementsByClassName('prefab');
-        const newSearchBar = searchBarPrefab[0].cloneNode(true);
-        newSearchBar.classList.remove('hidden');
-        newSearchBar.classList.remove('prefab');
-        document.querySelector('.search-bar').appendChild(newSearchBar);
+    // Kinda jank but eh
+    function updateAutocomplete(autocompleter, type)
+    {
+        if (type == "username")
+            autocompleter._config.filter = "/api/Data/username-completion?username=#QUERY#";
+        else
+            autocompleter._config.filter = null;
+    }
 
-        // add autocomplete on newSearchBar only using $.autocomplete
-        $(newSearchBar.querySelector('input')).autocomplete({
-            onItemRendered(el, item) {
-                const currentSelectedSearchMode = newSearchBar.querySelector('.dropdown-toggle').textContent;
-                if (currentSelectedSearchMode !== "@SearchMode.PlayerOocName.Humanize()") {
-                    // Currently, autocomplete only supports searching for player names. So delete the item
-                    item.remove();
-                }
-            },
+    /** @@param {{searchMode: test}} initialValue */
+    async function createSearchBar(searchLine) {
+        if (!searchLine) {
+            /** @@type {HTMLCollectionOf<HTMLDivElement>} */
+            const searchBarPrefab = document.getElementsByClassName('prefab');
+            /** @@type {HTMLDivElement} */
+            searchLine = searchBarPrefab[0].cloneNode(true);
+            searchLine.classList.remove("hidden", "prefab");
+            document.querySelector('.search-bar').appendChild(searchLine);
+        }
+
+        /** @@type {HTMLButtonElement} */
+        const dropdownButton = searchLine.querySelector('.dropdown-toggle');
+        /** @@type {HTMLInputElement} */
+        const inputElem = searchLine.querySelector('input');
+
+        // add autocomplete on searchLine only using $.autocomplete
+        const autocompleter = $(inputElem).autocomplete({
+            /**
+            Additional processing of data. The autocompleter will fill the input on its own
+            @@param {HTMLInputElement} el
+            @@param {HTMLElement} item
+            */
             onPick(el, item) {
-                selectedAutocompleteOption = item.innerHTML;
                 // if we are the last search bar and we have a selected option, search
-                if (newSearchBar === document.querySelector('.search-bar').lastElementChild && selectedAutocompleteOption !== null) {
-                    document.querySelector('.search-bar input').value = selectedAutocompleteOption;
+                if (searchLine.parentElement.lastElementChild == searchLine) {
                     search(0)
                 }
             }
-        });
+        }).data("bs.autocomplete");
+        if (searchLine)
+            updateAutocomplete(autocompleter, dropdownButton.getAttribute("data-type"));
 
-
-        const dropdown = newSearchBar.querySelector('.dropdown-menu');
-        dropdown.addEventListener('click', (e) => {
+        const dropdown = searchLine.querySelectorAll('.dropdown-menu .dropdown-item');
+        dropdown.forEach(i => i.addEventListener('click', (e) => {
             const text = e.target.textContent;
-            e.target.closest('.d-flex').querySelector('.dropdown-toggle').textContent = text;
-        });
+            const type = e.target.getAttribute("data-type");
+            dropdownButton.textContent = text;
+            dropdownButton.setAttribute("data-type", type);
+            updateAutocomplete(autocompleter, dropdownButton.getAttribute("data-type"));
+        }));
 
         // enter key listener
-        newSearchBar.querySelector('input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.defaultPrevented) {
+        inputElem.addEventListener('keypress', (e) => {
+            if (e.key !== 'Enter' || e.defaultPrevented)
+                return;
+            if (searchLine.parentElement.lastElementChild == searchLine) {
                 search(0);
+                return; // Technically kinda unreachable/no-op but just in case
             }
+            searchLine.nextElementSibling.querySelector("input").focus();
         });
+    }
+
+    document.getElementById('addSearchBar').addEventListener('click', () => {
+        createSearchBar();
     });
 
     document.addEventListener('click', (e) => {
@@ -223,63 +252,9 @@
         }
     });
 
-    // event listener to track selected autocomplete option
-    $('#search').on('autocomplete:selected', function (event, suggestion, dataset) {
-        selectedAutocompleteOption = suggestion;
-    });
-
     document.addEventListener('DOMContentLoaded', async e => {
-        // Based on the current query, if we have anything loaded already in the query, create search bars based on that, otherwise if its empty, create a new one
-        const searchParams = new URLSearchParams(window.location.search);
-        const searches = searchParams.get('searches');
-        if (searches !== null) {
-            let decodedSearchesBuffer = await base64ToBuffer(searches);
-            // Extract string from buffer
-            const decodedSearches = JSON.parse(new TextDecoder().decode(decodedSearchesBuffer));
-            decodedSearches.forEach(searchObject => {
-                const searchBarPrefab = document.getElementsByClassName('prefab');
-                const newSearchBar = searchBarPrefab[0].cloneNode(true);
-                newSearchBar.classList.remove('hidden');
-                newSearchBar.classList.remove('prefab');
-                document.querySelector('.search-bar').appendChild(newSearchBar);
-                // autocomplete
-                $(newSearchBar.querySelector('input')).autocomplete({
-                    onItemRendered(el, item) {
-                        const currentSelectedSearchMode = newSearchBar.querySelector('.dropdown-toggle').textContent;
-                        if (currentSelectedSearchMode !== "@SearchMode.PlayerOocName.Humanize()") {
-                            // Currently, autocomplete only supports searching for player names. So delete the item
-                            item.remove();
-                        }
-                    },
-                    onPick(el, item) {
-                        selectedAutocompleteOption = item.innerHTML;
-                        // if we are the last search bar and we have a selected option, search
-                        if (newSearchBar === document.querySelector('.search-bar').lastElementChild && selectedAutocompleteOption !== null) {
-                            document.querySelector('.search-bar input').value = selectedAutocompleteOption;
-                            search(0)
-                        }
-                    }
-                });
-
-                const dropdown = newSearchBar.querySelector('.dropdown-menu');
-                dropdown.addEventListener('click', (e) => {
-                    const text = e.target.textContent;
-                    e.target.closest('.d-flex').querySelector('.dropdown-toggle').textContent = text;
-                });
-
-                // enter key listener
-                newSearchBar.querySelector('input').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter' && !e.defaultPrevented) {
-                        search(0);
-                    }
-                });
-
-                newSearchBar.querySelector('.dropdown-toggle').textContent = searchObject.searchMode;
-                newSearchBar.querySelector('input').value = searchObject.searchValue;
-            });
-        } else {
-            document.getElementById('addSearchBar').click();
-        }
+        const searchBars = document.querySelectorAll(".search-bar .search-form:not(.prefab)");
+        searchBars.forEach(bar => createSearchBar(bar));
     }, false);
 
 
