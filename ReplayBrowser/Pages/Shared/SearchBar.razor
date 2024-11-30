@@ -49,7 +49,7 @@
 
 <div class="search-bar">
 @{
-    RenderLine(null);
+    RenderLine(null); // Renders the prefab template so the JS code has something to hydrate later
     foreach (var item in Items ?? []) {
         RenderLine(item);
     }
@@ -188,13 +188,11 @@
             autocompleter._config.filter = null;
     }
 
-    /** @@param {{searchMode: test}} initialValue */
+    /** @@param {HTMLDivElement} [searchLine] */
     async function createSearchBar(searchLine) {
         if (!searchLine) {
-            /** @@type {HTMLCollectionOf<HTMLDivElement>} */
-            const searchBarPrefab = document.getElementsByClassName('prefab');
-            /** @@type {HTMLDivElement} */
-            searchLine = searchBarPrefab[0].cloneNode(true);
+            const searchBarPrefab = document.querySelector('.search-form.prefab');
+            searchLine = searchBarPrefab.cloneNode(true);
             searchLine.classList.remove("hidden", "prefab");
             document.querySelector('.search-bar').appendChild(searchLine);
         }

@@ -14,7 +14,7 @@ namespace ReplayBrowser.Helpers;
 
 public class ReplayHelper
 {
-    static readonly string REDACTION_MESSAGE = "The account you are trying to search for is private or deleted. This might happen for various reasons as chosen by the account owner or the site administrative decision";
+    const string REDACTION_MESSAGE = "The account you are trying to search for is private or deleted. This might happen for various reasons as chosen by the account owner or the site administrative decision";
 
     private readonly IMemoryCache _cache;
     private readonly ReplayDbContext _context;
@@ -306,7 +306,7 @@ public class ReplayHelper
             return;
 
         // Is there any redaction to worry about?
-        if (!found.Settings.RedactInformation && !found.Protected)
+        if (!found.Settings.RedactInformation)
             return;
         // Ah shit
 
