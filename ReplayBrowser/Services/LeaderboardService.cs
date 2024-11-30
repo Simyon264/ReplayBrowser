@@ -113,19 +113,7 @@ public class LeaderboardService : IHostedService, IDisposable
                 .Include(a => a.Settings)
                 .FirstOrDefaultAsync(a => a.Username.ToLower() == username.ToLower());
 
-            if (accountRequested != null)
-            {
-                if (accountRequested.Settings.RedactInformation)
-                {
-                    if (accountRequested.Id != accountCaller?.Id)
-                    {
-                        if (accountCaller is not { IsAdmin: true })
-                        {
-                            throw new UnauthorizedAccessException("This user has chosen to privatize their information.");
-                        }
-                    }
-                }
-            }
+            ReplayHelper.CheckAccountAccess(caller: accountCaller, found: accountRequested);
         }
 
         // First, try to get the leaderboard from the cache

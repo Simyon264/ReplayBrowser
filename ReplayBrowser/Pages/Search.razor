@@ -3,6 +3,7 @@
 @using System.Diagnostics
 @using Humanizer
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Mvc
 @using ReplayBrowser.Data.Models
 @using ReplayBrowser.Models
 @using ReplayBrowser.Pages.Shared
@@ -10,15 +11,16 @@
 @using ReplayBrowser.Data
 @using ReplayBrowser.Helpers
 
-@inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavigationManager
 @inject ReplayHelper ReplayHelper
 
 <PageTitle>Replay viewer</PageTitle>
 <h1>Replay browser for Space Station 14</h1>
 <p>Search for replays by using the search bar below</p>
 <hr/>
-<SearchBar></SearchBar>
+<SearchBar Items="SearchItems"></SearchBar>
 <hr/>
 @if (ErrorMessage != null)
 {
@@ -149,19 +151,19 @@
     public List<SearchQueryItem> SearchItems { get; set; } = new List<SearchQueryItem>();
 
     private string OpenGraphDescriptionError => ErrorMessage + "\n" + ErrorDetails;
-    private string OpenGraphDescriptionResults => SearchResult.TotalReplays + " found. Page: " + (SearchResult.CurrentPage + 1) + "\n" + FormatOpenGraphSpeciferDescription();
-    private string OpenGraphDescriptionNoResults => "No results found.\n" + FormatOpenGraphSpeciferDescription();
+    private string OpenGraphDescriptionResults => $"Found {SearchResult.TotalReplays} replays. Page: {SearchResult.CurrentPage + 1}/{SearchResult.PageCount}\n\n{FormatOpenGraphSpeciferDescription()}";
+    private string OpenGraphDescriptionNoResults => "No results found.\n\n" + FormatOpenGraphSpeciferDescription();
 
     private string FormatOpenGraphSpeciferDescription()
     {
-        var searchQuery = string.Join(", ", SearchItems.Select(x => x.SearchMode + ": " + x.SearchValue));
+        var searchQuery = string.Join("\n", SearchItems.Select(x => $"- {x.SearchModeEnum.Humanize()}: {x.SearchValue}"));
 
         // Limit the length of the description to 200 characters
         if (searchQuery.Length > 200)
         {
             searchQuery = searchQuery.Substring(0, 200) + "...";
         }
-        return $"Search results for {searchQuery}";
+        return $"Searching for:\n{searchQuery}";
     }
     /// <summary>
     /// Search modes that you can only once in a query to save on processing time
@@ -175,39 +177,28 @@
     protected override async Task OnInitializedAsync()
     {
         stopWatch.Start();
-        // Get mode and query from query string
-        var uri = new Uri(NavigationManager.Uri);
-        var query = uri.Query;
+
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (query.Length <= 1)
-        {
+
+        // Pull a nice multi-value query interface from the Request
+        // TODO: Why can we not access this in the component?
+        var queryTest = HttpContextAccessor.HttpContext?.Request.Query;
+        if (queryTest is null || queryTest.Count < 1)
             return;
-        }
 
-        var queryDict = System.Web.HttpUtility.ParseQueryString(query.Substring(1));
-        var searches = queryDict.Get("searches");
-        var page = queryDict.Get("page") ?? "0";
-        var pageInt = int.Parse(page);
+        var pageInt = int.Parse(queryTest["page"].FirstOrDefault() ?? "0");
 
-        if (searches == null)
-        {
-            ErrorMessage = "Invalid search query";
-            stopWatch.Stop();
-            return;
-        }
-
-        // Searches is a base64 encoded json string
         try
         {
-            var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(searches));
-            SearchItems = System.Text.Json.JsonSerializer.Deserialize<List<SearchQueryItem>>(decoded)!;
+            // Get the search params from query
+            // Using both multi-value plain search, and legacy Base64 JSON
+            SearchItems = SearchQueryItem.FromQuery(queryTest);
         }
         catch (Exception e)
         {
             ErrorMessage = "Invalid search query";
             ErrorDetails = e.Message;
             stopWatch.Stop();
-            NavigationManager.NavigateTo("/");
             return;
         }
 
@@ -242,9 +233,9 @@
             ErrorMessage = "Invalid search query";
             ErrorDetails = "No search items found";
             stopWatch.Stop();
-            NavigationManager.NavigateTo("/");
             return;
         }
+
         if (SearchItems.Exists(x => x.SearchModeEnum == SearchMode.PlayerOocName))
         {
             ProfileFound = await ReplayHelper.HasProfile(SearchItems.Find(x => x.SearchModeEnum == SearchMode.PlayerOocName)!.SearchValue, authState);

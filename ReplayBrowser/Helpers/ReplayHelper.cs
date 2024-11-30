@@ -14,6 +14,8 @@ namespace ReplayBrowser.Helpers;
 
 public class ReplayHelper
 {
+    const string REDACTION_MESSAGE = "The account you are trying to search for is private or deleted. This might happen for various reasons as chosen by the account owner or the site administrative decision";
+
     private readonly IMemoryCache _cache;
     private readonly ReplayDbContext _context;
     private readonly AccountService _accountService;
@@ -63,11 +65,9 @@ public class ReplayHelper
     {
         var accountCaller = await _accountService.GetAccount(authenticationState);
 
-        var isGdpr = _context.GdprRequests.Any(g => g.Guid == playerGuid);
+        var isGdpr = await _context.GdprRequests.AnyAsync(g => g.Guid == playerGuid);
         if (isGdpr)
-        {
-            throw new UnauthorizedAccessException("This account is protected by a GDPR request. There is no data available.");
-        }
+            throw new UnauthorizedAccessException(REDACTION_MESSAGE);
 
         var accountRequested = _context.Accounts
             .Include(a => a.Settings)
@@ -75,28 +75,8 @@ public class ReplayHelper
 
         if (!skipPermsCheck)
         {
-            if (accountRequested is { Settings.RedactInformation: true })
-            {
-                if (accountCaller == null || !accountCaller.IsAdmin)
-                {
-                    if (accountCaller?.Guid != playerGuid)
-                    {
-                        if (accountRequested.Protected)
-                        {
-                            throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
-                        }
-                        else
-                        {
-                            throw new UnauthorizedAccessException(
-                                "The account you are trying to view is private. Contact the account owner and ask them to make their account public.");
-                        }
-                    }
-                }
-            }
-        }
+            CheckAccountAccess(caller: accountCaller, found: accountRequested);
 
-        if (!skipPermsCheck)
-        {
             await _accountService.AddHistory(accountCaller, new HistoryEntry()
             {
                 Action = Enum.GetName(typeof(Action), Action.ProfileViewed) ?? "Unknown",
@@ -271,37 +251,7 @@ public class ReplayHelper
                 .Include(a => a.Settings)
                 .FirstOrDefault(a => a.Username.ToLower().Equals(query.ToLower()));
 
-            if (callerAccount != null)
-            {
-                if (!callerAccount.Username.ToLower().Equals(query, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (foundOocAccount != null && foundOocAccount.Settings.RedactInformation)
-                    {
-                        if (callerAccount == null || !callerAccount.IsAdmin)
-                        {
-                            if (foundOocAccount.Protected)
-                            {
-                                throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
-                            }
-                            else
-                            {
-                                throw new UnauthorizedAccessException("The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
-                            }
-                        }
-                    }
-                }
-            } else if (foundOocAccount != null && foundOocAccount.Settings.RedactInformation)
-            {
-                if (foundOocAccount.Protected)
-                {
-                    throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
-                }
-                else
-                {
-                    throw new UnauthorizedAccessException(
-                        "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
-                }
-            }
+            CheckAccountAccess(caller: callerAccount, found: foundOocAccount);
         }
 
         foreach (var searchQueryItem in searchItems.Where(x => x.SearchModeEnum == SearchMode.Guid))
@@ -310,52 +260,10 @@ public class ReplayHelper
 
             var foundGuidAccount = _context.Accounts
                 .Include(a => a.Settings)
+                // This .ToLower & .Contains trick allows for partially matching against a GUID
                 .FirstOrDefault(a => a.Guid.ToString().ToLower().Contains(query.ToLower()));
 
-            if (foundGuidAccount != null && foundGuidAccount.Settings.RedactInformation)
-            {
-                if (callerAccount != null)
-                {
-                    if (callerAccount.Guid != foundGuidAccount.Guid)
-                    {
-                        // if the requestor is not the found account and the requestor is not an admin, deny access
-                        if (callerAccount == null || !callerAccount.IsAdmin)
-                        {
-                            if (foundGuidAccount.Protected)
-                            {
-                                throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
-                            }
-                            else
-                            {
-                                throw new UnauthorizedAccessException(
-                                    "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
-                            }
-                        }
-                    }
-                } else
-                {
-                    if (foundGuidAccount.Protected)
-                    {
-                        throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
-                    }
-                    else
-                    {
-                        throw new UnauthorizedAccessException(
-                            "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
-                    }
-                }
-            } else if (foundGuidAccount != null && foundGuidAccount.Settings.RedactInformation)
-            {
-                if (foundGuidAccount.Protected)
-                {
-                    throw new UnauthorizedAccessException("This account is protected and redacted. This might happens due to harassment or other reasons.");
-                }
-                else
-                {
-                    throw new UnauthorizedAccessException(
-                        "The account you are trying to search for is private. Contact the account owner and ask them to make their account public.");
-                }
-            }
+            CheckAccountAccess(caller: callerAccount, found: foundGuidAccount);
         }
 
         // "Execution of the current method continues before the call is completed" is a desired outcome here
@@ -366,7 +274,7 @@ public class ReplayHelper
             {
                 Action = Enum.GetName(typeof(Action), Action.SearchPerformed) ?? "Unknown",
                 Time = DateTime.UtcNow,
-                Details = string.Join(", ", searchItems.Select(x => $"{x.SearchMode}={x.SearchValue}"))
+                Details = string.Join(", ", searchItems.Select(x => $"{x.SearchModeEnum}={x.SearchValue}"))
             });
         });
         #pragma warning restore CS4014
@@ -382,6 +290,43 @@ public class ReplayHelper
             IsCache = wasCache,
             SearchItems = searchItems
         };
+    }
+
+    /// <summary>
+    /// Check whether the caller account (first arg) has access to view the found account (second arg)
+    /// </summary>
+    /// <remarks>
+    /// I am really not a fan of two params of same type being used here. It can and probably will lead to confusing them around.
+    /// TODO: Investigate what's the diff between <see cref="AccountSettings.RedactInformation"/> and <see cref="Account.Protected"/>
+    /// </remarks>
+    public static void CheckAccountAccess(Account? caller, Account? found)
+    {
+        // There's no account to worry about yay
+        if (found is null)
+            return;
+
+        // Is there any redaction to worry about?
+        if (!found.Settings.RedactInformation)
+            return;
+        // Ah shit
+
+        // Not the person we're looking for
+        if (caller is null)
+            throw new UnauthorizedAccessException(REDACTION_MESSAGE);
+
+        // Admins can see everything. Without this we could just peek into the DB.
+        if (caller.IsAdmin)
+            return;
+
+        // Same person (or at least account), let them at it
+        if (caller.Guid == found.Guid)
+            return;
+
+        // Catch-all
+        // Don't give more info about why, what, just use a generic message for everything
+        // For debugging you can always just check the logs or DB
+        // Giving specific info like "admin" vs "self redacted" vs "GDPR request"
+        throw new UnauthorizedAccessException(REDACTION_MESSAGE);
     }
 
     public async Task<PlayerData?> HasProfile(string username, AuthenticationState state)
@@ -431,7 +376,7 @@ public class ReplayHelper
         var stopWatch = new Stopwatch();
         stopWatch.Start();
 
-        var cacheKey = $"{string.Join("-", searchItems.Select(x => $"{x.SearchMode}-{x.SearchValue}"))}";
+        var cacheKey = $"{string.Join("-", searchItems.Select(x => $"{x.SearchModeEnum}-{x.SearchValue}"))}";
 
         var queryable = _context.Replays
             .AsNoTracking()
