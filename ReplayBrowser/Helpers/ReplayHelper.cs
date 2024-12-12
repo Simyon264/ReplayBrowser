@@ -342,7 +342,7 @@ public class ReplayHelper
 
         var account = await _context.Accounts
             .Include(a => a.Settings)
-            .FirstOrDefaultAsync(a => a.Username == username);
+            .FirstOrDefaultAsync(a => a.Guid == player.PlayerGuid);
 
         if (account != null && account.Settings.RedactInformation && account.Guid != accountGuid)
         {
@@ -405,6 +405,7 @@ public class ReplayHelper
             };
         }
 
+        // Get total result count, cache it
         // Technically it might be inaccurate. In practice nobody will care much?
         int totalItems = _cache.GetOrCreate(cacheKey, e =>
         {
@@ -413,7 +414,6 @@ public class ReplayHelper
             return queryable.Count();
         });
 
-        // Get all results and store them in the cache
         var allResults = queryable
             .OrderByDescending(r => r.Date ?? DateTime.MinValue)
             .Skip(page * pageSize)
