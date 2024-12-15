@@ -41,7 +41,6 @@ public class NginxProvider : ReplayProvider
 
             if (href.EndsWith("/", StringComparison.Ordinal))
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(10), token); // Prevents spamming the server
                 await RetrieveFilesRecursive(href, token);
             }
 
