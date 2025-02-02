@@ -50,6 +50,9 @@ public class NginxProvider : ReplayProvider
 
             if (href.EndsWith("/", StringComparison.Ordinal))
             {
+                if (href == directoryUrl)
+                    continue;
+
                 await RetrieveFilesRecursive(href, token);
             }
 
