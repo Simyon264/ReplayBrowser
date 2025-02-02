@@ -9,7 +9,16 @@ public class NginxProvider : ReplayProvider
     public override async Task RetrieveFilesRecursive(string directoryUrl, CancellationToken token)
     {
         var client = GetHttpClient();
-        var htmlContent = await client.GetStringAsync(directoryUrl, token);
+        string htmlContent;
+        try
+        {
+            htmlContent = await client.GetStringAsync(directoryUrl, token);
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "Failed to retrieve files from " + directoryUrl + ".");
+            return;
+        }
         var document = new HtmlDocument();
         document.LoadHtml(htmlContent);
 
