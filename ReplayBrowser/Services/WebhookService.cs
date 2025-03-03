@@ -104,7 +104,7 @@ public class WebhookService
 
             webhook.Logs.Add(logFailed);
             await context.SaveChangesAsync();
-            Log.Error(e, "Failed to send Discord webhook to {WebhookUrl}.", webhook.Url);
+            Log.Error("Failed to send Discord webhook to {WebhookUrl}.", webhook.Url);
         }
 
         var log = new WebhookHistory
