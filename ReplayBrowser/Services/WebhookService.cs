@@ -40,13 +40,20 @@ public class WebhookService
                     continue;
                 }
 
-                if (webhook.Type == WebhookType.Discord)
+                try
                 {
-                    await SendDiscordWebhook(webhook, parsedReplay);
+                    if (webhook.Type == WebhookType.Discord)
+                    {
+                        await SendDiscordWebhook(webhook, parsedReplay);
+                    }
+                    else if (webhook.Type == WebhookType.Json)
+                    {
+                        await SendJsonWebhook(webhook, parsedReplay);
+                    }
                 }
-                else if (webhook.Type == WebhookType.Json)
+                catch (Exception _)
                 {
-                    await SendJsonWebhook(webhook, parsedReplay);
+                    // ignore
                 }
             }
         }
