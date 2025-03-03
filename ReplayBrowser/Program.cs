@@ -64,6 +64,5 @@ public class Program
                 s.AddHostedService<BackgroundServiceStarter<ReplayParserService>>();
                 s.AddHostedService<BackgroundServiceStarter<AccountService>>();
                 s.AddHostedService<BackgroundServiceStarter<LeaderboardService>>();
-                s.AddHostedService<BackgroundServiceStarter<AnalyticsService>>();
             });
 }

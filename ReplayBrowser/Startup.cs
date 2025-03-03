@@ -56,7 +56,6 @@ public class Startup
         services.AddSingleton<AccountService>();
         services.AddSingleton<LeaderboardService>();
         services.AddSingleton<ReplayParserService>();
-        services.AddSingleton<AnalyticsService>();
         services.AddSingleton<NoticeHelper>();
         services.AddSingleton<GitHubApiHelper>();
 
