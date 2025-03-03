@@ -179,7 +179,7 @@ public class AccountService : IHostedService, IDisposable
         return account;
     }
 
-    public async Task UpdateAccount(Account? account)
+    public async Task UpdateAccount(Account? account, bool generateSettings = true)
     {
         if (account == null)
         {
@@ -189,7 +189,8 @@ public class AccountService : IHostedService, IDisposable
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
         context.Accounts.Update(account);
-        GenerateAccountSettings();
+        if (generateSettings)
+            GenerateAccountSettings();
         await context.SaveChangesAsync();
     }
 
@@ -235,7 +236,7 @@ public class AccountService : IHostedService, IDisposable
         callerAccount ??= GetSystemAccount();
 
         callerAccount.History.Add(historyEntry);
-        await UpdateAccount(callerAccount);
+        await UpdateAccount(callerAccount, false);
     }
 
     /// <summary>
