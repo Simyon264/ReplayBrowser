@@ -196,15 +196,15 @@
         if (FullReplay is not null) {
             var text = FullReplay.RoundEndText ?? "No round end text available.";
 
-            const string colorTagPattern = @"\[color=(.*?)\]([\s\S]*?)\[/color\]";
+            const string colorTagPattern = @"\[color=(.*?)\](.*?)\[/color\]";
             const string colorTagReplacement = "<span style=\"color:$1\">$2</span>";
 
             const string boldTagPattern = @"\[bold\](.*?)\[/bold\]";
             const string boldTagReplacement = "<strong>$1</strong>";
 
-            text = Regex.Replace(text, colorTagPattern, colorTagReplacement);
+            text = Regex.Replace(text, colorTagPattern, colorTagReplacement, RegexOptions.Singleline);
             text = text.Replace("\n", "<br>");
-            text = Regex.Replace(text, boldTagPattern, boldTagReplacement);
+            text = Regex.Replace(text, boldTagPattern, boldTagReplacement, RegexOptions.Singleline);
 
             text = text.Replace("[bullet/]", "•");
 
