@@ -196,7 +196,7 @@
         if (FullReplay is not null) {
             var text = FullReplay.RoundEndText ?? "No round end text available.";
 
-            const string colorTagPattern = @"\[color=(.*?)\](.*?)\[/color\]";
+            const string colorTagPattern = @"\[color=(.*?)\]([\s\S]*?)\[/color\]";
             const string colorTagReplacement = "<span style=\"color:$1\">$2</span>";
 
             const string boldTagPattern = @"\[bold\](.*?)\[/bold\]";
