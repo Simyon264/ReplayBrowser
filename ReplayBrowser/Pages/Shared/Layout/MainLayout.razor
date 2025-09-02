@@ -222,10 +222,10 @@
         if (!data.roundEndText || data.roundEndText.trim() == "") {
             endTextElement.innerHTML = "No round end text available.";
         } else {
-            const colorTagPattern = new RegExp("\\[color=(.*?)\\](.*?)\\[/color\\]", "g");
+            const colorTagPattern = /\[color=(.*?)\]([\s\S]*?)\[\/color\]/gi
             const colorTagReplacement = "<span style=\"color:$1\">$2</span>";
 
-            const boldTagPattern =  new RegExp("\\[bold\\](.*?)\\[/bold\\]", "g");
+            const boldTagPattern = /\[bold\]([\s\S]*?)\[\/bold\]/gi;
             const boldTagReplacement = "<strong>$1</strong>";
 
             endTextElement.innerHTML = data.roundEndText.trim()

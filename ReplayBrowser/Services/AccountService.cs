@@ -42,7 +42,6 @@ public class AccountService : IHostedService, IDisposable
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ReplayDbContext>();
 
-        CheckDuplicate(context);
         await CheckApiErrorName(context);
 
         await context.SaveChangesAsync();
@@ -54,8 +53,6 @@ public class AccountService : IHostedService, IDisposable
     private async Task CheckApiErrorName(ReplayDbContext context)
     {
         var accounts = context.Accounts
-            .Include(a => a.Settings)
-            .Include(a => a.History)
             .ToList();
 
         foreach (var account in accounts)

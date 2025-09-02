@@ -67,7 +67,7 @@ public class LeaderboardService : IHostedService, IDisposable
         foreach (var rangeOption in Enum.GetValues<RangeOption>())
         {
             var anonymousAuth = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-            await GetLeaderboard(rangeOption, null, [], anonymousAuth, 10, false);
+            //await GetLeaderboard(rangeOption, null, [], anonymousAuth, 10, false);
         }
 
         sw.Stop();

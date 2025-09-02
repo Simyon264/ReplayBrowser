@@ -15,7 +15,7 @@ public static class ZipDownloader
         foreach (var file in filesToExtract)
         {
             var process = new Process();
-            process.StartInfo.FileName = "python";
+            process.StartInfo.FileName = "python3";
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;

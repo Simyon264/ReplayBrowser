@@ -1,8 +1,10 @@
 ﻿using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO.Compression;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Net.Http.Headers;
 using ReplayBrowser.Data;
 using ReplayBrowser.Data.Models;
@@ -33,6 +35,7 @@ public class ReplayParserService : IHostedService, IDisposable
 
     private readonly IConfiguration _configuration;
     private readonly IServiceScopeFactory _factory;
+    private readonly IMemoryCache _memoryCache;
 
 
     /// <summary>
@@ -40,10 +43,11 @@ public class ReplayParserService : IHostedService, IDisposable
     /// </summary>
     private const string YamlSerializerError = "Exception during deserialization";
 
-    public ReplayParserService(IConfiguration configuration, IServiceScopeFactory factory)
+    public ReplayParserService(IConfiguration configuration, IServiceScopeFactory factory, IMemoryCache cache)
     {
         _configuration = configuration;
         _factory = factory;
+        _memoryCache = cache;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -361,9 +365,15 @@ public class ReplayParserService : IHostedService, IDisposable
 
     public StorageUrl GetStorageUrlFromReplayLink(string replayLink)
     {
+        if (_memoryCache.TryGetValue($"{replayLink}-mem-cache", out var storageUrl))
+        {
+            return (StorageUrl)storageUrl!;
+        }
+
         var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
         var fetched = replayUrls.First(x => replayLink.Contains(x.Url));
         fetched.CompileRegex();
+        _memoryCache.Set($"{replayLink}-mem-cache", fetched, TimeSpan.FromMinutes(10));
         return fetched;
     }
 
@@ -399,10 +409,10 @@ public class ReplayParserService : IHostedService, IDisposable
         }
 
         // If it's already in the database, skip it.
-        if (await IsReplayParsed(replay))
-        {
-            return;
-        }
+        //if (await IsReplayParsed(replay))
+        //{
+        //    return;
+        //}
         // Check if it's already in the queue.
         if (!Queue.Contains(replay))
         {
