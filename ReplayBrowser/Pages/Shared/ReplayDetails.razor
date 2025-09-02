@@ -202,9 +202,9 @@
             const string boldTagPattern = @"\[bold\](.*?)\[/bold\]";
             const string boldTagReplacement = "<strong>$1</strong>";
 
-            text = Regex.Replace(text, colorTagPattern, colorTagReplacement);
+            text = Regex.Replace(text, colorTagPattern, colorTagReplacement, RegexOptions.Singleline);
             text = text.Replace("\n", "<br>");
-            text = Regex.Replace(text, boldTagPattern, boldTagReplacement);
+            text = Regex.Replace(text, boldTagPattern, boldTagReplacement, RegexOptions.Singleline);
 
             text = text.Replace("[bullet/]", "•");
 
