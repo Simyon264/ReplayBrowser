@@ -331,7 +331,16 @@ public class ReplayParserService : IHostedService, IDisposable
 
         if (replay.ServerName == Constants.UnsetServerName)
         {
-            replay.ServerName = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerName;
+            var matchedReplayUrl = GetStorageUrlFromReplayLink(replay.Link);
+            var matchName = matchedReplayUrl.ServerNameRegexCompiled.Match(replay.Link);
+            if (matchName.Success)
+            {
+                replay.ServerName = matchName.Groups[1].Value;
+            }
+            else
+            {
+                replay.ServerName = matchedReplayUrl.FallBackServerName;
+            }
         }
 
         if (yamlReplay.RoundEndPlayers == null)
