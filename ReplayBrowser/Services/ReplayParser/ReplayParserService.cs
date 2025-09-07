@@ -34,6 +34,7 @@ public class ReplayParserService : IHostedService, IDisposable
     public CancellationTokenSource TokenSource = new();
 
     private readonly IConfiguration _configuration;
+    private readonly StorageUrl[] _storageUrls = [];
     private readonly IServiceScopeFactory _factory;
     private readonly IMemoryCache _memoryCache;
 
@@ -48,12 +49,13 @@ public class ReplayParserService : IHostedService, IDisposable
         _configuration = configuration;
         _factory = factory;
         _memoryCache = cache;
+        _storageUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
         var urLs = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>();
-        if (urLs == null)
+        if (urLs == null || _storageUrls.Length == 0)
         {
             throw new Exception("No replay URLs found in appsettings.json. Please set ReplayUrls to an array of URLs.");
         }
@@ -323,10 +325,9 @@ public class ReplayParserService : IHostedService, IDisposable
 
         var replay = Replay.FromYaml(yamlReplay, replayLink);
 
-        var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
         if (replay.ServerId == Constants.UnsetServerId)
         {
-            replay.ServerId = replayUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerId;
+            replay.ServerId = _storageUrls.First(x => replay.Link!.Contains(x.Url)).FallBackServerId;
         }
 
         if (replay.ServerName == Constants.UnsetServerName)
@@ -379,8 +380,7 @@ public class ReplayParserService : IHostedService, IDisposable
             return (StorageUrl)storageUrl!;
         }
 
-        var replayUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
-        var fetched = replayUrls.First(x => replayLink.Contains(x.Url));
+        var fetched = _storageUrls.First(x => replayLink.Contains(x.Url));
         fetched.CompileRegex();
         _memoryCache.Set($"{replayLink}-mem-cache", fetched, TimeSpan.FromMinutes(10));
         return fetched;
