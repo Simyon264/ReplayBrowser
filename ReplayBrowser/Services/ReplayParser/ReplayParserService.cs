@@ -344,6 +344,11 @@ public class ReplayParserService : IHostedService, IDisposable
             }
         }
 
+        // Temporary:
+        var storageUrl = GetStorageUrlFromReplayLink(replay.Link);
+        replay.ServerId = storageUrl.FallBackServerId;
+
+
         if (yamlReplay.RoundEndPlayers == null)
             return replay;
 
