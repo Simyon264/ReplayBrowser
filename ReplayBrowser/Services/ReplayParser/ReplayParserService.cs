@@ -333,14 +333,21 @@ public class ReplayParserService : IHostedService, IDisposable
         if (replay.ServerName == Constants.UnsetServerName)
         {
             var matchedReplayUrl = GetStorageUrlFromReplayLink(replay.Link);
-            var matchName = matchedReplayUrl.ServerNameRegexCompiled.Match(replay.Link);
-            if (matchName.Success)
+            if (string.IsNullOrEmpty(matchedReplayUrl.ServerNameRegex))
             {
-                replay.ServerName = matchName.Groups[1].Value;
+                replay.ServerName = matchedReplayUrl.FallBackServerName;
             }
             else
             {
-                replay.ServerName = matchedReplayUrl.FallBackServerName;
+                var matchName = matchedReplayUrl.ServerNameRegexCompiled.Match(replay.Link);
+                if (matchName.Success)
+                {
+                    replay.ServerName = matchName.Groups[1].Value;
+                }
+                else
+                {
+                    replay.ServerName = matchedReplayUrl.FallBackServerName;
+                }
             }
         }
 
