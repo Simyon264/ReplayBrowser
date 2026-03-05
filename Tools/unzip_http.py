@@ -125,17 +125,24 @@ class RemoteZipFile:
     magic_eocd64 = b'\x50\x4b\x06\x06'
     magic_eocd = b'\x50\x4b\x05\x06'
 
-    def __init__(self, url):
+    def __init__(self, url, user_agent=None):
         import urllib3
         self.url = url
         self.http = urllib3.PoolManager()
         self.zip_size = 0
+        self.user_agent = user_agent or f'unzip-http/{__version__}'
 
     def __enter__(self):
         return self
 
     def __exit__(self, a, b, c):
         pass
+
+    def _headers(self, extra=None):
+        h = {'User-Agent': self.user_agent}
+        if extra:
+            h.update(extra)
+        return h
 
     @property
     def files(self):
@@ -150,7 +157,7 @@ class RemoteZipFile:
         return list(r.filename for r in self.infoiter())
 
     def infoiter(self):
-        resp = self.http.request('HEAD', self.url)
+        resp = self.http.request('HEAD', self.url, headers=self._headers())
         r = resp.headers.get('Accept-Ranges', '')
         if r != 'bytes':
             hostname = urllib.parse.urlparse(self.url).netloc
@@ -232,7 +239,8 @@ class RemoteZipFile:
             self.extract(fn, path, pwd=pwd)
 
     def get_range(self, start, n):
-        return self.http.request('GET', self.url, headers={'Range': f'bytes={start}-{start+n-1}'}, preload_content=False)
+        headers = self._headers({'Range': f'bytes={start}-{start+n-1}'})
+        return self.http.request('GET', self.url, headers=headers, preload_content=False)
 
     def matching_files(self, *globs):
         for f in self.files.values():
@@ -367,9 +375,15 @@ def main():
     parser.add_argument("url", nargs=1, help="URL of the remote zip file")
     parser.add_argument("files", nargs='*', help="Files to extract. If no filenames given, displays .zip contents (filenames and sizes). Each filename can be a wildcard glob.")
 
+    parser.add_argument(
+        '--user-agent',
+        default=None,
+        help="Custom HTTP User-Agent string"
+    )
+
     args = parser.parse_args()
 
-    rzf = RemoteZipFile(args.url[0])
+    rzf = RemoteZipFile(args.url[0], user_agent=args.user_agent)
     if args.list or len(args.files) == 0:
         list_files(rzf)
     else:

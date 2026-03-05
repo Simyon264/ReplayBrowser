@@ -12,6 +12,7 @@ public class StorageUrl
 
     public required string ReplayRegex { get; set; }
     public required string ServerNameRegex { get; set; }
+    public bool DisableRange { get; set; } = false;
 
 
     // Gets set via CompileRegex in GetStorageUrlFromReplayLink, the "only" way to access this class

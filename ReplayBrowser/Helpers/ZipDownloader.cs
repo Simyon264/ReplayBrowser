@@ -6,7 +6,7 @@ namespace ReplayBrowser.Helpers;
 
 public static class ZipDownloader
 {
-    public static async Task<Dictionary<string, Stream>> ExtractFilesFromZipAsync(string zipUrl, string[] filesToExtract)
+    public static async Task<Dictionary<string, Stream>> ExtractFilesFromZipAsync(string zipUrl, string[] filesToExtract, string userAgent)
     {
         // ok so i first tried doing this in c#, but then saw a python script "unzip_http" that does this, so now im just gonna call that
 
@@ -20,7 +20,7 @@ public static class ZipDownloader
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory + "Tools/unzip_http.py");
-            process.StartInfo.Arguments = $"{path} -o {zipUrl} {file}";
+            process.StartInfo.Arguments = $"{path} --user-agent \"{userAgent}\" -o {zipUrl} {file}";
 
             process.Start();
 

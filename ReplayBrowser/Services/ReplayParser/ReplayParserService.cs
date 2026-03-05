@@ -35,6 +35,7 @@ public class ReplayParserService : IHostedService, IDisposable
 
     private readonly IConfiguration _configuration;
     private readonly StorageUrl[] _storageUrls = [];
+    private readonly string _userAgent;
     private readonly IServiceScopeFactory _factory;
     private readonly IMemoryCache _memoryCache;
 
@@ -50,6 +51,7 @@ public class ReplayParserService : IHostedService, IDisposable
         _factory = factory;
         _memoryCache = cache;
         _storageUrls = _configuration.GetSection("ReplayUrls").Get<StorageUrl[]>()!;
+        _userAgent = _configuration.GetSection("UserAgent").Value ?? throw new ArgumentNullException();
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -173,11 +175,14 @@ public class ReplayParserService : IHostedService, IDisposable
                         {
                             DownloadProgress[replay] = x;
                         });
-                        client.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
+                        client.DefaultRequestHeaders.Add("User-Agent", _userAgent);
                         Log.Information("Downloading " + replay);
                         var fileSize = await client.GetFileSizeAsync(replay);
                         // Check if the server supports range requests.
                         var supportsRange = await client.SupportsRangeRequests(replay) && fileSize != -1;
+                        var storageUrl = GetStorageUrlFromReplayLink(replay);
+                        if (storageUrl.DisableRange)
+                            supportsRange = false;
 
                         Replay? parsedReplay = null;
                         try
@@ -189,7 +194,7 @@ public class ReplayParserService : IHostedService, IDisposable
                                 {
                                     // The server supports ranged processing!
                                     string[] files = ["_replay/replay_final.yml"];
-                                    var extractedFiles = await ZipDownloader.ExtractFilesFromZipAsync(replay, files);
+                                    var extractedFiles = await ZipDownloader.ExtractFilesFromZipAsync(replay, files, _userAgent);
                                     completed++;
                                     Details = $"{completed}/{total}";
                                     yamlReplay = ParseReplay(new StreamReader(extractedFiles["_replay/replay_final.yml"]));
@@ -221,7 +226,6 @@ public class ReplayParserService : IHostedService, IDisposable
                         }
                         // See if the link matches the date regex, if it does set the date
                         var replayFileName = Path.GetFileName(replay);
-                        var storageUrl = GetStorageUrlFromReplayLink(replay);
                         var match = storageUrl.ReplayRegexCompiled.Match(replayFileName);
                         if (match.Success)
                         {
