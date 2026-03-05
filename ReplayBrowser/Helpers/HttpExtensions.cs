@@ -1,4 +1,7 @@
-﻿using System.IO.Compression;
+﻿using System.Diagnostics;
+using System.IO.Compression;
+using System.Net;
+using Serilog;
 
 namespace ReplayBrowser.Helpers;
 
@@ -27,7 +30,50 @@ public static class HttpExtensions
 
     public static async Task<Stream> GetStreamAsync(this HttpClient client, string requestUri, IProgress<double> progress, CancellationToken token)
     {
+        const int maxAttempts = 50;
+        var attempts = 0;
+
         var response = await client.GetAsync(requestUri, HttpCompletionOption.ResponseHeadersRead, token);
+
+        while (response.StatusCode == HttpStatusCode.TooManyRequests && attempts < maxAttempts)
+        {
+            attempts++;
+
+            var retryAfter = response.Headers.RetryAfter;
+            TimeSpan delay;
+
+            if (retryAfter != null)
+            {
+                if (retryAfter.Delta.HasValue)
+                {
+                    delay = retryAfter.Delta.Value;
+                }
+                else if (retryAfter.Date.HasValue)
+                {
+                    delay = retryAfter.Date.Value - DateTimeOffset.UtcNow;
+                    if (delay < TimeSpan.Zero)
+                        delay = TimeSpan.FromSeconds(5);
+                }
+                else
+                {
+                    delay = TimeSpan.FromSeconds(Random.Shared.Next(5, 16));
+                }
+            }
+            else
+            {
+                delay = TimeSpan.FromSeconds(Random.Shared.Next(5, 16));
+            }
+
+            Log.Warning("Hit ratelimit! {requestUri} retrying in {delay} (attempt {attempt}/{max})",
+                requestUri, delay, attempts, maxAttempts);
+
+            response.Dispose();
+            await Task.Delay(delay, token);
+
+            response = await client.GetAsync(requestUri, HttpCompletionOption.ResponseHeadersRead, token);
+        }
+
+        response.EnsureSuccessStatusCode();
         var contentLength = response.Content.Headers.ContentLength;
         var httpStream = await response.Content.ReadAsStreamAsync(token);
         var memoryStream = new MemoryStream();
