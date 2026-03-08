@@ -12,19 +12,18 @@
 @inject ReplayHelper ReplayHelper
 @inject Ss14ApiHelper Ss14ApiHelper
 
-<PageTitle>Player info - @(_playerData?.PlayerData.Username ?? "Unknown")</PageTitle>
-
 @if (_playerData is null)
 {
     <p>Loading...</p>
 }
 else if (IsPrivate)
 {
-    <h1>Protected data (@Username)</h1>
+    <h1>Protected data</h1>
     <p>@(Exception?.Message ?? "No info")</p>
 }
 else
 {
+    <PageTitle>Player info - @(_playerData?.PlayerData.Username ?? "Unknown")</PageTitle>
     <MetaDataSpecifer
         Title="@OpenGraphTitle"
         Description="@OpenGraphDescription"
