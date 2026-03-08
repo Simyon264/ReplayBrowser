@@ -9,10 +9,12 @@ namespace ReplayBrowser.Helpers;
 public class Ss14ApiHelper
 {
     private readonly IMemoryCache _cache;
+    private readonly string _userAgent;
 
-    public Ss14ApiHelper(IMemoryCache cache)
+    public Ss14ApiHelper(IConfiguration configuration, IMemoryCache cache)
     {
         _cache = cache;
+        _userAgent = configuration.GetSection("UserAgent").Value ?? throw new ArgumentNullException();
     }
 
     public async Task<PlayerData?> FetchPlayerDataFromUsername(string username)
@@ -24,6 +26,7 @@ public class Ss14ApiHelper
         try
         {
             var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("User-Agent", _userAgent);
             response = await httpClient.GetAsync($"https://auth.spacestation14.com/api/query/name?name={username}");
             response.EnsureSuccessStatusCode();
             var responseString = await response.Content.ReadAsStringAsync();
@@ -61,6 +64,7 @@ public class Ss14ApiHelper
         try
         {
             var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("User-Agent", _userAgent);
             response = await httpClient.GetAsync($"https://auth.spacestation14.com/api/query/userid?userid={player.PlayerGuid}");
             response.EnsureSuccessStatusCode();
             var responseString = await response.Content.ReadAsStringAsync();
