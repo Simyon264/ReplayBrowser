@@ -396,7 +396,11 @@ public class ReplayParserService : IHostedService, IDisposable
             return (StorageUrl)storageUrl!;
         }
 
-        var fetched = _storageUrls.First(x => replayLink.Contains(x.Url));
+        var fetched = _storageUrls.FirstOrDefault(x => replayLink.Contains(x.Url));
+        if (fetched == null)
+        {
+            throw new InvalidOperationException($"Link {replayLink} has no storage url.");
+        }
         fetched.CompileRegex();
         _memoryCache.Set($"{replayLink}-mem-cache", fetched, TimeSpan.FromMinutes(10));
         return fetched;
