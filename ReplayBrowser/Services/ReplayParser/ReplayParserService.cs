@@ -90,8 +90,16 @@ public class ReplayParserService : IHostedService, IDisposable
         {
             Status = ParserStatus.Discovering;
             Details = $"0/{storageUrls.Length}";
+
+            var testingStuff = Environment.GetEnvironmentVariable("SKIP_ALL_BUT_THIS");
             foreach (var storageUrl in storageUrls)
             {
+                if (testingStuff != null && !storageUrl.Url.Contains(testingStuff))
+                {
+                    Log.Information("Skipping {url} because it is not in {testingStuff}", storageUrl.Url, testingStuff);
+                    continue;
+                }
+
                 Log.Information("Fetching replays from " + storageUrl);
                 try
                 {
