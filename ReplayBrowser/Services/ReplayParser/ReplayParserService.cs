@@ -25,6 +25,8 @@ public class ReplayParserService : IHostedService, IDisposable
     public static ParserStatus Status = ParserStatus.Off;
     public static string Details = "";
 
+    public string UserAgent => _userAgent;
+
     /// <summary>
     /// Since the Replay Meta file was added just yesterday, we want to cut off all replays that were uploaded before that.
     /// </summary>

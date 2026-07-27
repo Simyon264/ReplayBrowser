@@ -3,24 +3,24 @@
 public abstract class ReplayProvider
 {
     public abstract Task RetrieveFilesRecursive(string directoryUrl, CancellationToken token);
-    
+
     public HttpClient GetHttpClient()
     {
         var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Add("User-Agent", "ReplayBrowser");
+        httpClient.DefaultRequestHeaders.Add("User-Agent", ReplayParserService.UserAgent);
         return httpClient;
     }
-    
+
     public ReplayProvider(ReplayParserService replayParserService)
     {
         ReplayParserService = replayParserService;
     }
-    
+
     protected ReplayParserService ReplayParserService { get; }
 }
 
 /// <summary>
-/// 
+///
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
 public class ReplayProviderNameAttribute : Attribute
